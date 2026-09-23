@@ -1,0 +1,37 @@
+{
+  "valueDelayRatePerHour": 0.1,
+  "coldStartThresholdHours": 24,
+  "coldStartCostHours": 2,
+  "conflictRatePerWeek": 0.2,
+  "conflictResolutionHours": 1.5,
+  "escalationMultiplier": 15,
+  "defectReworkHours": 8,
+  "defectPrior": 0.05,
+  "defectPriorByType": {
+    "feature": 0.06,
+    "bugfix": 0.08,
+    "dependency": 0.03,
+    "refactor": 0.05,
+    "docs": 0.01,
+    "other": 0.05
+  },
+  "defectPriorWeight": 20,
+  "typeDefectPriorWeight": 15,
+  "reviewWindowHours": 24,
+  "efficacyPrior": 0.5,
+  "efficacyPriorWeight": 10,
+  "defectProxyWindowDays": 14,
+  "delayCongestionWeight": 0.15,
+  "efficacyCongestionWeight": 0.1,
+  "changeValueHoursByType": {
+    "feature": 24,
+    "bugfix": 16,
+    "dependency": 8,
+    "refactor": 8,
+    "docs": 2,
+    "other": 4
+  },
+  "defaultChangeValueHours": 8,
+  "maxWaitHoursCap": 504,
+  "minWaitHours": 1
+}

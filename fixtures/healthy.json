@@ -1,0 +1,4593 @@
+{
+  "repo": {
+    "owner": "fixtures",
+    "repo": "healthy",
+    "defaultBranch": "main"
+  },
+  "pulls": [
+    {
+      "number": 1,
+      "title": "Add cache bugfix",
+      "author": "erin",
+      "createdAt": "2026-05-30T07:50:04.814Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-01T05:21:09.696Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000001",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 1001,
+          "author": "judy",
+          "submittedAt": "2026-05-31T08:36:59.835Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 1002,
+          "author": "judy",
+          "createdAt": "2026-05-31T08:36:59.835Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 2,
+      "title": "Add notifications bugfix",
+      "author": "dave",
+      "createdAt": "2026-08-08T20:25:57.595Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000002",
+      "additions": 8,
+      "deletions": 3,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 2001,
+          "author": "frank",
+          "submittedAt": "2026-08-09T01:49:13.207Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 2002,
+          "author": "frank",
+          "createdAt": "2026-08-09T01:49:13.207Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 3,
+      "title": "Add search refactor",
+      "author": "alice",
+      "createdAt": "2026-07-06T17:29:06.494Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-08T13:22:13.779Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000003",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 3001,
+          "author": "heidi",
+          "submittedAt": "2026-07-06T23:07:56.865Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 3003,
+          "author": "ivan",
+          "submittedAt": "2026-07-07T21:18:50.367Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 3002,
+          "author": "heidi",
+          "createdAt": "2026-07-06T23:07:56.865Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 4,
+      "title": "Add billing refactor",
+      "author": "carol",
+      "createdAt": "2026-08-07T01:48:38.800Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000004",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 4001,
+          "author": "judy",
+          "submittedAt": "2026-08-08T11:45:52.598Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 4002,
+          "author": "judy",
+          "createdAt": "2026-08-08T11:45:52.598Z",
+          "path": "src/ops/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 5,
+      "title": "Add auth dependency",
+      "author": "erin",
+      "createdAt": "2026-06-22T03:30:30.059Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-24T18:26:41.895Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000005",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 5001,
+          "author": "ivan",
+          "submittedAt": "2026-06-23T23:05:20.041Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 5002,
+          "author": "ivan",
+          "createdAt": "2026-06-23T23:05:20.041Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 6,
+      "title": "Add cache feature",
+      "author": "erin",
+      "createdAt": "2026-06-25T03:48:04.964Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-26T06:01:29.507Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000006",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 6001,
+          "author": "grace",
+          "submittedAt": "2026-06-25T22:37:39.757Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 7,
+      "title": "Add billing bugfix",
+      "author": "erin",
+      "createdAt": "2026-08-06T00:36:28.061Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000007",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 7001,
+          "author": "judy",
+          "submittedAt": "2026-08-06T18:23:35.668Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 7002,
+          "author": "judy",
+          "createdAt": "2026-08-06T18:23:35.668Z",
+          "path": "src/ops/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 8,
+      "title": "Add scheduler bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-10T01:28:41.370Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-11T01:18:43.031Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000008",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 8001,
+          "author": "grace",
+          "submittedAt": "2026-07-10T12:40:09.864Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 9,
+      "title": "Add auth refactor",
+      "author": "alice",
+      "createdAt": "2026-05-29T09:15:55.665Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-31T07:47:39.797Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000009",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 9001,
+          "author": "ivan",
+          "submittedAt": "2026-05-31T05:13:28.918Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 10,
+      "title": "Add billing refactor",
+      "author": "bob",
+      "createdAt": "2026-05-19T05:57:39.926Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-22T03:17:58.509Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000010",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 10001,
+          "author": "heidi",
+          "submittedAt": "2026-05-19T17:10:16.326Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 10003,
+          "author": "heidi",
+          "submittedAt": "2026-05-21T01:13:06.670Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 10002,
+          "author": "heidi",
+          "createdAt": "2026-05-19T17:10:16.326Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 11,
+      "title": "Add cache feature",
+      "author": "erin",
+      "createdAt": "2026-07-26T00:46:50.781Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-27T11:41:58.706Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000011",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 11001,
+          "author": "grace",
+          "submittedAt": "2026-07-26T19:05:48.693Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 11002,
+          "author": "grace",
+          "createdAt": "2026-07-26T19:05:48.693Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 12,
+      "title": "Add cache bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-13T00:36:39.398Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-15T00:21:09.724Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000012",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 12001,
+          "author": "judy",
+          "submittedAt": "2026-07-14T11:56:28.093Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 13,
+      "title": "Add scheduler refactor",
+      "author": "carol",
+      "createdAt": "2026-06-28T02:37:46.978Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-30T04:35:23.485Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000013",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 13001,
+          "author": "judy",
+          "submittedAt": "2026-06-30T01:56:50.358Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-07-08T06:47:17.417Z",
+          "detail": "scheduler regression"
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "title": "Add notifications refactor",
+      "author": "erin",
+      "createdAt": "2026-07-06T23:56:28.992Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-09T00:32:31.524Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000014",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 14001,
+          "author": "grace",
+          "submittedAt": "2026-07-08T18:35:24.410Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 15,
+      "title": "Add scheduler feature",
+      "author": "alice",
+      "createdAt": "2026-07-05T06:09:53.628Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-08T05:36:27.913Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000015",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 15001,
+          "author": "grace",
+          "submittedAt": "2026-07-06T17:17:38.076Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 15003,
+          "author": "grace",
+          "submittedAt": "2026-07-07T02:26:25.842Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 15002,
+          "author": "grace",
+          "createdAt": "2026-07-06T17:17:38.076Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 16,
+      "title": "Add cache refactor",
+      "author": "dave",
+      "createdAt": "2026-07-05T21:41:24.375Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-07T01:36:04.534Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000016",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 16001,
+          "author": "grace",
+          "submittedAt": "2026-07-06T20:23:32.859Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 17,
+      "title": "Add auth bugfix",
+      "author": "carol",
+      "createdAt": "2026-07-31T07:12:26.693Z",
+      "closedAt": "2026-08-01T17:02:22.704Z",
+      "mergedAt": null,
+      "state": "closed",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000017",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 17001,
+          "author": "frank",
+          "submittedAt": "2026-08-01T06:08:41.856Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 17002,
+          "author": "frank",
+          "createdAt": "2026-08-01T06:08:41.856Z",
+          "path": "src/db/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 18,
+      "title": "Add scheduler feature",
+      "author": "carol",
+      "createdAt": "2026-06-27T19:50:02.783Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-29T13:57:43.830Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000018",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 18001,
+          "author": "frank",
+          "submittedAt": "2026-06-29T11:14:50.226Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 18002,
+          "author": "frank",
+          "createdAt": "2026-06-29T11:14:50.226Z",
+          "path": "src/db/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 19,
+      "title": "Add search bugfix",
+      "author": "carol",
+      "createdAt": "2026-06-02T05:45:38.844Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-04T04:09:16.489Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000019",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 19001,
+          "author": "judy",
+          "submittedAt": "2026-06-03T09:22:27.897Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 19002,
+          "author": "judy",
+          "createdAt": "2026-06-03T09:22:27.897Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 20,
+      "title": "Add billing dependency",
+      "author": "dave",
+      "createdAt": "2026-06-27T17:50:48.557Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-29T15:17:08.706Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000020",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 20001,
+          "author": "heidi",
+          "submittedAt": "2026-06-29T04:05:13.241Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 21,
+      "title": "Add billing bugfix",
+      "author": "erin",
+      "createdAt": "2026-07-16T15:37:19.274Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-17T22:52:41.549Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000021",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 21001,
+          "author": "ivan",
+          "submittedAt": "2026-07-17T19:04:04.395Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 22,
+      "title": "Add scheduler docs",
+      "author": "bob",
+      "createdAt": "2026-06-01T00:19:10.027Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-03T08:45:02.238Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000022",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "documentation"
+      ],
+      "draft": false,
+      "files": [
+        "docs/guide.md"
+      ],
+      "reviews": [
+        {
+          "id": 22001,
+          "author": "heidi",
+          "submittedAt": "2026-06-02T20:01:55.330Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 23,
+      "title": "Add auth bugfix",
+      "author": "dave",
+      "createdAt": "2026-08-16T00:27:45.865Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000023",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 23001,
+          "author": "judy",
+          "submittedAt": "2026-08-16T09:47:36.317Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 24,
+      "title": "Add billing bugfix",
+      "author": "alice",
+      "createdAt": "2026-05-26T09:56:08.102Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-28T22:31:27.268Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000024",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 24001,
+          "author": "frank",
+          "submittedAt": "2026-05-28T05:00:49.595Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 24002,
+          "author": "frank",
+          "createdAt": "2026-05-28T05:00:49.595Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 25,
+      "title": "Add cache feature",
+      "author": "dave",
+      "createdAt": "2026-08-03T09:06:00.483Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000025",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 25001,
+          "author": "frank",
+          "submittedAt": "2026-08-04T19:25:12.510Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 25002,
+          "author": "frank",
+          "createdAt": "2026-08-04T19:25:12.510Z",
+          "path": "src/core/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 26,
+      "title": "Add cache feature",
+      "author": "bob",
+      "createdAt": "2026-06-18T19:06:43.666Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-19T11:56:58.306Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000026",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 26001,
+          "author": "ivan",
+          "submittedAt": "2026-06-19T00:31:25.383Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 27,
+      "title": "Add scheduler feature",
+      "author": "dave",
+      "createdAt": "2026-07-31T10:21:31.029Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-01T01:39:22.007Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000027",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 27001,
+          "author": "ivan",
+          "submittedAt": "2026-07-31T20:45:37.949Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "followup_fix",
+          "at": "2026-08-10T12:11:34.367Z",
+          "detail": "cache regression"
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "title": "Add notifications feature",
+      "author": "carol",
+      "createdAt": "2026-08-11T23:35:48.528Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-13T01:25:21.029Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000028",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 28001,
+          "author": "ivan",
+          "submittedAt": "2026-08-12T17:57:09.982Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "followup_fix",
+          "at": "2026-08-21T03:56:50.466Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "title": "Add search dependency",
+      "author": "alice",
+      "createdAt": "2026-07-03T14:39:53.351Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-05T04:47:27.771Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000029",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 29001,
+          "author": "judy",
+          "submittedAt": "2026-07-05T00:19:57.156Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 30,
+      "title": "Add auth refactor",
+      "author": "carol",
+      "createdAt": "2026-07-08T21:01:51.050Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-10T00:54:44.681Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000030",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 30001,
+          "author": "frank",
+          "submittedAt": "2026-07-09T12:05:55.199Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 30002,
+          "author": "frank",
+          "createdAt": "2026-07-09T12:05:55.199Z",
+          "path": "src/core/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 31,
+      "title": "Add search bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-06T16:05:23.225Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-11T00:48:38.278Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000031",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 31001,
+          "author": "ivan",
+          "submittedAt": "2026-07-07T21:29:09.638Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 31003,
+          "author": "frank",
+          "submittedAt": "2026-07-10T01:05:55.143Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 31002,
+          "author": "ivan",
+          "createdAt": "2026-07-07T21:29:09.638Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 32,
+      "title": "Add auth dependency",
+      "author": "dave",
+      "createdAt": "2026-07-07T10:30:05.457Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-09T00:27:20.363Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000032",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 32001,
+          "author": "frank",
+          "submittedAt": "2026-07-08T11:06:31.251Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 33,
+      "title": "Add search bugfix",
+      "author": "erin",
+      "createdAt": "2026-06-22T07:24:46.230Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-24T12:38:15.119Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000033",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 33001,
+          "author": "judy",
+          "submittedAt": "2026-06-24T00:53:51.659Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 34,
+      "title": "Add search refactor",
+      "author": "alice",
+      "createdAt": "2026-06-07T08:54:29.860Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-08T08:19:49.466Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000034",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 34001,
+          "author": "heidi",
+          "submittedAt": "2026-06-08T03:19:26.365Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-06-19T11:48:05.545Z",
+          "detail": "auth regression"
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "title": "Add notifications feature",
+      "author": "dave",
+      "createdAt": "2026-06-10T15:59:13.707Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-11T09:29:10.309Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000035",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 35001,
+          "author": "judy",
+          "submittedAt": "2026-06-10T20:41:33.521Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 36,
+      "title": "Add cache feature",
+      "author": "dave",
+      "createdAt": "2026-06-23T17:01:39.215Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-24T12:19:34.194Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000036",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 36001,
+          "author": "ivan",
+          "submittedAt": "2026-06-24T00:18:30.471Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 37,
+      "title": "Add scheduler bugfix",
+      "author": "erin",
+      "createdAt": "2026-06-20T11:56:41.165Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-22T20:17:14.633Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000037",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 37001,
+          "author": "frank",
+          "submittedAt": "2026-06-22T07:22:20.386Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 37002,
+          "author": "frank",
+          "createdAt": "2026-06-22T07:22:20.386Z",
+          "path": "src/api/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-07-01T04:19:55.394Z",
+          "detail": "auth regression"
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "title": "Add search refactor",
+      "author": "alice",
+      "createdAt": "2026-08-04T15:19:27.841Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000038",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 38001,
+          "author": "ivan",
+          "submittedAt": "2026-08-06T00:02:29.374Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 38002,
+          "author": "ivan",
+          "createdAt": "2026-08-06T00:02:29.374Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 39,
+      "title": "Add cache dependency",
+      "author": "carol",
+      "createdAt": "2026-08-15T20:03:05.959Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000039",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 39001,
+          "author": "grace",
+          "submittedAt": "2026-08-17T07:10:22.399Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 40,
+      "title": "Add notifications dependency",
+      "author": "carol",
+      "createdAt": "2026-07-16T07:36:48.418Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-18T09:27:26.768Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000040",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 40001,
+          "author": "judy",
+          "submittedAt": "2026-07-18T03:37:08.177Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 41,
+      "title": "Add notifications bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-27T01:40:27.646Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-31T22:55:35.788Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000041",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 41001,
+          "author": "heidi",
+          "submittedAt": "2026-07-28T23:17:10.218Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 41003,
+          "author": "grace",
+          "submittedAt": "2026-07-29T19:36:03.219Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 41002,
+          "author": "heidi",
+          "createdAt": "2026-07-28T23:17:10.218Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 42,
+      "title": "Add cache feature",
+      "author": "bob",
+      "createdAt": "2026-06-28T13:42:31.297Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-30T16:15:47.135Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000042",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 42001,
+          "author": "judy",
+          "submittedAt": "2026-06-30T08:48:17.353Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 43,
+      "title": "Add scheduler bugfix",
+      "author": "carol",
+      "createdAt": "2026-08-14T12:19:12.707Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-15T08:13:18.077Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000043",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 43001,
+          "author": "grace",
+          "submittedAt": "2026-08-14T21:49:30.197Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "followup_fix",
+          "at": "2026-08-19T08:31:31.287Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 44,
+      "title": "Add scheduler bugfix",
+      "author": "bob",
+      "createdAt": "2026-08-15T09:13:09.686Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000044",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 44001,
+          "author": "judy",
+          "submittedAt": "2026-08-16T04:25:54.724Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 45,
+      "title": "Add notifications bugfix",
+      "author": "dave",
+      "createdAt": "2026-08-01T14:30:59.431Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-03T13:20:05.116Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000045",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 45001,
+          "author": "frank",
+          "submittedAt": "2026-08-03T10:11:41.234Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 46,
+      "title": "Add cache bugfix",
+      "author": "erin",
+      "createdAt": "2026-08-08T07:13:42.332Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-09T04:25:32.483Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000046",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 46001,
+          "author": "grace",
+          "submittedAt": "2026-08-08T21:08:16.358Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 47,
+      "title": "Add billing feature",
+      "author": "dave",
+      "createdAt": "2026-06-30T17:10:17.443Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-02T12:23:19.443Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000047",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 47001,
+          "author": "heidi",
+          "submittedAt": "2026-07-02T05:14:26.215Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-07-04T04:38:32.076Z",
+          "detail": "auth regression"
+        }
+      ]
+    },
+    {
+      "number": 48,
+      "title": "Add notifications feature",
+      "author": "carol",
+      "createdAt": "2026-07-15T20:25:59.304Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-18T22:59:10.081Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000048",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 48001,
+          "author": "heidi",
+          "submittedAt": "2026-07-17T09:24:19.950Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 48003,
+          "author": "judy",
+          "submittedAt": "2026-07-17T22:50:57.280Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 48002,
+          "author": "heidi",
+          "createdAt": "2026-07-17T09:24:19.950Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 49,
+      "title": "Add cache dependency",
+      "author": "dave",
+      "createdAt": "2026-06-01T08:56:36.318Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-02T05:20:30.766Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000049",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 49001,
+          "author": "heidi",
+          "submittedAt": "2026-06-01T22:36:14.040Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 49002,
+          "author": "heidi",
+          "createdAt": "2026-06-01T22:36:14.040Z",
+          "path": "src/api/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-06-09T23:15:58.525Z",
+          "detail": "search regression"
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "title": "Add billing feature",
+      "author": "dave",
+      "createdAt": "2026-05-20T09:24:26.253Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-22T14:46:13.636Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000050",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 50001,
+          "author": "grace",
+          "submittedAt": "2026-05-22T02:53:49.635Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 51,
+      "title": "Add auth feature",
+      "author": "erin",
+      "createdAt": "2026-07-28T02:35:54.636Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000051",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 51001,
+          "author": "frank",
+          "submittedAt": "2026-07-29T12:08:50.958Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 52,
+      "title": "Add cache bugfix",
+      "author": "alice",
+      "createdAt": "2026-08-14T15:19:46.572Z",
+      "closedAt": "2026-08-17T08:23:17.170Z",
+      "mergedAt": null,
+      "state": "closed",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000052",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 52001,
+          "author": "heidi",
+          "submittedAt": "2026-08-16T10:56:13.196Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 52002,
+          "author": "heidi",
+          "createdAt": "2026-08-16T10:56:13.196Z",
+          "path": "src/ops/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 53,
+      "title": "Add scheduler feature",
+      "author": "bob",
+      "createdAt": "2026-08-13T11:49:54.580Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000053",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 53001,
+          "author": "ivan",
+          "submittedAt": "2026-08-14T04:15:15.106Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 53002,
+          "author": "ivan",
+          "createdAt": "2026-08-14T04:15:15.106Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 54,
+      "title": "Add scheduler bugfix",
+      "author": "carol",
+      "createdAt": "2026-06-04T11:37:51.746Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-05T06:16:26.938Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000054",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 54001,
+          "author": "frank",
+          "submittedAt": "2026-06-05T01:30:11.658Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 55,
+      "title": "Add search bugfix",
+      "author": "carol",
+      "createdAt": "2026-06-21T04:45:03.597Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-23T00:40:13.916Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000055",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 55001,
+          "author": "judy",
+          "submittedAt": "2026-06-22T13:19:57.086Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-07-03T04:07:43.048Z",
+          "detail": "search regression"
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "title": "Add notifications feature",
+      "author": "erin",
+      "createdAt": "2026-08-11T00:58:12.268Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000056",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 56001,
+          "author": "heidi",
+          "submittedAt": "2026-08-12T19:03:14.906Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 56002,
+          "author": "heidi",
+          "createdAt": "2026-08-12T19:03:14.906Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 57,
+      "title": "Add notifications feature",
+      "author": "bob",
+      "createdAt": "2026-07-20T12:16:30.080Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-21T14:34:08.882Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000057",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 57001,
+          "author": "grace",
+          "submittedAt": "2026-07-21T04:03:32.144Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 57002,
+          "author": "grace",
+          "createdAt": "2026-07-21T04:03:32.144Z",
+          "path": "src/db/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-07-23T03:25:47.333Z",
+          "detail": "scheduler regression"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "title": "Add cache feature",
+      "author": "carol",
+      "createdAt": "2026-06-06T20:30:04.286Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-09T00:04:37.901Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000058",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 58001,
+          "author": "ivan",
+          "submittedAt": "2026-06-08T14:53:48.570Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 59,
+      "title": "Add search feature",
+      "author": "carol",
+      "createdAt": "2026-08-07T11:53:25.902Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000059",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 59001,
+          "author": "judy",
+          "submittedAt": "2026-08-09T02:41:04.121Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 60,
+      "title": "Add billing dependency",
+      "author": "carol",
+      "createdAt": "2026-08-08T12:09:52.434Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000060",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 60001,
+          "author": "ivan",
+          "submittedAt": "2026-08-08T16:59:27.357Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 61,
+      "title": "Add scheduler feature",
+      "author": "bob",
+      "createdAt": "2026-07-23T06:50:40.469Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-25T10:09:27.040Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000061",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 61001,
+          "author": "grace",
+          "submittedAt": "2026-07-24T23:07:43.083Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 62,
+      "title": "Add notifications bugfix",
+      "author": "dave",
+      "createdAt": "2026-06-20T20:45:07.276Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-22T02:19:54.794Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000062",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 62001,
+          "author": "heidi",
+          "submittedAt": "2026-06-21T23:17:55.579Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 63,
+      "title": "Add search refactor",
+      "author": "bob",
+      "createdAt": "2026-07-10T08:34:51.968Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-11T18:14:49.794Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000063",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 63001,
+          "author": "frank",
+          "submittedAt": "2026-07-11T04:43:15.552Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 64,
+      "title": "Add billing bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-24T23:44:35.551Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-27T22:34:47.258Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000064",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 64001,
+          "author": "grace",
+          "submittedAt": "2026-07-25T17:08:36.440Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 64002,
+          "author": "grace",
+          "createdAt": "2026-07-25T17:08:36.440Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 65,
+      "title": "Add cache feature",
+      "author": "alice",
+      "createdAt": "2026-07-04T09:40:18.474Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-05T20:38:27.414Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000065",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 65001,
+          "author": "grace",
+          "submittedAt": "2026-07-05T11:13:27.506Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-07-09T07:10:24.259Z",
+          "detail": "notifications regression"
+        }
+      ]
+    },
+    {
+      "number": 66,
+      "title": "Add search feature",
+      "author": "dave",
+      "createdAt": "2026-08-03T01:10:32.479Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000066",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 66001,
+          "author": "ivan",
+          "submittedAt": "2026-08-04T02:07:51.431Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 66002,
+          "author": "ivan",
+          "createdAt": "2026-08-04T02:07:51.431Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 67,
+      "title": "Add scheduler bugfix",
+      "author": "erin",
+      "createdAt": "2026-08-08T22:38:52.720Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-11T17:11:35.913Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000067",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 67001,
+          "author": "judy",
+          "submittedAt": "2026-08-09T14:37:23.256Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 67003,
+          "author": "grace",
+          "submittedAt": "2026-08-10T05:16:57.282Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 67002,
+          "author": "judy",
+          "createdAt": "2026-08-09T14:37:23.256Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 68,
+      "title": "Add scheduler refactor",
+      "author": "carol",
+      "createdAt": "2026-07-29T15:37:45.495Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-30T11:52:49.042Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000068",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 68001,
+          "author": "ivan",
+          "submittedAt": "2026-07-29T22:15:19.179Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 69,
+      "title": "Add cache docs",
+      "author": "dave",
+      "createdAt": "2026-06-08T18:10:01.124Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-10T16:18:08.766Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000069",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "documentation"
+      ],
+      "draft": false,
+      "files": [
+        "docs/guide.md"
+      ],
+      "reviews": [
+        {
+          "id": 69001,
+          "author": "judy",
+          "submittedAt": "2026-06-10T07:05:31.776Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 70,
+      "title": "Add scheduler feature",
+      "author": "alice",
+      "createdAt": "2026-07-27T07:18:07.568Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-31T20:38:09.687Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000070",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 70001,
+          "author": "frank",
+          "submittedAt": "2026-07-28T21:34:40.422Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 70003,
+          "author": "judy",
+          "submittedAt": "2026-07-29T16:05:48.296Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 70002,
+          "author": "frank",
+          "createdAt": "2026-07-28T21:34:40.422Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 71,
+      "title": "Add billing feature",
+      "author": "dave",
+      "createdAt": "2026-06-14T01:00:27.567Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-15T21:25:20.248Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000071",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 71001,
+          "author": "ivan",
+          "submittedAt": "2026-06-15T16:18:15.456Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 72,
+      "title": "Add search feature",
+      "author": "alice",
+      "createdAt": "2026-06-12T20:30:48.517Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-14T09:49:02.530Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000072",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 72001,
+          "author": "heidi",
+          "submittedAt": "2026-06-13T08:36:21.275Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 72002,
+          "author": "heidi",
+          "createdAt": "2026-06-13T08:36:21.275Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 73,
+      "title": "Add cache feature",
+      "author": "dave",
+      "createdAt": "2026-08-09T08:07:47.598Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-11T14:49:05.788Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000073",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 73001,
+          "author": "grace",
+          "submittedAt": "2026-08-09T13:38:30.018Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 73002,
+          "author": "grace",
+          "createdAt": "2026-08-09T13:38:30.018Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 74,
+      "title": "Add scheduler bugfix",
+      "author": "carol",
+      "createdAt": "2026-05-20T13:08:18.900Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-24T06:41:53.574Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000074",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 74001,
+          "author": "judy",
+          "submittedAt": "2026-05-21T16:41:33.762Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 74003,
+          "author": "frank",
+          "submittedAt": "2026-05-23T17:42:21.759Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 74002,
+          "author": "judy",
+          "createdAt": "2026-05-21T16:41:33.762Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 75,
+      "title": "Add search docs",
+      "author": "bob",
+      "createdAt": "2026-07-06T21:59:27.853Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-07T10:28:03.659Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000075",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "documentation"
+      ],
+      "draft": false,
+      "files": [
+        "docs/guide.md"
+      ],
+      "reviews": [
+        {
+          "id": 75001,
+          "author": "ivan",
+          "submittedAt": "2026-07-07T05:04:58.088Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 75002,
+          "author": "ivan",
+          "createdAt": "2026-07-07T05:04:58.088Z",
+          "path": "src/core/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 76,
+      "title": "Add cache bugfix",
+      "author": "erin",
+      "createdAt": "2026-07-29T08:00:45.517Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-31T04:33:19.978Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000076",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 76001,
+          "author": "heidi",
+          "submittedAt": "2026-07-30T18:40:33.946Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 77,
+      "title": "Add auth feature",
+      "author": "bob",
+      "createdAt": "2026-07-25T17:07:35.777Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-26T21:15:29.923Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000077",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 77001,
+          "author": "grace",
+          "submittedAt": "2026-07-26T13:10:53.354Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 77002,
+          "author": "grace",
+          "createdAt": "2026-07-26T13:10:53.354Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 78,
+      "title": "Add auth refactor",
+      "author": "carol",
+      "createdAt": "2026-08-01T20:54:09.297Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000078",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 78001,
+          "author": "heidi",
+          "submittedAt": "2026-08-02T10:43:57.561Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 79,
+      "title": "Add billing bugfix",
+      "author": "erin",
+      "createdAt": "2026-05-24T04:12:27.011Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-25T21:31:26.959Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000079",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 79001,
+          "author": "ivan",
+          "submittedAt": "2026-05-25T18:03:32.518Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 80,
+      "title": "Add notifications refactor",
+      "author": "carol",
+      "createdAt": "2026-05-18T16:40:57.249Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-20T16:00:59.531Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000080",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 80001,
+          "author": "frank",
+          "submittedAt": "2026-05-20T11:12:29.677Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-05-27T15:11:00.360Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 81,
+      "title": "Add search refactor",
+      "author": "dave",
+      "createdAt": "2026-07-03T18:55:37.770Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-05T13:09:01.986Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000081",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 81001,
+          "author": "judy",
+          "submittedAt": "2026-07-05T09:55:20.814Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 82,
+      "title": "Add cache feature",
+      "author": "carol",
+      "createdAt": "2026-08-01T22:16:37.691Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-03T09:22:53.028Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000082",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 82001,
+          "author": "ivan",
+          "submittedAt": "2026-08-02T04:39:15.181Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 82003,
+          "author": "frank",
+          "submittedAt": "2026-08-02T13:34:26.878Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 82002,
+          "author": "ivan",
+          "createdAt": "2026-08-02T04:39:15.181Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 83,
+      "title": "Add search bugfix",
+      "author": "dave",
+      "createdAt": "2026-05-19T05:10:11.995Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-22T11:44:24.040Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000083",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 83001,
+          "author": "frank",
+          "submittedAt": "2026-05-20T10:29:18.313Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 83003,
+          "author": "frank",
+          "submittedAt": "2026-05-20T18:46:40.823Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 83002,
+          "author": "frank",
+          "createdAt": "2026-05-20T10:29:18.313Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 84,
+      "title": "Add auth feature",
+      "author": "carol",
+      "createdAt": "2026-07-10T19:35:43.220Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-15T04:42:03.007Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000084",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 84001,
+          "author": "judy",
+          "submittedAt": "2026-07-11T02:32:46.116Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 84003,
+          "author": "heidi",
+          "submittedAt": "2026-07-14T02:30:11.303Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 84002,
+          "author": "judy",
+          "createdAt": "2026-07-11T02:32:46.116Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 85,
+      "title": "Add notifications feature",
+      "author": "dave",
+      "createdAt": "2026-07-22T05:46:10.631Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-25T19:01:43.557Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000085",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 85001,
+          "author": "frank",
+          "submittedAt": "2026-07-23T16:32:00.886Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 85002,
+          "author": "frank",
+          "createdAt": "2026-07-23T16:32:00.886Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 86,
+      "title": "Add search dependency",
+      "author": "erin",
+      "createdAt": "2026-05-20T13:36:05.233Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-22T14:49:10.357Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000086",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 86001,
+          "author": "frank",
+          "submittedAt": "2026-05-22T03:12:59.970Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 86002,
+          "author": "frank",
+          "createdAt": "2026-05-22T03:12:59.970Z",
+          "path": "src/api/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 87,
+      "title": "Add cache feature",
+      "author": "dave",
+      "createdAt": "2026-07-31T15:35:59.895Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-02T15:28:03.971Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000087",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 87001,
+          "author": "heidi",
+          "submittedAt": "2026-08-02T06:42:43.619Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-08-05T20:26:16.982Z",
+          "detail": "notifications regression"
+        }
+      ]
+    },
+    {
+      "number": 88,
+      "title": "Add scheduler docs",
+      "author": "erin",
+      "createdAt": "2026-08-02T00:34:13.120Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-03T09:52:49.476Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000088",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "documentation"
+      ],
+      "draft": false,
+      "files": [
+        "docs/guide.md"
+      ],
+      "reviews": [
+        {
+          "id": 88001,
+          "author": "judy",
+          "submittedAt": "2026-08-03T04:15:00.855Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 89,
+      "title": "Add notifications bugfix",
+      "author": "bob",
+      "createdAt": "2026-08-11T13:37:48.170Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000089",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 89001,
+          "author": "judy",
+          "submittedAt": "2026-08-11T20:47:58.525Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 89002,
+          "author": "judy",
+          "createdAt": "2026-08-11T20:47:58.525Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 90,
+      "title": "Add cache bugfix",
+      "author": "erin",
+      "createdAt": "2026-08-14T08:44:38.927Z",
+      "closedAt": "2026-08-15T02:19:12.509Z",
+      "mergedAt": null,
+      "state": "closed",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000090",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 90001,
+          "author": "ivan",
+          "submittedAt": "2026-08-14T17:55:36.044Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 91,
+      "title": "Add notifications feature",
+      "author": "dave",
+      "createdAt": "2026-08-13T17:42:37.870Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000091",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 91001,
+          "author": "grace",
+          "submittedAt": "2026-08-15T12:11:59.367Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 91002,
+          "author": "grace",
+          "createdAt": "2026-08-15T12:11:59.367Z",
+          "path": "src/db/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 92,
+      "title": "Add billing refactor",
+      "author": "dave",
+      "createdAt": "2026-05-18T18:34:50.984Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-19T07:38:31.326Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000092",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 92001,
+          "author": "frank",
+          "submittedAt": "2026-05-19T02:47:13.872Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 93,
+      "title": "Add cache feature",
+      "author": "dave",
+      "createdAt": "2026-05-27T23:32:14.144Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-29T11:26:17.552Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000093",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 93001,
+          "author": "ivan",
+          "submittedAt": "2026-05-29T01:52:34.019Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 93002,
+          "author": "ivan",
+          "createdAt": "2026-05-29T01:52:34.019Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 94,
+      "title": "Add billing feature",
+      "author": "dave",
+      "createdAt": "2026-06-02T03:16:16.910Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-05T14:09:47.631Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000094",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 94001,
+          "author": "ivan",
+          "submittedAt": "2026-06-02T21:25:13.001Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 94003,
+          "author": "frank",
+          "submittedAt": "2026-06-04T02:17:39.356Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 94002,
+          "author": "ivan",
+          "createdAt": "2026-06-02T21:25:13.001Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 95,
+      "title": "Add scheduler refactor",
+      "author": "alice",
+      "createdAt": "2026-07-31T03:09:16.515Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000095",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 95001,
+          "author": "heidi",
+          "submittedAt": "2026-08-01T09:44:19.596Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 96,
+      "title": "Add notifications dependency",
+      "author": "alice",
+      "createdAt": "2026-08-15T22:34:15.051Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-18T00:59:21.123Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000096",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 96001,
+          "author": "grace",
+          "submittedAt": "2026-08-17T18:01:14.666Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "followup_fix",
+          "at": "2026-08-24T12:20:59.584Z",
+          "detail": "search regression"
+        }
+      ]
+    },
+    {
+      "number": 97,
+      "title": "Add search feature",
+      "author": "erin",
+      "createdAt": "2026-05-24T00:35:33.573Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-25T13:21:44.590Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000097",
+      "additions": 8,
+      "deletions": 3,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 97001,
+          "author": "frank",
+          "submittedAt": "2026-05-25T02:39:48.368Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 98,
+      "title": "Add auth refactor",
+      "author": "carol",
+      "createdAt": "2026-08-13T13:37:01.614Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-15T11:52:43.378Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000098",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 98001,
+          "author": "heidi",
+          "submittedAt": "2026-08-15T01:57:18.610Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 98002,
+          "author": "heidi",
+          "createdAt": "2026-08-15T01:57:18.610Z",
+          "path": "src/ops/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 99,
+      "title": "Add auth bugfix",
+      "author": "alice",
+      "createdAt": "2026-08-05T16:06:10.981Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-07T08:18:01.836Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000099",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 99001,
+          "author": "frank",
+          "submittedAt": "2026-08-07T00:11:51.794Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 99002,
+          "author": "frank",
+          "createdAt": "2026-08-07T00:11:51.794Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 100,
+      "title": "Add notifications feature",
+      "author": "bob",
+      "createdAt": "2026-07-12T16:43:44.391Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-14T04:04:55.335Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000100",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 100001,
+          "author": "frank",
+          "submittedAt": "2026-07-14T00:01:02.307Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "reopen",
+          "at": "2026-07-26T10:53:48.861Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 101,
+      "title": "Add auth feature",
+      "author": "dave",
+      "createdAt": "2026-08-03T22:14:37.788Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-06T02:47:13.012Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000101",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 101001,
+          "author": "ivan",
+          "submittedAt": "2026-08-05T19:45:25.131Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "revert",
+          "at": "2026-08-18T11:26:55.628Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 102,
+      "title": "Add cache bugfix",
+      "author": "dave",
+      "createdAt": "2026-07-25T07:17:36.796Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-27T14:24:50.208Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000102",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 102001,
+          "author": "frank",
+          "submittedAt": "2026-07-27T01:37:11.883Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 103,
+      "title": "Add cache bugfix",
+      "author": "dave",
+      "createdAt": "2026-08-15T21:09:27.362Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000103",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 103001,
+          "author": "frank",
+          "submittedAt": "2026-08-16T09:31:05.740Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 104,
+      "title": "Add cache refactor",
+      "author": "bob",
+      "createdAt": "2026-06-21T23:21:31.575Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-26T11:18:36.756Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000104",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "refactor"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/impl.ts"
+      ],
+      "reviews": [
+        {
+          "id": 104001,
+          "author": "ivan",
+          "submittedAt": "2026-06-23T14:53:23.486Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 104003,
+          "author": "grace",
+          "submittedAt": "2026-06-25T00:29:14.936Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 104002,
+          "author": "ivan",
+          "createdAt": "2026-06-23T14:53:23.486Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 105,
+      "title": "Add notifications feature",
+      "author": "carol",
+      "createdAt": "2026-06-28T12:15:39.968Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-30T11:30:53.471Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000105",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/feature.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 105001,
+          "author": "frank",
+          "submittedAt": "2026-06-30T09:04:10.271Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 106,
+      "title": "Add cache dependency",
+      "author": "carol",
+      "createdAt": "2026-07-22T10:22:09.320Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-23T07:53:13.829Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000106",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [],
+      "draft": false,
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "reviews": [
+        {
+          "id": 106001,
+          "author": "heidi",
+          "submittedAt": "2026-07-23T01:59:01.337Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 107,
+      "title": "Add billing bugfix",
+      "author": "carol",
+      "createdAt": "2026-07-02T22:59:43.461Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-09T00:59:02.848Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000107",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/fix.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 107001,
+          "author": "frank",
+          "submittedAt": "2026-07-04T17:36:32.420Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 107003,
+          "author": "heidi",
+          "submittedAt": "2026-07-07T11:06:38.911Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 107002,
+          "author": "frank",
+          "createdAt": "2026-07-04T17:36:32.420Z",
+          "path": "src/ops/index.ts",
+          "body": "Potential issue here — double-check the ops edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 108,
+      "title": "Add notifications bugfix",
+      "author": "carol",
+      "createdAt": "2026-08-12T23:47:19.590Z",
+      "closedAt": null,
+      "mergedAt": null,
+      "state": "open",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000108",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 108001,
+          "author": "ivan",
+          "submittedAt": "2026-08-14T11:44:44.810Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 108002,
+          "author": "ivan",
+          "createdAt": "2026-08-14T11:44:44.810Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 109,
+      "title": "Add notifications bugfix",
+      "author": "alice",
+      "createdAt": "2026-06-03T16:29:21.133Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-04T11:52:26.897Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000109",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 109001,
+          "author": "ivan",
+          "submittedAt": "2026-06-03T22:18:19.620Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 109002,
+          "author": "ivan",
+          "createdAt": "2026-06-03T22:18:19.620Z",
+          "path": "src/core/index.ts",
+          "body": "Minor: could reuse the helper here."
+        }
+      ],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-06-07T21:12:55.772Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 110,
+      "title": "Add notifications docs",
+      "author": "bob",
+      "createdAt": "2026-05-23T10:15:19.595Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-24T18:26:59.322Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000110",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 1,
+      "labels": [
+        "documentation"
+      ],
+      "draft": false,
+      "files": [
+        "docs/guide.md"
+      ],
+      "reviews": [
+        {
+          "id": 110001,
+          "author": "judy",
+          "submittedAt": "2026-05-24T07:02:43.361Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "followup_fix",
+          "at": "2026-06-02T12:16:18.032Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 111,
+      "title": "Add scheduler bugfix",
+      "author": "carol",
+      "createdAt": "2026-06-29T21:43:59.915Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-01T08:44:01.323Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000111",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 111001,
+          "author": "heidi",
+          "submittedAt": "2026-07-01T05:14:49.180Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 112,
+      "title": "Add cache feature",
+      "author": "alice",
+      "createdAt": "2026-05-31T19:10:26.880Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-04T12:07:45.596Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000112",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/feature.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 112001,
+          "author": "judy",
+          "submittedAt": "2026-06-02T13:30:15.607Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 112002,
+          "author": "judy",
+          "createdAt": "2026-06-02T13:30:15.607Z",
+          "path": "src/api/index.ts",
+          "body": "Potential issue here — double-check the api edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 113,
+      "title": "Add billing bugfix",
+      "author": "carol",
+      "createdAt": "2026-07-06T20:32:24.045Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-08T18:02:59.051Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000113",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/core/fix.ts",
+        "src/core/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 113001,
+          "author": "frank",
+          "submittedAt": "2026-07-07T06:31:05.351Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 113003,
+          "author": "judy",
+          "submittedAt": "2026-07-07T20:18:24.725Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 113002,
+          "author": "frank",
+          "createdAt": "2026-07-07T06:31:05.351Z",
+          "path": "src/core/index.ts",
+          "body": "Potential issue here — double-check the core edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 114,
+      "title": "Add billing bugfix",
+      "author": "dave",
+      "createdAt": "2026-05-20T07:40:28.277Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-21T08:06:10.385Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000114",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/api/fix.ts",
+        "src/api/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 114001,
+          "author": "heidi",
+          "submittedAt": "2026-05-21T03:20:52.088Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-05-26T10:14:12.770Z",
+          "detail": "billing regression"
+        }
+      ]
+    },
+    {
+      "number": 115,
+      "title": "Add billing bugfix",
+      "author": "bob",
+      "createdAt": "2026-07-30T19:59:06.055Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-04T10:19:42.574Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000115",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 115001,
+          "author": "ivan",
+          "submittedAt": "2026-07-31T07:57:42.950Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 115003,
+          "author": "frank",
+          "submittedAt": "2026-08-03T07:11:45.581Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 115002,
+          "author": "ivan",
+          "createdAt": "2026-07-31T07:57:42.950Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 116,
+      "title": "Add cache bugfix",
+      "author": "carol",
+      "createdAt": "2026-05-19T09:11:58.312Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-21T10:20:23.862Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000116",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 116001,
+          "author": "grace",
+          "submittedAt": "2026-05-21T04:59:30.422Z",
+          "state": "COMMENTED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 117,
+      "title": "Add search feature",
+      "author": "carol",
+      "createdAt": "2026-06-22T14:42:31.013Z",
+      "closedAt": null,
+      "mergedAt": "2026-06-23T09:59:28.991Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000117",
+      "additions": 50,
+      "deletions": 20,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/ops/feature.ts",
+        "src/ops/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 117001,
+          "author": "judy",
+          "submittedAt": "2026-06-23T02:47:45.595Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": [
+        {
+          "kind": "hotfix",
+          "at": "2026-06-30T19:15:23.600Z",
+          "detail": "auth regression"
+        }
+      ]
+    },
+    {
+      "number": 118,
+      "title": "Add auth bugfix",
+      "author": "alice",
+      "createdAt": "2026-07-25T22:38:59.540Z",
+      "closedAt": null,
+      "mergedAt": "2026-07-30T12:47:53.242Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000118",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "bug"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/fix.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 118001,
+          "author": "ivan",
+          "submittedAt": "2026-07-26T08:19:12.323Z",
+          "state": "CHANGES_REQUESTED",
+          "body": "Found a couple of things before this is shippable."
+        },
+        {
+          "id": 118003,
+          "author": "judy",
+          "submittedAt": "2026-07-28T09:03:28.759Z",
+          "state": "APPROVED",
+          "body": "Looks good now."
+        }
+      ],
+      "reviewComments": [
+        {
+          "id": 118002,
+          "author": "ivan",
+          "createdAt": "2026-07-26T08:19:12.323Z",
+          "path": "src/db/index.ts",
+          "body": "Potential issue here — double-check the db edge case."
+        }
+      ],
+      "defectEvents": []
+    },
+    {
+      "number": 119,
+      "title": "Add billing feature",
+      "author": "bob",
+      "createdAt": "2026-05-21T20:37:30.525Z",
+      "closedAt": null,
+      "mergedAt": "2026-05-22T05:57:08.949Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000119",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 119001,
+          "author": "frank",
+          "submittedAt": "2026-05-22T02:43:14.201Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    },
+    {
+      "number": 120,
+      "title": "Add notifications feature",
+      "author": "carol",
+      "createdAt": "2026-07-30T03:47:49.027Z",
+      "closedAt": null,
+      "mergedAt": "2026-08-01T04:17:09.108Z",
+      "state": "merged",
+      "baseBranch": "main",
+      "headSha": "deadbeef00000120",
+      "additions": 250,
+      "deletions": 100,
+      "changedFiles": 2,
+      "labels": [
+        "enhancement"
+      ],
+      "draft": false,
+      "files": [
+        "src/db/feature.ts",
+        "src/db/index.ts"
+      ],
+      "reviews": [
+        {
+          "id": 120001,
+          "author": "grace",
+          "submittedAt": "2026-07-31T22:28:12.452Z",
+          "state": "APPROVED",
+          "body": "LGTM"
+        }
+      ],
+      "reviewComments": [],
+      "defectEvents": []
+    }
+  ]
+}

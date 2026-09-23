@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.eve/
+.pullup/
+*.db
+.DS_Store
+.env
+
+.output/
+pullup-out/
+.claude-code-work-logs/

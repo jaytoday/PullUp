@@ -1,0 +1,42 @@
+{
+  "name": "pullup",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PullUp — workflows for dynamic CI. Compiles code-review economics from a repo's own PR history: the cost of waiting for human review vs the cost of shipping a bug, and a per-PR max-wait threshold. Built on Eve.",
+  "type": "module",
+  "packageManager": "pnpm@9.14.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "imports": {
+    "#*": "./agent/*"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/**\" build",
+    "typecheck": "pnpm -r --filter \"./packages/**\" exec tsc --noEmit && npx tsc -p tsconfig.json --noEmit",
+    "test": "pnpm -r test && vitest run",
+    "test:agent": "vitest run",
+    "pullup": "tsx packages/cli/src/index.ts",
+    "pullup:build": "tsx packages/cli/src/index.ts build",
+    "eve:info": "eve info",
+    "eve:eval": "eve eval"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.49",
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@libsql/client": "^0.17.3",
+    "@pullup/core": "workspace:*",
+    "@pullup/db": "workspace:*",
+    "@pullup/github": "workspace:*",
+    "ai": "^7.0.105",
+    "drizzle-orm": "^0.45.2",
+    "eve": "^0.65.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

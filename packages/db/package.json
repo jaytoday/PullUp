@@ -1,0 +1,28 @@
+{
+  "name": "@pullup/db",
+  "version": "0.1.0",
+  "description": "PullUp persistence: PullStore implementations (embedded libsql via drizzle + in-memory) over the @pullup/core data model.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.3",
+    "@pullup/core": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

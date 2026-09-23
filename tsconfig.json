@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "types": ["node"],
+    "paths": {
+      "#*": ["./agent/*"]
+    }
+  },
+  "include": ["agent/**/*.ts", "scripts/**/*.ts", "evals/**/*.ts"],
+  "exclude": ["node_modules", "**/dist"]
+}

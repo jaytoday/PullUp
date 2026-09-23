@@ -1,0 +1,34 @@
+{
+  "name": "@pullup/cli",
+  "version": "0.1.0",
+  "description": "PullUp CLI: init / fetch / analyze / report / config over @pullup/core, @pullup/db, @pullup/github. CLI-first, headless, JSON-capable.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pullup": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.3",
+    "@octokit/rest": "^21.0.2",
+    "@pullup/core": "workspace:*",
+    "@pullup/db": "workspace:*",
+    "@pullup/github": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

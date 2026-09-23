@@ -1,0 +1,27 @@
+{
+  "name": "@pullup/github",
+  "version": "0.1.0",
+  "description": "PullUp's PullSource implementations: synthetic fixtures (offline default) and a live GitHub App adapter over @octokit/rest.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "@pullup/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}
