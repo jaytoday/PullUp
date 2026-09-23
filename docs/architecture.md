@@ -11,6 +11,15 @@ consume it.
 ## Layers
 
 ```
+┌──────────  web/  (SolidJS dashboard)  ──────┐
+│ overview · PR queue + detail · actions ·    │
+│ calibration · analytics · settings          │
+└────────────────────┬────────────────────────┘
+                     │ /api (JSON, loopback)
+┌──────────  packages/server  ────────────────┐
+│ GET report/pull/actions/calibration ·       │
+│ POST signals/actions/calibrate (no GitHub)  │
+└────────────────────┬────────────────────────┘
 ┌──────────────  agent/  (Eve)  ──────────────┐
 │ instructions.ts · agent.ts · channels/ ·    │
 │ tools/ (thin wrappers, no logic) · lib/core │
@@ -19,13 +28,14 @@ consume it.
 ┌──────────────  packages/cli  (commander)  ──┐
 │ init · fetch · analyze · report · config    │
 └────────────────────┬────────────────────────┘
-          ┌──────────┴──────────┐
-          ▼                     ▼
-  packages/github         packages/db
-  PullSource adapters:    SqliteStore
-  fixtures.ts (offline)   (libsql + drizzle)
-  octokit.ts (live)
-          └──────────┬──────────┘
+          ┌──────────┼──────────┬──────────────┐
+          ▼          │          ▼              ▼
+  packages/github    │   packages/db     packages/jev
+  PullSource:        │   SqliteStore     SignalModel: live Jev
+  fixtures (offline) │   (libsql +       (@typesafe-ai/sdk) +
+  octokit (live,     │    drizzle)       model factory +
+   keeps patches)    │                   prepareJevRuntime
+          └──────────┴──────────┬──────────────┘
                      ▼
            ┌──────────────────┐
            │  @pullup/core    │  ← all logic lives here (no fs/network)
@@ -52,11 +62,33 @@ an Eve discovery footgun — see AGENTS.md).
    toward priors), then the two-cost decision: per-PR max-wait `w*`.
 5. **Report** (`report/`) — typed `PullupReport` + markdown/JSON renderers.
 
+### Jev risk layer (optional; `docs/jev.md`)
+
+6. **Hunks** (`signals/hunks.ts`) — unified-diff hunks per file, stored per
+   pull (`replaceHunks`), content-hashed.
+7. **Policy** (`policy/policy.ts`) — deterministic path globs → requiresHuman
+   / allowlisted category. Authoritative.
+8. **Signals** (`signals/`) — `SignalModel` port, question set `q-v1`,
+   code-only unit state + token-budgeted chunking, content-addressed cache,
+   budgeted runs (`runSignals`), record/replay.
+9. **Aggregate** (`signals/aggregate.ts`) — features → risk → band →
+   `P_defect` multiplier (≥ 1 only), fast-path eligibility (logged).
+10. **Calibrate** (`signals/calibrate.ts`) — fit + out-of-fold metrics +
+    backtest + promotion gates → integrity-hashed artifact.
+11. **Decision overlay** (`cost/decision.ts`) — per-PR `P_defect`, `escalate`
+    recommendation; shadow mode records the active outcome alongside.
+12. **Review actions** (`actions/review.ts`) — decisions → GitHub PR review
+    calls (approve / request changes / defer to human), applied by
+    `LoggingReviewActuator` (logged, never sent).
+
 ## Storage
 
 `@pullup/db` implements the `PullStore` seam from `@pullup/core` over SQLite
 (libsql client + drizzle). Repositories, pulls, reviews, review comments, and
-defect events all have composite primary keys; re-ingestion is an upsert.
+defect events all have composite primary keys; re-ingestion is an upsert. The
+Jev layer adds `hunks` (replaced per pull), `signals` (content-addressed answer
+cache), `signal_runs` (cost/coverage), and `review_actions` (logged bot
+reviews).
 
 ## Offline / live split
 
@@ -69,6 +101,8 @@ defect events all have composite primary keys; re-ingestion is an upsert.
 
 ## Config
 
-`pullup.config.json` (zod-validated) overrides `DEFAULT_PRIORS`. `resolvePriors`
+`pullup.config.json` (zod-validated) overrides `DEFAULT_PRIORS`; its `jev` and
+`policy` keys configure the risk layer (`resolveJevConfig`, `resolvePolicy`)
+and never leak into `CostPriors`. `resolvePriors`
 merges `changeValueHoursByType` and `defectPriorByType` deeply; everything else
 shallow. `loadConfig` returns provenance (which fields came from the file).

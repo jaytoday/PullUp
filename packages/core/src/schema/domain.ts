@@ -90,6 +90,21 @@ export interface DefectEventRecord {
   readonly detail: string | null;
 }
 
+/** One unified-diff hunk of one file in a pull (the Jev evaluation unit). */
+export interface HunkRecord {
+  readonly repoId: string;
+  readonly pullNumber: number;
+  readonly path: string;
+  readonly index: number;
+  /** The `@@ -a,b +c,d @@` header, or "" for a whole-file marker. */
+  readonly header: string;
+  /** Hunk body (without the header). Empty when GitHub returned no patch. */
+  readonly patch: string;
+  /** True when the file had no patch (binary / too large) — never auto-trusted. */
+  readonly noPatch: boolean;
+  readonly contentHash: string;
+}
+
 /** Whole hours between two ISO timestamps (b - a), ≥ 0. */
 export function hoursBetween(a: string, b: string): number {
   const ms = Date.parse(b) - Date.parse(a);

@@ -30,6 +30,16 @@ export interface SourcePull {
   readonly labels: readonly string[];
   readonly draft: boolean;
   readonly files: readonly string[];
+  /** Unified-diff hunks, when the source can supply them (Jev signal input). */
+  readonly hunks?: readonly SourceHunk[];
+}
+
+export interface SourceHunk {
+  readonly path: string;
+  readonly index: number;
+  readonly header: string;
+  readonly patch: string;
+  readonly noPatch?: boolean;
 }
 
 export interface SourceReview {

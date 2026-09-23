@@ -25,6 +25,8 @@ export interface GenerateOptions {
   readonly defectPrior?: number;
   /** "healthy" reviews land in ~4–48h; "congested" in ~24–168h. */
   readonly policy?: "healthy" | "congested";
+  /** Repo name (defaults to the policy name). */
+  readonly repoName?: string;
 }
 
 const AREAS = ["api", "core", "db", "ops"] as const;
@@ -142,7 +144,7 @@ export function generateRepo(options: GenerateOptions = {}): GeneratedRepo {
   const policy = options.policy ?? "healthy";
   const [minH, maxH] = bucketHours(policy);
 
-  const repo: SourceRepo = { owner: "fixtures", repo: policy, defaultBranch: "main" };
+  const repo: SourceRepo = { owner: "fixtures", repo: options.repoName ?? policy, defaultBranch: "main" };
   const pulls: GeneratedPull[] = [];
 
   for (let i = 0; i < n; i++) {

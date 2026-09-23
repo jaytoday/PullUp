@@ -3,16 +3,20 @@
 //
 //   request-changes — a blocking human finding, or net value is negative
 //   review-complete  — already merged/closed, or a human already approved
+//   escalate         — (Jev layer, active mode) policy hit or high-risk signal:
+//                      a human must review; beats every model-driven branch
 //   auto-approve     — wait ≥ w*: further review no longer pays
 //   keep-reviewing   — wait < w*: review still pays
 //
 // The walking skeleton recommends, it does not enforce (enforcement is a
-// follow-up phase).
+// follow-up phase). Bot review actions are planned and logged only — see
+// actions/review.ts.
 
 import { hoursBetween } from "../schema/domain.js";
 import type { PullRecord, ReviewRecord, ReviewState } from "../schema/domain.js";
 import type { PullStore } from "../schema/store.js";
 import {
+  defectProbability,
   delayCost,
   expectedDefectCost,
   findOptimalWait,
@@ -20,12 +24,39 @@ import {
   marginalReviewBenefit,
 } from "./model.js";
 import type { CostParams } from "./params.js";
+import type { Band, RiskAssessment, TopSignal } from "../signals/aggregate.js";
 
 export type Recommendation =
   | "auto-approve"
   | "keep-reviewing"
   | "request-changes"
-  | "review-complete";
+  | "review-complete"
+  | "escalate";
+
+/** Jev risk-layer overlay on a decision (absent when the layer is off). */
+export interface DecisionRisk {
+  readonly mode: "shadow" | "active";
+  readonly band: Band;
+  readonly riskScore: number | null;
+  /** P_defect multiplier applied in active mode (always ≥ 1). */
+  readonly multiplier: number;
+  readonly calibrated: boolean;
+  readonly pDefect: number;
+  /** Logged would-be approval: fast-path eligible (never lowers risk). */
+  readonly fastPathEligible: boolean;
+  readonly needsRationale: boolean;
+  readonly escalateReasons: readonly string[];
+  readonly reviewReasons: readonly string[];
+  readonly topSignals: readonly TopSignal[];
+  /** Shadow mode only: what active mode would have done. */
+  readonly shadowRecommendation?: Recommendation;
+  readonly shadowMaxWaitHours?: number;
+}
+
+export interface RiskOverlay {
+  readonly mode: "shadow" | "active";
+  readonly assessment: RiskAssessment;
+}
 
 export interface PullDecision {
   readonly pullNumber: number;
@@ -43,6 +74,7 @@ export interface PullDecision {
   readonly lastReviewState: ReviewState | null;
   readonly recommendation: Recommendation;
   readonly reason: string;
+  readonly risk?: DecisionRisk;
 }
 
 function lastReviewState(reviews: readonly ReviewRecord[]): ReviewState | null {
@@ -65,9 +97,55 @@ export function decideOne(
   reviews: readonly ReviewRecord[],
   params: CostParams,
   now: string,
+  overlay?: RiskOverlay,
 ): PullDecision {
+  if (!overlay) return decideCore(pull, reviews, params, now);
+  const a = overlay.assessment;
+  const pDefect = defectProbability(params, pull.changeType) * a.multiplier;
+  const escalate = a.band === "escalate";
+  const activeDecision = decideCore(pull, reviews, params, now, { pDefect, escalate });
+  const risk: DecisionRisk = {
+    mode: overlay.mode,
+    band: a.band,
+    riskScore: a.risk === null ? null : Math.round(a.risk * 10_000) / 10_000,
+    multiplier: Math.round(a.multiplier * 1000) / 1000,
+    calibrated: a.calibrated,
+    pDefect: Math.round(pDefect * 10_000) / 10_000,
+    fastPathEligible: a.fastPathEligible,
+    needsRationale: a.band === "escalate" || a.band === "review-with-rationale",
+    escalateReasons: a.escalateReasons,
+    reviewReasons: a.reviewReasons,
+    topSignals: a.topSignals,
+  };
+  if (overlay.mode === "active") return { ...activeDecision, risk };
+  // Shadow: the decision is exactly the layer-off decision; the active outcome
+  // is recorded alongside for comparison.
+  const offDecision = decideCore(pull, reviews, params, now);
+  return {
+    ...offDecision,
+    risk: {
+      ...risk,
+      shadowRecommendation: activeDecision.recommendation,
+      shadowMaxWaitHours: activeDecision.maxWaitHours,
+    },
+  };
+}
+
+interface CoreOverride {
+  readonly pDefect: number;
+  readonly escalate: boolean;
+}
+
+function decideCore(
+  pull: PullRecord,
+  reviews: readonly ReviewRecord[],
+  params: CostParams,
+  now: string,
+  override?: CoreOverride,
+): PullDecision {
+  const pd = override?.pDefect;
   const w = waitSoFar(pull, now);
-  const maxWaitHours = findOptimalWait(params, pull.changeType);
+  const maxWaitHours = findOptimalWait(params, pull.changeType, pd);
   const lastState = lastReviewState(reviews);
 
   const base: Omit<PullDecision, "recommendation" | "reason"> = {
@@ -80,10 +158,10 @@ export function decideOne(
     waitHours: Math.round(w * 100) / 100,
     maxWaitHours,
     delayCost: Math.round(delayCost(w, params) * 100) / 100,
-    expectedDefectCost: Math.round(expectedDefectCost(w, params, pull.changeType) * 100) / 100,
+    expectedDefectCost: Math.round(expectedDefectCost(w, params, pull.changeType, pd) * 100) / 100,
     marginalDelayPerHour: Math.round(marginalDelayCost(params) * 1000) / 1000,
     marginalReviewBenefitPerHour: Math.round(
-      marginalReviewBenefit(w, params, pull.changeType) * 1000,
+      marginalReviewBenefit(w, params, pull.changeType, pd) * 1000,
     ) / 1000,
     lastReviewState: lastState,
   };
@@ -111,7 +189,15 @@ export function decideOne(
     };
   }
 
-  const E = expectedDefectCost(w, params, pull.changeType);
+  if (override?.escalate) {
+    return {
+      ...base,
+      recommendation: "escalate",
+      reason: "Escalated to a human: policy rule or high-risk signal (see risk reasons).",
+    };
+  }
+
+  const E = expectedDefectCost(w, params, pull.changeType, pd);
   const D = delayCost(w, params);
   const V = changeValue(params, pull.changeType);
 
@@ -146,6 +232,7 @@ export async function decideForRepo(
   repoId: string,
   params: CostParams,
   now: string,
+  overlays?: ReadonlyMap<number, RiskOverlay>,
 ): Promise<PullDecision[]> {
   const pulls = await store.listPulls(repoId);
   const reviews = await store.listReviews(repoId);
@@ -155,7 +242,9 @@ export async function decideForRepo(
     if (list) list.push(r);
     else byPull.set(r.pullNumber, [r]);
   }
-  return pulls.map((p) => decideOne(p, byPull.get(p.number) ?? [], params, now));
+  return pulls.map((p) =>
+    decideOne(p, byPull.get(p.number) ?? [], params, now, overlays?.get(p.number)),
+  );
 }
 
 /** Per-repo summary counts over open (undecided-by-human) pulls. */
@@ -170,7 +259,9 @@ export function summarizeDecisions(decisions: readonly PullDecision[]): {
     if (d.recommendation === "auto-approve") summary.autoApprove += 1;
     else if (d.recommendation === "keep-reviewing") summary.keepReviewing += 1;
     else if (d.recommendation === "request-changes") summary.requestChanges += 1;
-    else summary.reviewComplete += 1;
+    // Escalations are counted in the report's risk summary (keeps this shape
+    // identical when the Jev layer is off).
+    else if (d.recommendation === "review-complete") summary.reviewComplete += 1;
   }
   return summary;
 }

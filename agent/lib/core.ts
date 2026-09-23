@@ -3,7 +3,7 @@
 // No domain logic here — that lives in the core package.
 
 import { loadConfig } from "@pullup/core";
-import type { CostPriors } from "@pullup/core";
+import type { CostPriors, ResolvedConfig } from "@pullup/core";
 import { createClient, SqliteStore } from "@pullup/db";
 
 const DB_PATH = process.env.PULLUP_DB_PATH || "pullup.db";
@@ -24,4 +24,9 @@ export async function getStore(): Promise<SqliteStore> {
 /** Resolved priors: pullup.config.json in cwd, or defaults. */
 export function getPriors(configPath = "pullup.config.json"): CostPriors {
   return loadConfig(configPath).priors;
+}
+
+/** Full resolved config (priors + Jev layer + policy). */
+export function getConfig(configPath = "pullup.config.json"): ResolvedConfig {
+  return loadConfig(configPath);
 }

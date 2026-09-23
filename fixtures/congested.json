@@ -35,7 +35,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "docs/guide.md",
+          "index": 0,
+          "header": "@@ -139,6 +139,7 @@",
+          "patch": " ## Install\n-Install with npm.\n+Install with pnpm."
+        }
+      ]
     },
     {
       "number": 2,
@@ -66,7 +74,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -25,6 +25,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -29,6 +29,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 3,
@@ -99,7 +121,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -21,6 +21,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -54,6 +54,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 4,
@@ -132,7 +168,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -72,6 +72,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -113,6 +113,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 5,
@@ -165,7 +215,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -14,6 +14,7 @@",
+          "patch": "   export async function up(db: Db) {\n+    await db.run(\"ALTER TABLE core ADD COLUMN flags TEXT\");\n   }"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -118,6 +118,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 6,
@@ -196,7 +260,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -117,6 +117,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -61,6 +61,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 7,
@@ -235,6 +313,20 @@
           "at": "2026-06-27T03:06:47.868Z",
           "detail": "search regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -2,6 +2,8 @@",
+          "patch": "   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();\n   const body = JSON.stringify(event);\n+  await fetch(`https://hooks.example.com/core`, { method: \"POST\", body });\n   return event;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -60,6 +60,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
       ]
     },
     {
@@ -268,7 +360,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -35,6 +35,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -176,6 +176,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 9,
@@ -316,7 +422,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -93,6 +93,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -91,6 +91,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 10,
@@ -347,7 +467,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -189,6 +189,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -69,6 +69,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 11,
@@ -380,7 +514,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -43,6 +43,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -57,6 +57,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 12,
@@ -413,7 +561,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -119,6 +119,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -34,6 +34,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 13,
@@ -461,7 +623,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -179,6 +179,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -102,6 +102,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 14,
@@ -494,7 +670,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -67,6 +67,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -180,6 +180,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 15,
@@ -533,6 +723,20 @@
           "at": "2026-07-23T17:04:11.730Z",
           "detail": "billing regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -112,6 +112,7 @@",
+          "patch": "-  try {\n-    await queue.publish(evt);\n-  } catch (err) {\n-    await retry(evt);\n-  }\n+  await queue.publish(evt);"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -110,6 +110,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
       ]
     },
     {
@@ -570,6 +774,20 @@
           "at": "2026-08-16T14:59:04.178Z",
           "detail": "search regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -6,6 +6,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -7,6 +7,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
       ]
     },
     {
@@ -603,7 +821,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -93,6 +93,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -189,6 +189,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 18,
@@ -644,7 +876,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -9,6 +9,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -101,6 +101,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 19,
@@ -677,7 +923,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -68,6 +68,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -158,6 +158,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 20,
@@ -710,7 +970,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -46,6 +46,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -105,6 +105,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 21,
@@ -750,7 +1024,15 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/impl.ts",
+          "index": 0,
+          "header": "@@ -25,6 +25,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 22,
@@ -782,7 +1064,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "docs/guide.md",
+          "index": 0,
+          "header": "@@ -48,6 +48,7 @@",
+          "patch": " ## Install\n-Install with npm.\n+Install with pnpm."
+        }
+      ]
     },
     {
       "number": 23,
@@ -819,6 +1109,14 @@
           "kind": "revert",
           "at": "2026-06-17T00:51:46.219Z",
           "detail": "notifications regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/ops/impl.ts",
+          "index": 0,
+          "header": "@@ -128,6 +128,8 @@",
+          "patch": "   const body = JSON.stringify(event);\n+  await fetch(`https://hooks.example.com/ops`, { method: \"POST\", body });\n   return event;\n-  for (const j of jobs) await apply(j);\n+  await Promise.all(jobs.map((j) => db.transaction(() => apply(j))));"
         }
       ]
     },
@@ -861,7 +1159,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -57,6 +57,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -122,6 +122,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 25,
@@ -909,7 +1221,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -194,6 +194,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -39,6 +39,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 26,
@@ -957,7 +1283,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -194,6 +194,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -187,6 +187,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 27,
@@ -990,7 +1330,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -9,6 +9,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -190,6 +190,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 28,
@@ -1031,7 +1385,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -6,6 +6,7 @@",
+          "patch": "   router.post(\"/items\", async (req, res) => {\n-    const input = schema.parse(req.body);\n+    const input = req.body as Input;\n     await save(input);"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -33,6 +33,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 29,
@@ -1072,7 +1440,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -102,6 +102,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -68,6 +68,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 30,
@@ -1113,7 +1495,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -18,6 +18,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -56,6 +56,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 31,
@@ -1153,7 +1549,15 @@
           "body": "Potential issue here — double-check the db edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/impl.ts",
+          "index": 0,
+          "header": "@@ -81,6 +81,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 32,
@@ -1186,7 +1590,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -159,6 +159,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -147,6 +147,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 33,
@@ -1217,7 +1635,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -65,6 +65,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -11,6 +11,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 34,
@@ -1249,7 +1681,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/impl.ts",
+          "index": 0,
+          "header": "@@ -42,6 +42,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 35,
@@ -1282,7 +1722,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -19,6 +19,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -18,6 +18,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 36,
@@ -1323,7 +1777,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -189,6 +189,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -56,6 +56,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 37,
@@ -1362,7 +1830,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -164,6 +164,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -112,6 +112,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 38,
@@ -1403,7 +1885,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -81,6 +81,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -154,6 +154,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 39,
@@ -1435,7 +1931,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/impl.ts",
+          "index": 0,
+          "header": "@@ -128,6 +128,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 40,
@@ -1483,7 +1987,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -70,6 +70,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -156,6 +156,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 41,
@@ -1524,7 +2042,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -123,6 +123,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -42,6 +42,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 42,
@@ -1565,7 +2097,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -153,6 +153,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -11,6 +11,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 43,
@@ -1597,7 +2143,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "docs/guide.md",
+          "index": 0,
+          "header": "@@ -139,6 +139,7 @@",
+          "patch": " ## Install\n-Install with npm.\n+Install with pnpm."
+        }
+      ]
     },
     {
       "number": 44,
@@ -1628,7 +2182,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -15,6 +15,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -166,6 +166,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 45,
@@ -1661,7 +2229,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -143,6 +143,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -76,6 +76,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 46,
@@ -1694,7 +2276,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -25,6 +25,7 @@",
+          "patch": "-  try {\n-    await queue.publish(evt);\n-  } catch (err) {\n-    await retry(evt);\n-  }\n+  await queue.publish(evt);"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -53,6 +53,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 47,
@@ -1735,7 +2331,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -52,6 +52,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -164,6 +164,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 48,
@@ -1768,7 +2378,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -181,6 +181,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -15,6 +15,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 49,
@@ -1801,7 +2425,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -148,6 +148,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -105,6 +105,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 50,
@@ -1842,7 +2480,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -34,6 +34,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -115,6 +115,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 51,
@@ -1883,7 +2535,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -175,6 +175,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -14,6 +14,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 52,
@@ -1915,7 +2581,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/impl.ts",
+          "index": 0,
+          "header": "@@ -185,6 +185,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 53,
@@ -1953,6 +2627,20 @@
           "kind": "reopen",
           "at": "2026-08-23T13:17:10.464Z",
           "detail": "auth regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -5,6 +5,7 @@",
+          "patch": "   export async function up(db: Db) {\n+    await db.run(\"ALTER TABLE ops ADD COLUMN flags TEXT\");\n   }"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -183,6 +183,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
         }
       ]
     },
@@ -1995,7 +2683,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -160,6 +160,7 @@",
+          "patch": "   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -8,6 +8,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 55,
@@ -2043,7 +2745,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -109,6 +109,7 @@",
+          "patch": "-  for (const j of jobs) await apply(j);\n+  await Promise.all(jobs.map((j) => db.transaction(() => apply(j))));"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -183,6 +183,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 56,
@@ -2074,7 +2790,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -170,6 +170,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -61,6 +61,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 57,
@@ -2107,7 +2837,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -100,6 +100,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -25,6 +25,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 58,
@@ -2148,7 +2892,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -100,6 +100,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -144,6 +144,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 59,
@@ -2189,7 +2947,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -135,6 +135,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -85,6 +85,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 60,
@@ -2227,6 +2999,20 @@
           "kind": "reopen",
           "at": "2026-06-10T12:30:53.114Z",
           "detail": "cache regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -198,6 +198,7 @@",
+          "patch": "   const record = await ops.get(id);\n-  if (!user.roles.includes(\"admin\")) throw new ForbiddenError();\n+  // role check handled upstream\n   return record;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -176,6 +176,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
         }
       ]
     },
@@ -2269,7 +3055,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -105,6 +105,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -120,6 +120,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 62,
@@ -2301,7 +3101,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "docs/guide.md",
+          "index": 0,
+          "header": "@@ -200,6 +200,7 @@",
+          "patch": " ## Install\n-Install with npm.\n+Install with pnpm."
+        }
+      ]
     },
     {
       "number": 63,
@@ -2333,7 +3141,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/impl.ts",
+          "index": 0,
+          "header": "@@ -114,6 +114,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 64,
@@ -2374,7 +3190,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -187,6 +187,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -62,6 +62,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 65,
@@ -2415,7 +3245,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -13,6 +13,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -111,6 +111,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 66,
@@ -2462,7 +3306,15 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/impl.ts",
+          "index": 0,
+          "header": "@@ -199,6 +199,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 67,
@@ -2510,7 +3362,21 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -129,6 +129,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -128,6 +128,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 68,
@@ -2550,7 +3416,15 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -197,6 +197,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 69,
@@ -2591,7 +3465,21 @@
           "body": "Potential issue here — double-check the api edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -118,6 +118,8 @@",
+          "patch": "   const record = await api.get(id);\n-  if (!user.roles.includes(\"admin\")) throw new ForbiddenError();\n+  // role check handled upstream\n   return record;\n   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -194,6 +194,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 70,
@@ -2638,7 +3526,15 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/impl.ts",
+          "index": 0,
+          "header": "@@ -163,6 +163,8 @@",
+          "patch": "   const user = await users.find(req.body.email);\n+  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET);\n+  session.set(\"token\", token);\n   return ok(opsResponse(user));"
+        }
+      ]
     },
     {
       "number": 71,
@@ -2671,7 +3567,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -179,6 +179,8 @@",
+          "patch": "   const user = await users.find(req.body.email);\n+  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET);\n+  session.set(\"token\", token);\n   return ok(opsResponse(user));"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -44,6 +44,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 72,
@@ -2711,7 +3621,15 @@
           "body": "Potential issue here — double-check the core edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -174,6 +174,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 73,
@@ -2744,7 +3662,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -166,6 +166,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -96,6 +96,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 74,
@@ -2777,7 +3709,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -45,6 +45,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -153,6 +153,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 75,
@@ -2816,6 +3762,20 @@
           "at": "2026-08-09T22:00:31.052Z",
           "detail": "scheduler regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -119,6 +119,8 @@",
+          "patch": "   const user = await users.find(req.body.email);\n+  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET);\n+  session.set(\"token\", token);\n   return ok(dbResponse(user));"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -15,6 +15,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
       ]
     },
     {
@@ -2848,7 +3808,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/impl.ts",
+          "index": 0,
+          "header": "@@ -23,6 +23,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 77,
@@ -2880,7 +3848,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -111,6 +111,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 78,
@@ -2911,7 +3887,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "package.json",
+          "index": 0,
+          "header": "@@ -19,6 +19,7 @@",
+          "patch": "   \"dependencies\": {\n-    \"zod\": \"^3.23.0\",\n+    \"zod\": \"^4.4.3\",\n     \"drizzle-orm\": \"^0.45.2\""
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "index": 0,
+          "header": "@@ -71,6 +71,8 @@",
+          "patch": "-  zod@3.23.0:\n-    resolution: {integrity: sha512-aaa}\n+  zod@4.4.3:\n+    resolution: {integrity: sha512-bbb}"
+        }
+      ]
     },
     {
       "number": 79,
@@ -2959,7 +3949,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -5,6 +5,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -151,6 +151,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 80,
@@ -3005,6 +4009,14 @@
           "at": "2026-07-02T09:53:31.858Z",
           "detail": "search regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "docs/guide.md",
+          "index": 0,
+          "header": "@@ -88,6 +88,7 @@",
+          "patch": " ## Install\n-Install with npm.\n+Install with pnpm."
+        }
       ]
     },
     {
@@ -3038,7 +4050,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -62,6 +62,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -26,6 +26,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 82,
@@ -3070,7 +4096,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -47,6 +47,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 83,
@@ -3111,7 +4145,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -38,6 +38,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -53,6 +53,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 84,
@@ -3144,7 +4192,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -90,6 +90,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -101,6 +101,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 85,
@@ -3177,7 +4239,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -1,6 +1,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -163,6 +163,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 86,
@@ -3210,7 +4286,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -162,6 +162,7 @@",
+          "patch": "   const body = JSON.stringify(event);\n+  await fetch(`https://hooks.example.com/api`, { method: \"POST\", body });\n   return event;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -50,6 +50,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 87,
@@ -3249,6 +4339,20 @@
           "at": "2026-09-06T03:19:55.727Z",
           "detail": "search regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -58,6 +58,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -74,6 +74,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
       ]
     },
     {
@@ -3281,7 +4385,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/impl.ts",
+          "index": 0,
+          "header": "@@ -90,6 +90,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 89,
@@ -3322,7 +4434,21 @@
           "body": "Potential issue here — double-check the db edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -18,6 +18,7 @@",
+          "patch": "   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -162,6 +162,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 90,
@@ -3355,7 +4481,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -146,6 +146,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -97,6 +97,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 91,
@@ -3388,7 +4528,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -158,6 +158,7 @@",
+          "patch": "-  try {\n-    await queue.publish(evt);\n-  } catch (err) {\n-    await retry(evt);\n-  }\n+  await queue.publish(evt);"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -40,6 +40,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 92,
@@ -3420,7 +4574,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/impl.ts",
+          "index": 0,
+          "header": "@@ -138,6 +138,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 93,
@@ -3453,7 +4615,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -146,6 +146,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -46,6 +46,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 94,
@@ -3486,7 +4662,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -73,6 +73,9 @@",
+          "patch": "   const user = await users.find(req.body.email);\n+  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET);\n+  session.set(\"token\", token);\n   return ok(apiResponse(user));\n   const record = await api.get(id);\n-  if (!user.roles.includes(\"admin\")) throw new ForbiddenError();\n+  // role check handled upstream\n   return record;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -12,6 +12,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 95,
@@ -3540,6 +4730,20 @@
           "at": "2026-07-13T21:10:03.519Z",
           "detail": "auth regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -85,6 +85,7 @@",
+          "patch": "   const body = JSON.stringify(event);\n+  await fetch(`https://hooks.example.com/core`, { method: \"POST\", body });\n   return event;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -40,6 +40,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
       ]
     },
     {
@@ -3572,7 +4776,15 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/impl.ts",
+          "index": 0,
+          "header": "@@ -76,6 +76,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 97,
@@ -3620,7 +4832,21 @@
           "body": "Potential issue here — double-check the db edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -187,6 +187,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -46,6 +46,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 98,
@@ -3653,7 +4879,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -95,6 +95,7 @@",
+          "patch": "-  try {\n-    await queue.publish(evt);\n-  } catch (err) {\n-    await retry(evt);\n-  }\n+  await queue.publish(evt);"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -7,6 +7,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 99,
@@ -3690,6 +4930,14 @@
           "kind": "hotfix",
           "at": "2026-08-02T10:27:27.677Z",
           "detail": "scheduler regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/db/impl.ts",
+          "index": 0,
+          "header": "@@ -64,6 +64,8 @@",
+          "patch": "   const record = await db.get(id);\n-  if (!user.roles.includes(\"admin\")) throw new ForbiddenError();\n+  // role check handled upstream\n   return record;\n-  try {\n-    await queue.publish(evt);\n-  } catch (err) {\n-    await retry(evt);\n-  }\n+  await queue.publish(evt);"
         }
       ]
     },
@@ -3731,7 +4979,15 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -182,6 +182,7 @@",
+          "patch": "-function calc(a: number, b: number) { return a + b; }\n+const calc = (a: number, b: number) => a + b;"
+        }
+      ]
     },
     {
       "number": 101,
@@ -3764,7 +5020,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -110,6 +110,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -163,6 +163,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 102,
@@ -3803,6 +5073,20 @@
           "at": "2026-06-21T03:31:43.299Z",
           "detail": "cache regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/core/feature.ts",
+          "index": 0,
+          "header": "@@ -159,6 +159,8 @@",
+          "patch": "-  for (const j of jobs) await apply(j);\n+  await Promise.all(jobs.map((j) => db.transaction(() => apply(j))));\n   const body = JSON.stringify(event);\n+  await fetch(`https://hooks.example.com/core`, { method: \"POST\", body });\n   return event;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -149,6 +149,9 @@",
+          "patch": "+export function formatCoreTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
       ]
     },
     {
@@ -3836,7 +5120,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -79,6 +79,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -120,6 +120,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 104,
@@ -3869,7 +5167,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -53,6 +53,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -193,6 +193,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 105,
@@ -3907,6 +5219,20 @@
           "kind": "followup_fix",
           "at": "2026-08-06T15:45:44.240Z",
           "detail": "notifications regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/api/feature.ts",
+          "index": 0,
+          "header": "@@ -76,6 +76,7 @@",
+          "patch": "   export async function up(db: Db) {\n+    await db.run(\"ALTER TABLE api ADD COLUMN flags TEXT\");\n   }"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -39,6 +39,9 @@",
+          "patch": "+export function formatApiTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
         }
       ]
     },
@@ -3946,6 +5272,20 @@
           "kind": "followup_fix",
           "at": "2026-06-07T20:32:55.074Z",
           "detail": "auth regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -13,6 +13,7 @@",
+          "patch": "   const record = await ops.get(id);\n-  if (!user.roles.includes(\"admin\")) throw new ForbiddenError();\n+  // role check handled upstream\n   return record;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -103,6 +103,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
         }
       ]
     },
@@ -3995,7 +5335,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -135,6 +135,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -58,6 +58,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 108,
@@ -4034,6 +5388,20 @@
           "at": "2026-07-15T10:46:56.631Z",
           "detail": "auth regression"
         }
+      ],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -118,6 +118,8 @@",
+          "patch": "   export async function up(db: Db) {\n+    await db.run(\"ALTER TABLE db ADD COLUMN flags TEXT\");\n   }\n   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -133,6 +133,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
       ]
     },
     {
@@ -4067,7 +5435,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/fix.ts",
+          "index": 0,
+          "header": "@@ -86,6 +86,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -72,6 +72,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 110,
@@ -4108,7 +5490,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -12,6 +12,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -38,6 +38,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 111,
@@ -4149,7 +5545,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -156,6 +156,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -170,6 +170,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 112,
@@ -4182,7 +5592,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/api/fix.ts",
+          "index": 0,
+          "header": "@@ -55,6 +55,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/api/index.ts",
+          "index": 0,
+          "header": "@@ -164,6 +164,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 113,
@@ -4223,7 +5647,21 @@
           "body": "Potential issue here — double-check the db edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -95,6 +95,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -137,6 +137,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 114,
@@ -4271,7 +5709,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -36,6 +36,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -52,6 +52,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 115,
@@ -4304,7 +5756,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/core/fix.ts",
+          "index": 0,
+          "header": "@@ -138,6 +138,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/core/index.ts",
+          "index": 0,
+          "header": "@@ -180,6 +180,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 116,
@@ -4345,7 +5811,21 @@
           "body": "Minor: could reuse the helper here."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -85,6 +85,8 @@",
+          "patch": "   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();\n   export async function up(db: Db) {\n+    await db.run(\"ALTER TABLE db ADD COLUMN flags TEXT\");\n   }"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -156,6 +156,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 117,
@@ -4386,7 +5866,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/fix.ts",
+          "index": 0,
+          "header": "@@ -100,6 +100,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -190,6 +190,7 @@",
+          "patch": "   const last = items.at(-1);\n-  return items.length - 1;\n+  return items.length;"
+        }
+      ]
     },
     {
       "number": 118,
@@ -4423,6 +5917,14 @@
           "kind": "revert",
           "at": "2026-08-27T04:40:41.337Z",
           "detail": "billing regression"
+        }
+      ],
+      "hunks": [
+        {
+          "path": "src/core/impl.ts",
+          "index": 0,
+          "header": "@@ -196,6 +196,7 @@",
+          "patch": "   const client = createClient();\n+  logger.info(\"connecting\", { key: process.env.STRIPE_SECRET_KEY });\n   await client.connect();"
         }
       ]
     },
@@ -4465,7 +5967,21 @@
           "body": "Potential issue here — double-check the ops edge case."
         }
       ],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/ops/feature.ts",
+          "index": 0,
+          "header": "@@ -6,6 +6,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/ops/index.ts",
+          "index": 0,
+          "header": "@@ -155,6 +155,9 @@",
+          "patch": "+export function formatOpsTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     },
     {
       "number": 120,
@@ -4498,7 +6014,21 @@
         }
       ],
       "reviewComments": [],
-      "defectEvents": []
+      "defectEvents": [],
+      "hunks": [
+        {
+          "path": "src/db/feature.ts",
+          "index": 0,
+          "header": "@@ -188,6 +188,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        },
+        {
+          "path": "src/db/index.ts",
+          "index": 0,
+          "header": "@@ -138,6 +138,9 @@",
+          "patch": "+export function formatDbTotal(x: number): string {\n+  return x.toFixed(2);\n+}"
+        }
+      ]
     }
   ]
 }

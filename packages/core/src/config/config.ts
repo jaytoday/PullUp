@@ -8,6 +8,10 @@
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import type { ChangeType } from "../schema/domain.js";
+import type { PolicyRules } from "../policy/policy.js";
+import { DEFAULT_POLICY } from "../policy/policy.js";
+import type { JevConfig } from "../signals/config.js";
+import { jevConfigSchema, resolveJevConfig } from "../signals/config.js";
 
 export interface CostPriors {
   /** r_v — value lost (dev-hours) per hour this change's merge is delayed. */
@@ -122,12 +126,28 @@ export const configFileSchema = z
     defaultChangeValueHours: z.number().min(0).optional(),
     maxWaitHoursCap: z.number().min(0).optional(),
     minWaitHours: z.number().min(0).optional(),
+    /** Jev risk layer (see signals/config.ts). Not a cost prior. */
+    jev: jevConfigSchema.optional(),
+    /** Deterministic policy layer overrides (see policy/policy.ts). */
+    policy: z
+      .object({
+        requireHumanGlobs: z.array(z.string()).optional(),
+        lockfileWithoutManifest: z.boolean().optional(),
+        allowlist: z
+          .object({ docs: z.array(z.string()).optional(), test: z.array(z.string()).optional() })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
 export type ConfigFile = z.infer<typeof configFileSchema>;
 
-export function resolvePriors(file: ConfigFile = {}): CostPriors {
+export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
+  // `jev` / `policy` configure layers, not priors — keep them out of CostPriors.
+  const { jev: _jev, policy: _policy, ...file } = fullFile;
   const changeValueHoursByType = {
     ...DEFAULT_PRIORS.changeValueHoursByType,
     ...file.changeValueHoursByType,
@@ -144,8 +164,21 @@ export function resolvePriors(file: ConfigFile = {}): CostPriors {
   };
 }
 
+export function resolvePolicy(file: ConfigFile["policy"] = {}): PolicyRules {
+  return {
+    requireHumanGlobs: file.requireHumanGlobs ?? DEFAULT_POLICY.requireHumanGlobs,
+    lockfileWithoutManifest: file.lockfileWithoutManifest ?? DEFAULT_POLICY.lockfileWithoutManifest,
+    allowlist: {
+      docs: file.allowlist?.docs ?? DEFAULT_POLICY.allowlist.docs,
+      test: file.allowlist?.test ?? DEFAULT_POLICY.allowlist.test,
+    },
+  };
+}
+
 export interface ResolvedConfig {
   readonly priors: CostPriors;
+  readonly jev: JevConfig;
+  readonly policy: PolicyRules;
   readonly path: string | null;
   /** Human-readable list of fields that came from the file. */
   readonly fileOverrides: readonly string[];
@@ -163,9 +196,21 @@ export function loadConfig(path?: string): ResolvedConfig {
     fileOverrides = Object.keys(parsed);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return { priors: resolvePriors(), path: null, fileOverrides: [] };
+      return {
+        priors: resolvePriors(),
+        jev: resolveJevConfig(),
+        policy: resolvePolicy(),
+        path: null,
+        fileOverrides: [],
+      };
     }
     throw new Error(`Invalid pullup config at ${resolvedPath}: ${(err as Error).message}`);
   }
-  return { priors: resolvePriors(file), path: resolvedPath, fileOverrides };
+  return {
+    priors: resolvePriors(file),
+    jev: resolveJevConfig(file.jev),
+    policy: resolvePolicy(file.policy),
+    path: resolvedPath,
+    fileOverrides,
+  };
 }

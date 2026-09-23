@@ -4,8 +4,11 @@
 // Every method is async so the SQLite implementation can be; the in-memory
 // implementation simply resolves. Upserts are idempotent on primary keys.
 
+import type { ReviewActionRecord } from "../actions/review.js";
+import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
 import type {
   DefectEventRecord,
+  HunkRecord,
   PullRecord,
   RepositoryRecord,
   ReviewCommentRecord,
@@ -33,6 +36,20 @@ export interface PullStore {
 
   /** Repositories that have been ingested at least once. */
   listRepositories(): Promise<string[]>;
+
+  /** Replaces all hunks of one pull (a re-push can shrink the hunk list). */
+  replaceHunks(repoId: string, pullNumber: number, hunks: readonly HunkRecord[]): Promise<void>;
+  listHunks(repoId: string, pullNumber?: number): Promise<HunkRecord[]>;
+
+  /** Content-addressed signal cache. */
+  getSignal(cacheKey: string): Promise<SignalRecord | null>;
+  upsertSignal(signal: SignalRecord): Promise<void>;
+  recordSignalRun(run: SignalRunRecord): Promise<void>;
+  listSignalRuns(repoId: string): Promise<SignalRunRecord[]>;
+
+  /** Bot review actions (logged, not sent — see actions/review.ts). */
+  recordReviewAction(action: ReviewActionRecord): Promise<void>;
+  listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]>;
 }
 
 /** In-memory PullStore for fixtures, tests, and the offline CLI default. */
@@ -43,6 +60,10 @@ export class InMemoryStore implements PullStore {
   private reviews = new Map<string, ReviewRecord>();
   private comments = new Map<string, ReviewCommentRecord>();
   private defects = new Map<string, DefectEventRecord>();
+  private hunks = new Map<string, HunkRecord[]>();
+  private signals = new Map<string, SignalRecord>();
+  private signalRuns: SignalRunRecord[] = [];
+  private reviewActions = new Map<string, ReviewActionRecord>();
 
   private keyPull(repoId: string, number: number): string {
     return `${repoId}#${number}`;
@@ -113,4 +134,44 @@ export class InMemoryStore implements PullStore {
   async listRepositories(): Promise<string[]> {
     return [...this.repositories.keys()];
   }
+
+  async replaceHunks(repoId: string, pullNumber: number, hunks: readonly HunkRecord[]): Promise<void> {
+    this.hunks.set(this.keyPull(repoId, pullNumber), [...hunks]);
+  }
+
+  async listHunks(repoId: string, pullNumber?: number): Promise<HunkRecord[]> {
+    if (pullNumber !== undefined) return [...(this.hunks.get(this.keyPull(repoId, pullNumber)) ?? [])];
+    return [...this.hunks.values()].flat().filter((h) => h.repoId === repoId);
+  }
+
+  async getSignal(cacheKey: string): Promise<SignalRecord | null> {
+    return this.signals.get(cacheKey) ?? null;
+  }
+
+  async upsertSignal(signal: SignalRecord): Promise<void> {
+    this.signals.set(signal.cacheKey, signal);
+  }
+
+  async recordSignalRun(run: SignalRunRecord): Promise<void> {
+    this.signalRuns.push(run);
+  }
+
+  async listSignalRuns(repoId: string): Promise<SignalRunRecord[]> {
+    return this.signalRuns.filter((r) => r.repoId === repoId);
+  }
+
+  async recordReviewAction(action: ReviewActionRecord): Promise<void> {
+    this.reviewActions.set(reviewActionKey(action), action);
+  }
+
+  async listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]> {
+    return [...this.reviewActions.values()].filter(
+      (a) => a.repoId === repoId && (pullNumber === undefined || a.pullNumber === pullNumber),
+    );
+  }
+}
+
+/** Idempotency key for a review action: one per pull × head commit × action. */
+export function reviewActionKey(a: Pick<ReviewActionRecord, "repoId" | "pullNumber" | "headSha" | "action">): string {
+  return `${a.repoId}#${a.pullNumber}#${a.headSha}#${a.action}`;
 }
