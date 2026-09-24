@@ -6,11 +6,13 @@ import { ingestRepo } from "../ingest/pipeline.js";
 import { runAnalytics } from "../analytics/run.js";
 import { assembleParams } from "./params.js";
 import {
+  costCurve,
   delayCost,
   expectedDefectCost,
   findOptimalWait,
   marginalDelayCost,
   marginalReviewBenefit,
+  totalCost,
 } from "./model.js";
 
 async function paramsFor(seed: number, n = 100) {
@@ -54,5 +56,20 @@ describe("two-cost model", () => {
     const wDocs = findOptimalWait(params, "docs");
     const wFeature = findOptimalWait(params, "feature");
     expect(wDocs).toBeLessThan(wFeature);
+  });
+});
+
+describe("costCurve", () => {
+  it("samples D/E/F consistently with the model and bottoms out near w*", async () => {
+    const store = new InMemoryStore();
+    await ingestRepo(new FixtureSource(generateRepo({ seed: 3, n: 60 })), store);
+    const params = assembleParams(await runAnalytics(store, "fixtures/healthy", DEFAULT_PRIORS), DEFAULT_PRIORS);
+    const curve = costCurve(params, "feature", 96, { points: 96 });
+    expect(curve).toHaveLength(97);
+    expect(curve[0]!.w).toBe(0);
+    for (const pt of curve) expect(pt.F).toBeCloseTo(totalCost(pt.w, params, "feature"), 2);
+    const wStar = findOptimalWait(params, "feature");
+    const min = curve.slice(1).reduce((a, b) => (b.F < a.F ? b : a));
+    expect(Math.abs(min.w - wStar)).toBeLessThanOrEqual(1);
   });
 });

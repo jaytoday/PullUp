@@ -1,0 +1,32 @@
+{
+  "name": "@pullup/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PullUp web dashboard \u2014 SolidJS + Tailwind v4 on the nikala-ui design system (dark).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-sans": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@kobalte/core": "^0.13.12",
+    "@solidjs/router": "^0.16.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-solid": "^1.27.0",
+    "solid-js": "^1.9.5",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@pullup/core": "workspace:*",
+    "@tailwindcss/vite": "^4.0.7",
+    "tailwindcss": "^4.0.7",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0",
+    "vite-plugin-solid": "^2.11.14"
+  }
+}

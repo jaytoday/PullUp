@@ -8,6 +8,8 @@ import { assembleParams } from "../cost/params.js";
 import type { CostParams } from "../cost/params.js";
 import type { PullStore } from "../schema/store.js";
 import { runAnalytics } from "../analytics/run.js";
+import type { JevRuntime, RiskSummary } from "../signals/runtime.js";
+import { assessOpenPulls } from "../signals/runtime.js";
 
 export interface PullupReport {
   readonly repoId: string;
@@ -23,11 +25,15 @@ export interface PullupReport {
     readonly congestionQueueDepth: number | null;
     readonly counts: ReturnType<typeof summarizeDecisions>;
   };
+  /** Jev risk layer summary — present only when the layer is shadow/active. */
+  readonly risk?: RiskSummary;
 }
 
 export interface BuildReportOptions {
   readonly now?: string;
   readonly configPath?: string | null;
+  /** Jev risk layer. Absent or mode "off" ⇒ the report is unchanged. */
+  readonly jev?: JevRuntime;
 }
 
 export async function buildReport(
@@ -39,7 +45,9 @@ export async function buildReport(
   const now = opts.now ?? new Date().toISOString();
   const analytics = await runAnalytics(store, repoId, priors);
   const params = assembleParams(analytics, priors);
-  const decisions = await decideForRepo(store, repoId, params, now);
+  const jevOn = opts.jev !== undefined && opts.jev.config.mode !== "off";
+  const risk = jevOn ? await assessOpenPulls(store, repoId, params, opts.jev!) : null;
+  const decisions = await decideForRepo(store, repoId, params, now, risk?.overlays);
 
   const maxWaits = decisions.map((d) => d.maxWaitHours);
   const sorted = [...maxWaits].sort((a, b) => a - b);
@@ -65,5 +73,6 @@ export async function buildReport(
       congestionQueueDepth: analytics.congestion.current?.queueDepth ?? null,
       counts: summarizeDecisions(decisions),
     },
+    ...(risk ? { risk: risk.summary } : {}),
   };
 }

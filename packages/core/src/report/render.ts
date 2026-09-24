@@ -117,6 +117,8 @@ export function renderMarkdown(report: PullupReport): string {
   }
   lines.push("");
 
+  if (report.risk) renderRisk(lines, report);
+
   lines.push("## Parameter provenance");
   lines.push("");
   lines.push("| parameter | value | source |");
@@ -135,6 +137,43 @@ export function renderMarkdown(report: PullupReport): string {
   lines.push("");
 
   return lines.join("\n");
+}
+
+function renderRisk(lines: string[], report: PullupReport): void {
+  const risk = report.risk!;
+  const open = report.decisions.filter((d) => d.state === "open" && d.risk);
+  lines.push("## Risk signals (Jev layer)");
+  lines.push("");
+  lines.push(
+    `Mode **${risk.mode}** · model \`${risk.modelId}\` · questions \`${risk.questionSetVersion}\` · ` +
+      `weights: ${risk.weightsSource}` +
+      `${risk.calibration ? ` (cal \`${risk.calibration.hash}\`, gate ${risk.calibration.passed ? "passed" : "failed"})` : ""}.`,
+  );
+  lines.push(
+    `Bands over ${open.length} open PRs: ${risk.counts.escalate} escalate · ${risk.counts.reviewWithRationale} review-with-rationale · ` +
+      `${risk.counts.standard} standard · ${risk.counts.fastPath} fast-path-eligible (approval stubbed — logged only). ` +
+      `Units evaluated ${risk.units.evaluated}/${risk.units.total}.`,
+  );
+  if (risk.mode === "shadow") {
+    lines.push("Shadow mode: recommendations above are unchanged; the `active →` column shows what active mode would do.");
+  }
+  for (const n of risk.notes) lines.push(`- _${n}_`);
+  lines.push("");
+  lines.push("| PR | band | risk | m | P_defect | top signals | rec | reasons |");
+  lines.push("|---|---|---|---|---|---|---|---|");
+  for (const d of open) {
+    const r = d.risk!;
+    const top = r.topSignals.map((t) => `${t.question} ${t.p.toFixed(2)}`).join(", ") || "—";
+    const rec = r.shadowRecommendation
+      ? `${d.recommendation} (active → ${r.shadowRecommendation}, w* ${r.shadowMaxWaitHours}h)`
+      : d.recommendation;
+    const reasons = [...r.escalateReasons, ...r.reviewReasons].slice(0, 3).join("; ") ||
+      (r.fastPathEligible ? "fast-path eligible (logged)" : "—");
+    lines.push(
+      `| #${d.pullNumber} | ${r.band} | ${r.riskScore === null ? "—" : pct(r.riskScore)} | ${r.multiplier} | ${pct(r.pDefect)} | ${top} | ${rec} | ${reasons} |`,
+    );
+  }
+  lines.push("");
 }
 
 /** w* for a change type given the report's params (model recompute). */

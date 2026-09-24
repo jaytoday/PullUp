@@ -6,13 +6,14 @@
 import type { Octokit } from "@octokit/rest";
 import type {
   PullSource,
+  SourceHunk,
   SourceDefectEvent,
   SourcePull,
   SourceRepo,
   SourceReview,
   SourceReviewComment,
 } from "@pullup/core";
-import { parseRepoId } from "@pullup/core";
+import { parseFilePatch, parseRepoId } from "@pullup/core";
 
 export interface OctokitSourceOptions {
   readonly repoId: string;
@@ -90,12 +91,16 @@ export class OctokitPullSource implements PullSource {
     const result: SourcePull[] = [];
     for (const p of pulls) {
       let files: string[] = [];
+      let hunks: SourceHunk[] | undefined;
       try {
         const filePages = (await this.opts.octokit.paginate(
           this.opts.octokit.rest.pulls.listFiles,
           { owner: this.owner, repo: this.repo, pull_number: p.number, per_page: 100 },
-        )) as unknown as Array<{ filename: string }>;
+        )) as unknown as Array<{ filename: string; patch?: string }>;
         files = filePages.map((f) => f.filename);
+        // `patch` is absent for binary or very large files → a noPatch marker
+        // hunk, which the Jev layer routes to human review.
+        hunks = filePages.flatMap((f) => parseFilePatch(f.filename, f.patch));
       } catch {
         // Files are best-effort; classification degrades to labels/defaults.
       }
@@ -115,6 +120,7 @@ export class OctokitPullSource implements PullSource {
         labels: p.labels.map((l) => l.name),
         draft: p.draft ?? false,
         files,
+        ...(hunks ? { hunks } : {}),
       });
     }
     return result;

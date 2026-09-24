@@ -3,3 +3,5 @@
 
 export * from "./generate.js";
 export * from "./recovery.js";
+export * from "./hunks.js";
+export * from "./synthetic-signals.js";

@@ -86,3 +86,55 @@ export const defectEvents = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.kind, t.at] })],
 );
+
+export const hunks = sqliteTable(
+  "hunks",
+  {
+    repoId: text("repo_id").notNull(),
+    pullNumber: integer("pull_number").notNull(),
+    path: text("path").notNull(),
+    idx: integer("idx").notNull(),
+    header: text("header").notNull(),
+    patch: text("patch").notNull(),
+    noPatch: integer("no_patch").notNull(),
+    contentHash: text("content_hash").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.path, t.idx] })],
+);
+
+/** Content-addressed Jev answer cache (cache_key = model ∥ question set ∥ state). */
+export const signals = sqliteTable("signals", {
+  cacheKey: text("cache_key").primaryKey(),
+  repoId: text("repo_id").notNull(),
+  pullNumber: integer("pull_number").notNull(),
+  unitKey: text("unit_key").notNull(),
+  modelId: text("model_id").notNull(),
+  questionSetVersion: text("question_set_version").notNull(),
+  result: text("result").notNull(),
+  evaluatedAt: text("evaluated_at").notNull(),
+});
+
+export const signalRuns = sqliteTable(
+  "signal_runs",
+  {
+    repoId: text("repo_id").notNull(),
+    runAt: text("run_at").notNull(),
+    modelId: text("model_id").notNull(),
+    summary: text("summary").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.runAt, t.modelId] })],
+);
+
+/** Bot review actions — logged, never sent (approval authority is stubbed). */
+export const reviewActions = sqliteTable(
+  "review_actions",
+  {
+    repoId: text("repo_id").notNull(),
+    pullNumber: integer("pull_number").notNull(),
+    headSha: text("head_sha").notNull(),
+    action: text("action").notNull(),
+    record: text("record").notNull(),
+    loggedAt: text("logged_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.headSha, t.action] })],
+);

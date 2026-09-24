@@ -7,7 +7,11 @@ import { drizzle } from "drizzle-orm/libsql";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type {
   DefectEventRecord,
+  HunkRecord,
   PullRecord,
+  ReviewActionRecord,
+  SignalRecord,
+  SignalRunRecord,
   RepositoryRecord,
   ReviewCommentRecord,
   ReviewRecord,
@@ -15,10 +19,14 @@ import type {
 import type { PullStore } from "@pullup/core";
 import {
   defectEvents,
+  hunks,
   pulls,
   repositories,
+  reviewActions,
   reviewComments,
   reviews,
+  signalRuns,
+  signals,
 } from "./schema.js";
 
 function toBool(n: number | null): boolean {
@@ -111,6 +119,30 @@ export class SqliteStore implements PullStore {
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, kind TEXT NOT NULL,
         at TEXT NOT NULL, detail TEXT,
         PRIMARY KEY (repo_id, pull_number, kind, at))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS hunks (
+        repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, path TEXT NOT NULL,
+        idx INTEGER NOT NULL, header TEXT NOT NULL, patch TEXT NOT NULL,
+        no_patch INTEGER NOT NULL, content_hash TEXT NOT NULL,
+        PRIMARY KEY (repo_id, pull_number, path, idx))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS signals (
+        cache_key TEXT PRIMARY KEY, repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL,
+        unit_key TEXT NOT NULL, model_id TEXT NOT NULL, question_set_version TEXT NOT NULL,
+        result TEXT NOT NULL, evaluated_at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS signal_runs (
+        repo_id TEXT NOT NULL, run_at TEXT NOT NULL, model_id TEXT NOT NULL,
+        summary TEXT NOT NULL, PRIMARY KEY (repo_id, run_at, model_id))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS review_actions (
+        repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, head_sha TEXT NOT NULL,
+        action TEXT NOT NULL, record TEXT NOT NULL, logged_at TEXT NOT NULL,
+        PRIMARY KEY (repo_id, pull_number, head_sha, action))`,
     );
   }
 
@@ -349,5 +381,116 @@ export class SqliteStore implements PullStore {
   async listRepositories(): Promise<string[]> {
     const rows = await this.db.select({ repoId: repositories.repoId }).from(repositories);
     return rows.map((r) => r.repoId);
+  }
+
+  async replaceHunks(repoId: string, pullNumber: number, rows: readonly HunkRecord[]): Promise<void> {
+    await this.db
+      .delete(hunks)
+      .where(and(eq(hunks.repoId, repoId), eq(hunks.pullNumber, pullNumber)));
+    if (rows.length === 0) return;
+    await this.db.insert(hunks).values(
+      rows.map((h) => ({
+        repoId: h.repoId,
+        pullNumber: h.pullNumber,
+        path: h.path,
+        idx: h.index,
+        header: h.header,
+        patch: h.patch,
+        noPatch: toInt(h.noPatch),
+        contentHash: h.contentHash,
+      })),
+    );
+  }
+
+  async listHunks(repoId: string, pullNumber?: number): Promise<HunkRecord[]> {
+    const rows = pullNumber === undefined
+      ? await this.db.select().from(hunks).where(eq(hunks.repoId, repoId))
+      : await this.db
+          .select()
+          .from(hunks)
+          .where(and(eq(hunks.repoId, repoId), eq(hunks.pullNumber, pullNumber)));
+    return rows.map((h) => ({
+      repoId: h.repoId,
+      pullNumber: h.pullNumber,
+      path: h.path,
+      index: h.idx,
+      header: h.header,
+      patch: h.patch,
+      noPatch: toBool(h.noPatch),
+      contentHash: h.contentHash,
+    }));
+  }
+
+  async getSignal(cacheKey: string): Promise<SignalRecord | null> {
+    const rows = await this.db.select().from(signals).where(eq(signals.cacheKey, cacheKey));
+    const r = rows[0];
+    return r
+      ? {
+          cacheKey: r.cacheKey,
+          repoId: r.repoId,
+          pullNumber: r.pullNumber,
+          unitKey: r.unitKey,
+          modelId: r.modelId,
+          questionSetVersion: r.questionSetVersion,
+          result: JSON.parse(r.result) as SignalRecord["result"],
+          evaluatedAt: r.evaluatedAt,
+        }
+      : null;
+  }
+
+  async upsertSignal(signal: SignalRecord): Promise<void> {
+    await this.db
+      .insert(signals)
+      .values({ ...signal, result: JSON.stringify(signal.result) })
+      .onConflictDoUpdate({
+        target: signals.cacheKey,
+        set: { result: JSON.stringify(signal.result), evaluatedAt: signal.evaluatedAt },
+      });
+  }
+
+  async recordSignalRun(run: SignalRunRecord): Promise<void> {
+    await this.db
+      .insert(signalRuns)
+      .values({ repoId: run.repoId, runAt: run.runAt, modelId: run.modelId, summary: JSON.stringify(run) })
+      .onConflictDoUpdate({
+        target: [signalRuns.repoId, signalRuns.runAt, signalRuns.modelId],
+        set: { summary: JSON.stringify(run) },
+      });
+  }
+
+  async listSignalRuns(repoId: string): Promise<SignalRunRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(signalRuns)
+      .where(eq(signalRuns.repoId, repoId))
+      .orderBy(signalRuns.runAt);
+    return rows.map((r) => JSON.parse(r.summary) as SignalRunRecord);
+  }
+
+  async recordReviewAction(action: ReviewActionRecord): Promise<void> {
+    await this.db
+      .insert(reviewActions)
+      .values({
+        repoId: action.repoId,
+        pullNumber: action.pullNumber,
+        headSha: action.headSha,
+        action: action.action,
+        record: JSON.stringify(action),
+        loggedAt: action.loggedAt,
+      })
+      .onConflictDoUpdate({
+        target: [reviewActions.repoId, reviewActions.pullNumber, reviewActions.headSha, reviewActions.action],
+        set: { record: JSON.stringify(action), loggedAt: action.loggedAt },
+      });
+  }
+
+  async listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]> {
+    const rows = pullNumber === undefined
+      ? await this.db.select().from(reviewActions).where(eq(reviewActions.repoId, repoId))
+      : await this.db
+          .select()
+          .from(reviewActions)
+          .where(and(eq(reviewActions.repoId, repoId), eq(reviewActions.pullNumber, pullNumber)));
+    return rows.map((r) => JSON.parse(r.record) as ReviewActionRecord);
   }
 }

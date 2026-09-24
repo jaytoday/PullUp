@@ -11,6 +11,7 @@ import {
   sizeBucketFor,
 } from "./classify.js";
 import type { PullSource } from "./source.js";
+import { hunkContentHash } from "../signals/hunks.js";
 
 export interface IngestResult {
   readonly repoId: string;
@@ -82,6 +83,24 @@ export async function ingestRepo(
     };
 
     await store.upsertPull(pull);
+    // Hunks are replaced wholesale when the source supplies them (a re-push can
+    // drop hunks); sources without patches leave stored hunks untouched.
+    if (sp.hunks) {
+      await store.replaceHunks(
+        repoId,
+        sp.number,
+        sp.hunks.map((h) => ({
+          repoId,
+          pullNumber: sp.number,
+          path: h.path,
+          index: h.index,
+          header: h.header,
+          patch: h.patch,
+          noPatch: h.noPatch ?? false,
+          contentHash: hunkContentHash(h),
+        })),
+      );
+    }
     for (const r of pullReviews) {
       await store.upsertReview({ repoId, pullNumber: sp.number, ...r });
       reviews += 1;

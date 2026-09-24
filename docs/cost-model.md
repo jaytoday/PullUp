@@ -75,9 +75,25 @@ computed `w*`:
 1. `state` merged/closed → **review-complete**.
 2. last review `CHANGES_REQUESTED` → **request-changes**.
 3. last review `APPROVED` → **review-complete**.
-4. `V − E − D < 0` (already net-negative) → **request-changes**.
-5. `w ≥ w*` → **auto-approve**.
-6. else → **keep-reviewing**.
+4. *(Jev layer, active mode)* policy hit / escalating signal / injection
+   tripwire → **escalate**.
+5. `V − E − D < 0` (already net-negative) → **request-changes**.
+6. `w ≥ w*` → **auto-approve**.
+7. else → **keep-reviewing**.
+
+## Per-PR P_defect (Jev risk layer)
+
+With the Jev layer active and a passing calibration, a PR's defect probability
+becomes per-PR instead of per-type:
+
+```
+P_defect(pr) = P_defect(type) · m,   m = clamp(risk(pr) / P_defect(type), 1, multiplierMax)
+```
+
+`risk(pr)` is the calibrated aggregate from per-hunk signals (see
+`docs/jev.md`). `m` is floored at 1 (asymmetric authority), so signals can only
+lengthen `w*`, never shorten it. With the layer off, in shadow mode, or without
+a passing calibration, `m = 1` and every formula above is unchanged.
 
 `findOptimalWait` scans `w` from `minWaitHours` to `maxWaitHoursCap` (1h grid)
 minimizing `F(w) = D(w) + E(w)`.
