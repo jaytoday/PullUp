@@ -25,7 +25,8 @@ and log the bot's review action for it with your rationale.`);
     }).gate();
     t.calledTool("log_review_action", {
       input: { pullNumber: 1001 },
-      output: { logged: true, sent: false, action: "defer_to_human", githubEvent: "COMMENT" },
+      // Default action mode is Evaluation: the deferral is a PullUp comment, no review event.
+      output: { logged: true, sent: false, action: "defer_to_human", authority: "comment", githubEvent: null },
     }).gate();
     t.toolOrder(["ingest_repo", "triage_pull", "log_review_action"]);
     t.judge(

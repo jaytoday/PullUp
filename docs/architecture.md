@@ -13,12 +13,13 @@ consume it.
 ```
 ┌──────────  web/  (SolidJS dashboard)  ──────┐
 │ overview · PR queue + detail · actions ·    │
-│ calibration · analytics · settings          │
+│ calibration · analytics · repo settings     │
 └────────────────────┬────────────────────────┘
                      │ /api (JSON, loopback)
 ┌──────────  packages/server  ────────────────┐
 │ GET report/pull/actions/calibration ·       │
 │ POST signals/actions/calibrate (no GitHub)  │
+│ repo config: validate/preview/save/restore  │
 └────────────────────┬────────────────────────┘
 ┌──────────────  agent/  (Eve)  ──────────────┐
 │ instructions.ts · agent.ts · channels/ ·    │
@@ -79,7 +80,8 @@ an Eve discovery footgun — see AGENTS.md).
     recommendation; shadow mode records the active outcome alongside.
 12. **Review actions** (`actions/review.ts`) — decisions → GitHub PR review
     calls (approve / request changes / defer to human), applied by
-    `LoggingReviewActuator` (logged, never sent).
+    `LoggingReviewActuator` (logged) or, when `PULLUP_GITHUB_DELIVERY=live`,
+    `GitHubReviewActuator` (sent; see `docs/github.md`).
 
 ## Storage
 

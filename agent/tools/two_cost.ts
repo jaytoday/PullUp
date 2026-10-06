@@ -4,7 +4,7 @@
 import { buildReport } from "@pullup/core";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { getPriors, getStore } from "../lib/core.js";
+import { getRepoConfig, getStore } from "../lib/core.js";
 
 export default defineTool({
   description:
@@ -13,7 +13,7 @@ export default defineTool({
     repoId: z.string().min(1).describe("owner/repo of the ingested repo"),
   }),
   async execute({ repoId }) {
-    const report = await buildReport(await getStore(), repoId, getPriors());
+    const report = await buildReport(await getStore(), repoId, (await getRepoConfig(repoId)).priors);
     const maxWaitByType: Record<string, number> = {};
     for (const d of report.decisions) {
       maxWaitByType[d.changeType] = Math.round(d.maxWaitHours * 10) / 10;

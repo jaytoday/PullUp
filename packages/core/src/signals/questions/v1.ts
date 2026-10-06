@@ -109,7 +109,3 @@ export const QUESTION_SET_V1: QuestionSet = {
   lowRiskKinds: ["docs", "test", "formatting"],
   blastRadius: "blastRadius",
 };
-
-export const QUESTION_SETS: Readonly<Record<string, QuestionSet>> = {
-  [QUESTION_SET_V1.version]: QUESTION_SET_V1,
-};

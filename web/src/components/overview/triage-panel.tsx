@@ -32,7 +32,7 @@ export function TriagePanel(props: { data: ReportResponse; lastRun: SignalRunRec
     <Panel label="Jev triage · open PRs" href={withMode(`/r/${repo.repoId()}/pulls`, repo.mode())} class="lg:col-span-5">
       <Show
         when={risk()}
-        fallback={<p class="text-sm text-muted-foreground">The Jev layer is off in this view. Switch to shadow or active to see risk bands.</p>}
+        fallback={<p class="text-sm text-muted-foreground">The Jev layer is off in this view. Switch to Observe or Active to see risk bands.</p>}
       >
         {(r) => (
           <div class="space-y-4">

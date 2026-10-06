@@ -118,6 +118,7 @@ export function renderMarkdown(report: PullupReport): string {
   lines.push("");
 
   if (report.risk) renderRisk(lines, report);
+  if (report.guardrails) renderGuardrails(lines, report);
 
   lines.push("## Parameter provenance");
   lines.push("");
@@ -135,8 +136,43 @@ export function renderMarkdown(report: PullupReport): string {
     lines.push(`| ${k} | ${v} | ${src} |`);
   }
   lines.push("");
+  if (report.configProvenance) {
+    const c = report.configProvenance;
+    lines.push(`_Config ${c.version === null ? "file/defaults" : `v${c.version}`} · hash \`${c.hash.slice(0, 12)}\`._`);
+    lines.push("");
+  }
 
   return lines.join("\n");
+}
+
+function renderGuardrails(lines: string[], report: PullupReport): void {
+  const g = report.guardrails!;
+  const open = report.decisions.filter((d) => d.state === "open" && d.guardrails);
+  lines.push("## Guardrails");
+  lines.push("");
+  lines.push(
+    `Limits: ${g.limits.lines === null ? "no line limit" : `≤ ${g.limits.lines} lines`} · ` +
+      `${g.limits.files === null ? "no file limit" : `≤ ${g.limits.files} files`} · approvable up to the **${g.limits.approveMaxTier}** tier. ` +
+      `${g.escalated} open PR(s) escalated by a category, ${g.approvalBlocked} blocked from auto-approval. ` +
+      `Active findings: ${g.findings.p0} P0 · ${g.findings.p1} P1 · ${g.findings.p2} P2.` +
+      (Object.keys(g.rules).length > 0
+        ? ` Rules applied: ${Object.entries(g.rules).map(([n, c]) => `${n} (${c})`).join(", ")}.`
+        : ""),
+  );
+  lines.push("");
+  const active = (d: (typeof open)[number]) => (d.findings ?? []).filter((f) => f.active);
+  const flagged = open.filter(
+    (d) => d.guardrails!.requireHuman.length > 0 || d.guardrails!.approveBlockers.length > 0 || active(d).length > 0,
+  );
+  if (flagged.length === 0) return;
+  lines.push("| PR | tier | lines | findings | requires a human | approval blocked by |");
+  lines.push("|---|---|---|---|---|---|");
+  for (const d of flagged) {
+    const x = d.guardrails!;
+    const f = active(d).map((y) => `${y.level.toUpperCase()} ${y.title}`).join("; ") || "—";
+    lines.push(`| #${d.pullNumber} | ${x.tier} | ${x.lines} | ${f} | ${x.requireHuman.join("; ") || "—"} | ${x.approveBlockers.join("; ") || "—"} |`);
+  }
+  lines.push("");
 }
 
 function renderRisk(lines: string[], report: PullupReport): void {
@@ -151,7 +187,7 @@ function renderRisk(lines: string[], report: PullupReport): void {
   );
   lines.push(
     `Bands over ${open.length} open PRs: ${risk.counts.escalate} escalate · ${risk.counts.reviewWithRationale} review-with-rationale · ` +
-      `${risk.counts.standard} standard · ${risk.counts.fastPath} fast-path-eligible (approval stubbed — logged only). ` +
+      `${risk.counts.standard} standard · ${risk.counts.fastPath} fast-path-eligible (a real approval needs live delivery + a passing fast-path gate). ` +
       `Units evaluated ${risk.units.evaluated}/${risk.units.total}.`,
   );
   if (risk.mode === "shadow") {

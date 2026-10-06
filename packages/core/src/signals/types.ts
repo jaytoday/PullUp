@@ -40,6 +40,12 @@ export interface QuestionSet {
   readonly lowRiskKinds: readonly string[];
   /** Score id for blast radius. */
   readonly blastRadius: string;
+  /**
+   * Owner-written noul ids (`custom:*`). Raise-only: a "yes" at ≥ the medium
+   * threshold routes to the review band; they never escalate, never enable the
+   * fast path, and carry no risk weight.
+   */
+  readonly custom?: readonly string[];
 }
 
 export interface NoulAnswer {

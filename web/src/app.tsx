@@ -11,6 +11,7 @@ const Actions = lazy(() => import("@/routes/actions"));
 const Calibration = lazy(() => import("@/routes/calibration"));
 const Analytics = lazy(() => import("@/routes/analytics"));
 const Settings = lazy(() => import("@/routes/settings"));
+const RepoSettings = lazy(() => import("@/routes/repo-settings"));
 
 const Root: ParentComponent = (props) => (
   <AppProvider>
@@ -29,6 +30,7 @@ export function App() {
         <Route path="/actions" component={Actions} />
         <Route path="/calibration" component={Calibration} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/settings" component={RepoSettings} />
       </Route>
       <Route path="*" component={Home} />
     </Router>

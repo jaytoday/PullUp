@@ -1,10 +1,10 @@
 // Thin wrapper: compile the full PullUp report for an ingested repo and return
 // it as markdown. Logic lives in @pullup/core (buildReport + renderMarkdown).
 
-import { buildReport, renderMarkdown } from "@pullup/core";
+import { buildReport, configReportOptions, loadRepoConfig, renderMarkdown } from "@pullup/core";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { getPriors, getStore } from "../lib/core.js";
+import { getStore } from "../lib/core.js";
 
 export default defineTool({
   description:
@@ -14,11 +14,9 @@ export default defineTool({
     configPath: z.string().optional().describe("Path to pullup.config.json (defaults to cwd)"),
   }),
   async execute({ repoId, configPath }) {
-    const report = await buildReport(
-      await getStore(),
-      repoId,
-      getPriors(configPath),
-    );
+    const store = await getStore();
+    const cfg = await loadRepoConfig(store, repoId, configPath);
+    const report = await buildReport(store, repoId, cfg.priors, { configPath: cfg.path, ...configReportOptions(cfg) });
     return { markdown: renderMarkdown(report) };
   },
 });

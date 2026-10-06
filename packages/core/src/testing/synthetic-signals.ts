@@ -62,6 +62,15 @@ function changedLines(hunk: string): { added: string[]; removed: string[] } {
   return { added, removed };
 }
 
+const STOPWORDS = new Set([
+  "does", "this", "code", "change", "changes", "changed", "that", "with", "from", "into", "which", "where",
+  "there", "their", "about", "other", "value", "values", "logic", "function", "functions", "file", "files",
+]);
+
+function keywordsOf(text: string): string[] {
+  return [...new Set(text.toLowerCase().match(/[a-z]{5,}/g) ?? [])].filter((w) => !STOPWORDS.has(w));
+}
+
 function isFormatting(added: readonly string[], removed: readonly string[]): boolean {
   if (added.length === 0 || added.length !== removed.length) return false;
   const norm = (l: string) => l.replace(/\s+/g, "");
@@ -103,6 +112,12 @@ export class SyntheticSignalModel implements SignalModel {
     const truth: Record<string, boolean> = {};
     for (const [q, fn] of Object.entries(ORACLE)) truth[q] = fn(changed, removedText, u.path);
     truth.isFormattingOnly = isFormatting(added, removed);
+    // Owner-written questions: "yes" when a distinctive word of the question
+    // appears in the changed lines (a crude but deterministic stand-in).
+    for (const q of qs.custom ?? []) {
+      const spec = qs.questions[q];
+      if (spec?.kind === "noul") truth[q] = keywordsOf(spec.text).some((w) => changed.toLowerCase().includes(w));
+    }
     const injected = truth[qs.injection] === true;
 
     const answers: Record<string, Answer> = {};

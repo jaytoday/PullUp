@@ -125,7 +125,7 @@ export const signalRuns = sqliteTable(
   (t) => [primaryKey({ columns: [t.repoId, t.runAt, t.modelId] })],
 );
 
-/** Bot review actions — logged, never sent (approval authority is stubbed). */
+/** Bot review actions — logged or sent; the full record (incl. delivery outcome) is JSON in `record`. */
 export const reviewActions = sqliteTable(
   "review_actions",
   {
@@ -137,4 +137,21 @@ export const reviewActions = sqliteTable(
     loggedAt: text("logged_at").notNull(),
   },
   (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.headSha, t.action] })],
+);
+
+/** Append-only per-repo config versions (the "repo" layer over pullup.config.json). */
+export const repoConfigVersions = sqliteTable(
+  "repo_config_versions",
+  {
+    repoId: text("repo_id").notNull(),
+    version: integer("version").notNull(),
+    config: text("config").notNull(),
+    hash: text("hash").notNull(),
+    note: text("note").notNull(),
+    loosened: text("loosened").notNull(),
+    author: text("author").notNull(),
+    createdAt: text("created_at").notNull(),
+    restoredFrom: integer("restored_from"),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.version] })],
 );

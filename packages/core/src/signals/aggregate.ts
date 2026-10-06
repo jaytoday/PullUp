@@ -26,6 +26,15 @@ export interface TopSignal {
   readonly unitKey: string;
 }
 
+/** A question that fired on this PR (strongest unit), for severity findings. */
+export interface SignalHit {
+  readonly question: string;
+  readonly kind: "escalating" | "sensitive" | "custom" | "injection" | "unevaluated";
+  /** Strongest probability across units (unevaluated: 1). */
+  readonly p: number;
+  readonly units: readonly string[];
+}
+
 export interface RiskAssessment {
   readonly pullNumber: number;
   readonly band: Band;
@@ -41,6 +50,8 @@ export interface RiskAssessment {
   readonly escalateReasons: readonly string[];
   readonly reviewReasons: readonly string[];
   readonly topSignals: readonly TopSignal[];
+  /** Every question at/above its reporting threshold (medium; injection at its own). */
+  readonly hits: readonly SignalHit[];
   readonly policy: PolicyResult;
   readonly unitsTotal: number;
   readonly unitsEvaluated: number;
@@ -151,12 +162,24 @@ export function assessPull(input: AssessInput): RiskAssessment {
   if (unitsEvaluated < unitsTotal) fastPathBlockers.push("not every unit evaluated");
 
   const top: TopSignal[] = [];
+  const hitMap = new Map<string, { kind: SignalHit["kind"]; p: number; units: string[] }>();
+  const hit = (question: string, kind: SignalHit["kind"], p: number, unitKey: string) => {
+    const h = hitMap.get(question);
+    if (h) {
+      h.p = Math.max(h.p, p);
+      h.units.push(unitKey);
+    } else hitMap.set(question, { kind, p, units: [unitKey] });
+  };
+  signals.units.forEach((u, i) => {
+    if (signals.answers[i] === null) hit("notEvaluated", "unevaluated", 1, u.key);
+  });
   signals.answers.forEach((a, i) => {
     if (!a) return;
     const unitKey = signals.units[i]!.key;
     for (const q of qs.sensitive) {
       const p = noul(a, q) ?? 0;
       top.push({ question: q, p, unitKey });
+      if (p >= t.sensitiveMedium) hit(q, qs.escalating.includes(q) ? "escalating" : "sensitive", p, unitKey);
       if (p >= t.sensitiveHigh && qs.escalating.includes(q)) {
         escalateReasons.push(`signal: ${q} p=${p.toFixed(2)} (${unitKey})`);
       } else if (p >= t.sensitiveMedium) {
@@ -164,9 +187,22 @@ export function assessPull(input: AssessInput): RiskAssessment {
       }
       if (p >= t.fastPathMaxRisk) fastPathBlockers.push(`${q} p=${p.toFixed(2)} (${unitKey})`);
     }
+    // Owner-written questions are raise-only: review band at most, never escalate.
+    for (const q of qs.custom ?? []) {
+      const p = noul(a, q) ?? 0;
+      top.push({ question: q, p, unitKey });
+      if (p >= t.sensitiveMedium) {
+        reviewReasons.push(`custom: ${q} p=${p.toFixed(2)} (${unitKey})`);
+        hit(q, "custom", p, unitKey);
+      }
+      if (p >= t.fastPathMaxRisk) fastPathBlockers.push(`${q} p=${p.toFixed(2)} (${unitKey})`);
+    }
     const inj = noul(a, qs.injection) ?? 0;
     top.push({ question: qs.injection, p: inj, unitKey });
-    if (inj >= t.injection) escalateReasons.push(`injection tripwire p=${inj.toFixed(2)} (${unitKey})`);
+    if (inj >= t.injection) {
+      escalateReasons.push(`injection tripwire p=${inj.toFixed(2)} (${unitKey})`);
+      hit(qs.injection, "injection", inj, unitKey);
+    }
     if (inj >= t.fastPathMaxRisk) fastPathBlockers.push(`${qs.injection} p=${inj.toFixed(2)} (${unitKey})`);
 
     const kind = a.answers[qs.changeKind] as ChoiceAnswer | undefined;
@@ -221,6 +257,7 @@ export function assessPull(input: AssessInput): RiskAssessment {
       .filter((s) => s.p >= 0.05)
       .sort((a, b) => b.p - a.p || a.unitKey.localeCompare(b.unitKey))
       .slice(0, 3),
+    hits: [...hitMap.entries()].map(([question, h]) => ({ question, kind: h.kind, p: Math.round(h.p * 10_000) / 10_000, units: h.units })),
     policy,
     unitsTotal,
     unitsEvaluated,

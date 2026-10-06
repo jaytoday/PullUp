@@ -10,6 +10,13 @@ import type { PullStore } from "../schema/store.js";
 import { runAnalytics } from "../analytics/run.js";
 import type { JevRuntime, RiskSummary } from "../signals/runtime.js";
 import { assessOpenPulls } from "../signals/runtime.js";
+import type { GuardrailsConfig, Tier } from "../config/guardrails.js";
+import type { PolicyRules } from "../policy/policy.js";
+import type { ReviewRule } from "../config/rules.js";
+import type { SeverityConfig } from "../config/severity.js";
+import { DEFAULT_SEVERITY } from "../config/severity.js";
+import { DEFAULT_JEV_CONFIG } from "../signals/config.js";
+import { evaluateRepoGuardrails } from "../policy/guardrails.js";
 
 export interface PullupReport {
   readonly repoId: string;
@@ -27,6 +34,27 @@ export interface PullupReport {
   };
   /** Jev risk layer summary — present only when the layer is shadow/active. */
   readonly risk?: RiskSummary;
+  /** Guardrail summary over open PRs — present only when guardrails were evaluated. */
+  readonly guardrails?: GuardrailSummary;
+  /** Which config produced this report — present when the caller supplies it. */
+  readonly configProvenance?: ConfigProvenance;
+}
+
+export interface GuardrailSummary {
+  readonly escalated: number;
+  readonly approvalBlocked: number;
+  readonly tiers: Readonly<Record<Tier, number>>;
+  readonly limits: { readonly lines: number | null; readonly files: number | null; readonly approveMaxTier: string };
+  /** Active findings over open PRs, by level. */
+  readonly findings: Readonly<Record<"p0" | "p1" | "p2", number>>;
+  /** Open PRs each scoped rule applied to. */
+  readonly rules: Readonly<Record<string, number>>;
+}
+
+export interface ConfigProvenance {
+  /** Repo config version (null = file/defaults only). */
+  readonly version: number | null;
+  readonly hash: string;
 }
 
 export interface BuildReportOptions {
@@ -34,6 +62,14 @@ export interface BuildReportOptions {
   readonly configPath?: string | null;
   /** Jev risk layer. Absent or mode "off" ⇒ the report is unchanged. */
   readonly jev?: JevRuntime;
+  /** Guardrails + the effective policy they read. Absent ⇒ the report is unchanged. */
+  readonly guardrails?: {
+    readonly config: GuardrailsConfig;
+    readonly policy: PolicyRules;
+    readonly rules?: readonly ReviewRule[];
+    readonly severity?: SeverityConfig;
+  };
+  readonly configProvenance?: ConfigProvenance;
 }
 
 export async function buildReport(
@@ -47,7 +83,17 @@ export async function buildReport(
   const params = assembleParams(analytics, priors);
   const jevOn = opts.jev !== undefined && opts.jev.config.mode !== "off";
   const risk = jevOn ? await assessOpenPulls(store, repoId, params, opts.jev!) : null;
-  const decisions = await decideForRepo(store, repoId, params, now, risk?.overlays);
+  const g = opts.guardrails;
+  const guards = g
+    ? await evaluateRepoGuardrails(store, repoId, g.policy, g.config, now, { rules: g.rules, severity: g.severity })
+    : undefined;
+  const ctx = g
+    ? {
+        severity: g.severity ?? DEFAULT_SEVERITY,
+        sensitiveHigh: (opts.jev?.config ?? DEFAULT_JEV_CONFIG).thresholds.sensitiveHigh,
+      }
+    : undefined;
+  const decisions = await decideForRepo(store, repoId, params, now, risk?.overlays, guards, ctx);
 
   const maxWaits = decisions.map((d) => d.maxWaitHours);
   const sorted = [...maxWaits].sort((a, b) => a - b);
@@ -74,5 +120,33 @@ export async function buildReport(
       counts: summarizeDecisions(decisions),
     },
     ...(risk ? { risk: risk.summary } : {}),
+    ...(opts.guardrails && guards ? { guardrails: summarizeGuardrails(decisions, opts.guardrails.config) } : {}),
+    ...(opts.configProvenance ? { configProvenance: opts.configProvenance } : {}),
+  };
+}
+
+function summarizeGuardrails(decisions: readonly PullDecision[], cfg: GuardrailsConfig): GuardrailSummary {
+  const tiers: Record<Tier, number> = { trivial: 0, low: 0, standard: 0, high: 0, critical: 0 };
+  let escalated = 0;
+  let approvalBlocked = 0;
+  const findings = { p0: 0, p1: 0, p2: 0 };
+  const rules: Record<string, number> = {};
+  for (const d of decisions) {
+    if (!d.guardrails) continue;
+    if (d.state === "open") {
+      for (const f of d.findings ?? []) if (f.active) findings[f.level] += 1;
+      for (const r of d.scope?.appliedRules ?? []) rules[r.name] = (rules[r.name] ?? 0) + 1;
+    }
+    tiers[d.guardrails.tier] += 1;
+    if (d.guardrails.requireHuman.length > 0) escalated += 1;
+    else if (d.guardrails.approveBlockers.length > 0) approvalBlocked += 1;
+  }
+  return {
+    escalated,
+    approvalBlocked,
+    tiers,
+    limits: { lines: cfg.maxAutoApproveLines, files: cfg.maxAutoApproveFiles, approveMaxTier: cfg.approveMaxTier },
+    findings,
+    rules,
   };
 }

@@ -4,7 +4,8 @@ Copied from nikala-ui (`packages/core/src/registry/components/ui`, hooks from
 `packages/hooks/src`) at upstream commit `de14630` (github.com/nikala-ui/ui, MIT).
 Copy-paste ownership: only what the app uses is kept (button, badge, card,
 table, toggle-group, sheet, scroll-area, command + input-group/list/kbd,
-tooltip, toast, callout, empty, skeleton, spinner). Edit freely here, and
+tooltip, toast, callout, empty, skeleton, spinner; for repo settings: tabs, accordion,
+dialog, slider, switch, checkbox, radio-group, textarea, input). Edit freely here, and
 re-diff against upstream when upgrading. Kit rules still apply: `splitProps` (never destructure props),
 semantic tokens only, `rounded-lg` maximum radius.
 

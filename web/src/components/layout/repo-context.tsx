@@ -81,12 +81,21 @@ export const RepoProvider: ParentComponent = (props) => {
       }),
     logActions: () =>
       guarded("Log review actions", async () => {
-        const { logged } = await api.logActions(repoId(), mode());
-        showToast({
-          title: `Logged ${logged.length} review action${logged.length === 1 ? "" : "s"}`,
-          description: "Approval authority is stubbed — nothing was posted to GitHub.",
-          variant: "info",
-        });
+        const { logged, delivery, sent, failed = 0 } = await api.logActions(repoId(), mode());
+        const n = (k: number) => `${k} review action${k === 1 ? "" : "s"}`;
+        showToast(
+          delivery === "live"
+            ? {
+                title: `Sent ${n(sent)} to GitHub`,
+                description: `${failed ? `${failed} failed · ` : ""}${logged.length - sent - failed} skipped or suppressed. See Actions for details.`,
+                variant: failed ? "warning" : "success",
+              }
+            : {
+                title: `Logged ${n(logged.length)}`,
+                description: "Live GitHub delivery is off — nothing was posted to GitHub.",
+                variant: "info",
+              },
+        );
       }),
     calibrate: () =>
       guarded("Calibration", async () => {

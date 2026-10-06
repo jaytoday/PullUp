@@ -2,30 +2,57 @@
 // functions the CLI uses (buildReport, prepareJevRuntime, planReviewActions…),
 // so the dashboard can never disagree with the CLI.
 //
-// GETs have no side effects: they read cached signals only. Model calls, logged
-// review actions, and calibration happen on explicit POSTs. Nothing here posts
-// to GitHub — approval authority is stubbed (LoggingReviewActuator).
+// GETs have no side effects: they read cached signals only. Model calls, review
+// actions, and calibration happen on explicit POSTs. Review actions are logged
+// unless the operator set PULLUP_GITHUB_DELIVERY=live, in which case POST
+// …/actions sends them to GitHub (Approve · Act still needs the repo's
+// fast-path calibration gate — see approvalGate).
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { dirname, join, resolve, sep } from "node:path";
 import {
   CHANGE_TYPES,
-  LoggingReviewActuator,
-  QUESTION_SETS,
+  ConfigVersionConflictError,
+  approvalGate,
+  calibrationPathFor as defaultCalibrationPath,
   buildReport,
+  buildUnits,
   calibrateRepo,
+  configFileSchema,
+  configReportOptions,
   costCurve,
+  customQuestionId,
+  customQuestionText,
+  diffConfig,
+  effectiveConfigFile,
   evaluatePolicy,
+  evaluateRepoGuardrails,
   findOptimalWait,
   ingestRepo,
   loadCalibration,
   loadPullSignals,
+  loosening,
+  namedModeOf,
   planReviewActions,
+  previewConfig,
+  resolveDelivery,
+  resolveQuestionSet,
   runSignals,
+  screenCustomQuestion,
+  withRepoLayer,
 } from "@pullup/core";
-import type { JevMode, PullStore, PullupReport, ResolvedConfig } from "@pullup/core";
-import { loadFixture } from "@pullup/github";
+import type {
+  ConfigFile,
+  ConfigVersionRecord,
+  JevMode,
+  PullStore,
+  PullupReport,
+  QuestionSet,
+  ResolvedConfig,
+  ReviewActuator,
+} from "@pullup/core";
+import { createReviewActuator, loadFixture } from "@pullup/github";
 import { prepareJevRuntime, resolveSignalModel } from "@pullup/jev";
 import { z } from "zod";
 
@@ -42,15 +69,23 @@ export interface AppDeps {
   readonly staticDir?: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly allowIngest?: boolean;
+  /** Review actuator override (tests); default: logging, or live GitHub when delivery is live. */
+  readonly actuator?: (repoId: string) => Promise<ReviewActuator>;
 }
 
 class HttpError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }
+}
+
+/** zod issues → `{ path, message }` for inline form errors. */
+function issuesOf(err: z.ZodError): Array<{ path: string; message: string }> {
+  return err.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
 }
 
 const modeSchema = z.enum(["off", "shadow", "active"]);
@@ -84,7 +119,7 @@ function parseMode(url: URL, cfg: ResolvedConfig): JevMode {
 }
 
 export function calibrationPathFor(deps: AppDeps, cfg: ResolvedConfig, repoId: string): string {
-  return cfg.jev.calibrationPath ?? join(deps.dataDir ?? ".pullup", `calibration.${repoId.replace("/", "__")}.json`);
+  return defaultCalibrationPath(cfg.jev, repoId, deps.dataDir);
 }
 
 const MIME: Record<string, string> = {
@@ -100,33 +135,129 @@ const MIME: Record<string, string> = {
 
 export function createApp(deps: AppDeps) {
   const env = deps.env ?? process.env;
+  const delivery = resolveDelivery(env);
   const now = deps.now ?? (() => new Date().toISOString());
 
   async function ensureRepo(repoId: string): Promise<void> {
     if (!(await deps.store.getRepository(repoId))) throw new HttpError(404, `Repo ${repoId} is not ingested.`);
   }
 
-  /** Report with the Jev layer resolved for `mode` — cached signals only (no model calls). */
-  async function report(repoId: string, mode: JevMode, cfg: ResolvedConfig) {
+  async function latestVersion(repoId: string): Promise<ConfigVersionRecord | null> {
+    return (await deps.store.listConfigVersions(repoId)).at(-1) ?? null;
+  }
+
+  /** File config with the repo's latest saved version layered on top. */
+  async function configFor(repoId: string): Promise<ResolvedConfig> {
+    return withRepoLayer(deps.config(), await latestVersion(repoId));
+  }
+
+  /** The file config with a *draft* repo layer (validated) on top. */
+  function draftConfig(base: ResolvedConfig, repoLayer: ConfigFile, version: number | null): ResolvedConfig {
+    return withRepoLayer(base, {
+      repoId: "",
+      version: version ?? 0,
+      config: repoLayer,
+      hash: "",
+      note: "",
+      loosened: [],
+      author: "",
+      createdAt: "",
+      restoredFrom: null,
+    });
+  }
+
+  function parseRepoLayer(raw: unknown): ConfigFile {
+    const parsed = configFileSchema.safeParse(raw ?? {});
+    if (!parsed.success) {
+      throw new HttpError(400, "Config is invalid.", { issues: issuesOf(parsed.error) });
+    }
+    return parsed.data;
+  }
+
+  /** Jev runtime for `mode` — cached signals only (no model calls). */
+  async function jevRuntime(repoId: string, mode: JevMode, cfg: ResolvedConfig) {
     const calibrationPath = calibrationPathFor(deps, cfg, repoId);
     const { runtime } = await prepareJevRuntime(deps.store, repoId, cfg, {
       mode,
       evaluate: false,
       ...(existsSync(calibrationPath) ? { calibrationPath } : {}),
     });
+    return runtime;
+  }
+
+  /** Report with the Jev layer resolved for `mode` — cached signals only (no model calls). */
+  async function report(repoId: string, mode: JevMode, cfg: ResolvedConfig) {
+    const runtime = await jevRuntime(repoId, mode, cfg);
     const r = await buildReport(deps.store, repoId, cfg.priors, {
       now: now(),
       jev: runtime ?? undefined,
       configPath: cfg.path,
+      ...configReportOptions(cfg),
     });
     return { report: r, runtime };
   }
 
+  function approvalFor(repoId: string, cfg: ResolvedConfig) {
+    const path = calibrationPathFor(deps, cfg, repoId);
+    const calibration = existsSync(path) ? loadCalibration(path) : null;
+    return { calibration, gate: approvalGate({ repoId, delivery, calibration }) };
+  }
+
   async function withActions(r: PullupReport, repoId: string, cfg: ResolvedConfig) {
+    const { gate } = approvalFor(repoId, cfg);
     return planReviewActions(r.decisions, await deps.store.listPulls(repoId), {
       repoId,
       humanReviewers: cfg.jev.humanReviewers,
+      authority: cfg.authority,
+      configVersion: cfg.version,
+      approvalUnlocked: gate.unlocked,
+      ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
     });
+  }
+
+  /** Saves a new repo config version (shared by save and restore). */
+  async function saveVersion(
+    repoId: string,
+    body: { config: ConfigFile; note: string; baseVersion: number | null; confirmLoosen?: string; restoredFrom?: number | null },
+  ) {
+    const current = await configFor(repoId);
+    if ((current.version ?? null) !== body.baseVersion) {
+      throw new HttpError(409, new ConfigVersionConflictError(body.baseVersion, current.version).message, {
+        conflict: true,
+        latest: current.version,
+      });
+    }
+    const next = draftConfig(current, body.config, current.version);
+    const changes = diffConfig(effectiveConfigFile(current.file, current.repo), effectiveConfigFile(next.file, next.repo));
+    if (changes.length === 0 && body.restoredFrom == null) throw new HttpError(400, "No changes to save.");
+    const loosened = loosening(changes);
+    if (loosened.length > 0 && body.confirmLoosen !== repoId) {
+      throw new HttpError(409, `This loosens the gate: type the repo name (${repoId}) to confirm.`, {
+        needsConfirm: true,
+        loosened,
+      });
+    }
+    try {
+      const saved = await deps.store.appendConfigVersion(
+        {
+          repoId,
+          config: body.config,
+          hash: next.hash,
+          note: body.note,
+          loosened: loosened.map((c) => c.path),
+          author: "local",
+          createdAt: now(),
+          restoredFrom: body.restoredFrom ?? null,
+        },
+        current.version,
+      );
+      return { version: saved, changes };
+    } catch (err) {
+      if (err instanceof ConfigVersionConflictError) {
+        throw new HttpError(409, err.message, { conflict: true, latest: err.actual });
+      }
+      throw err;
+    }
   }
 
   type Handler = (m: RegExpMatchArray, url: URL, req: IncomingMessage) => Promise<unknown>;
@@ -148,6 +279,9 @@ export function createApp(deps: AppDeps) {
           priors: cfg.priors,
           jev: cfg.jev,
           policy: cfg.policy,
+          guardrails: cfg.guardrails,
+          authority: cfg.authority,
+          hash: cfg.hash,
           // Presence only — never the value.
           env: { typesafeApiKey: Boolean(env.TYPESAFE_API_KEY), signalModel: resolved.kind, signalModelId: resolved.model.id },
           fixtures: deps.allowIngest ? listFixtures(deps.fixturesDir) : [],
@@ -181,9 +315,10 @@ export function createApp(deps: AppDeps) {
       async (m, url) => {
         const repoId = `${m[1]}/${m[2]}`;
         await ensureRepo(repoId);
-        const cfg = deps.config();
+        const cfg = await configFor(repoId);
         const { report: r } = await report(repoId, parseMode(url, cfg), cfg);
         return {
+          mode: namedModeOf(cfg.authority),
           report: r,
           actions: await withActions(r, repoId, cfg),
           // Per-type w* (the report's own summary line), computed server-side.
@@ -198,14 +333,14 @@ export function createApp(deps: AppDeps) {
         const repoId = `${m[1]}/${m[2]}`;
         const n = Number(m[3]);
         await ensureRepo(repoId);
-        const cfg = deps.config();
+        const cfg = await configFor(repoId);
         const mode = parseMode(url, cfg);
         const { report: r, runtime } = await report(repoId, mode, cfg);
         const decision = r.decisions.find((d) => d.pullNumber === n);
         const pull = await deps.store.getPull(repoId, n);
         if (!decision || !pull) throw new HttpError(404, `PR #${n} not found in ${repoId}.`);
 
-        const qs = runtime?.qs ?? QUESTION_SETS[cfg.jev.questionSet]!;
+        const qs = runtime?.qs ?? resolveQuestionSet(cfg.jev);
         const modelId = runtime?.modelId ?? resolveSignalModel({ config: cfg.jev, env }).model.id;
         const signals = await loadPullSignals(deps.store, pull, qs, modelId);
         const pDefect = decision.risk?.mode === "active" ? decision.risk.pDefect : undefined;
@@ -237,7 +372,15 @@ export function createApp(deps: AppDeps) {
           decision,
           policy: evaluatePolicy(pull.files, cfg.policy),
           thresholds: cfg.jev.thresholds,
-          questionSet: { version: qs.version, sensitive: qs.sensitive, escalating: qs.escalating, injection: qs.injection, lowRisk: qs.lowRisk },
+          questionSet: {
+            version: qs.version,
+            sensitive: qs.sensitive,
+            escalating: qs.escalating,
+            injection: qs.injection,
+            lowRisk: qs.lowRisk,
+            custom: qs.custom ?? [],
+            texts: Object.fromEntries(Object.entries(qs.questions).map(([id, q]) => [id, q.text])),
+          },
           modelId,
           units: signals.units.map((u, i) => ({
             key: u.key,
@@ -278,7 +421,7 @@ export function createApp(deps: AppDeps) {
       async (m) => {
         const repoId = `${m[1]}/${m[2]}`;
         await ensureRepo(repoId);
-        const path = calibrationPathFor(deps, deps.config(), repoId);
+        const path = calibrationPathFor(deps, await configFor(repoId), repoId);
         // "Not calibrated yet" is a normal state, not an error.
         return { path, artifact: existsSync(path) ? loadCalibration(path) : null };
       },
@@ -292,8 +435,8 @@ export function createApp(deps: AppDeps) {
         const body = z
           .object({ scope: z.enum(["open", "all"]).default("open") })
           .parse(await readBody(req));
-        const cfg = deps.config();
-        const qs = QUESTION_SETS[cfg.jev.questionSet]!;
+        const cfg = await configFor(repoId);
+        const qs = resolveQuestionSet(cfg.jev);
         const { model, note } = resolveSignalModel({ config: cfg.jev, env });
         const run = await runSignals(deps.store, repoId, model, qs, {
           openOnly: body.scope === "open",
@@ -309,11 +452,23 @@ export function createApp(deps: AppDeps) {
       async (m, url) => {
         const repoId = `${m[1]}/${m[2]}`;
         await ensureRepo(repoId);
-        const cfg = deps.config();
+        const cfg = await configFor(repoId);
         const { report: r } = await report(repoId, parseMode(url, cfg), cfg);
         const planned = await withActions(r, repoId, cfg);
-        const logged = await new LoggingReviewActuator(deps.store, now).apply(planned);
-        return { logged, sent: 0 };
+        const actuator = deps.actuator
+          ? await deps.actuator(repoId)
+          : await createReviewActuator(deps.store, repoId, { delivery, env, now }).catch((err: Error) => {
+              throw new HttpError(503, `Live GitHub delivery is on, but ${err.message}`);
+            });
+        const records = await actuator.apply(planned);
+        return {
+          // `logged` = every record, whatever its status (kept for older clients).
+          logged: records,
+          delivery: actuator.kind === "github" ? "live" : "log",
+          sent: records.filter((a) => a.status === "sent").length,
+          failed: records.filter((a) => a.status === "failed").length,
+          mode: namedModeOf(cfg.authority),
+        };
       },
     ],
     [
@@ -322,8 +477,8 @@ export function createApp(deps: AppDeps) {
       async (m) => {
         const repoId = `${m[1]}/${m[2]}`;
         await ensureRepo(repoId);
-        const cfg = deps.config();
-        const qs = QUESTION_SETS[cfg.jev.questionSet]!;
+        const cfg = await configFor(repoId);
+        const qs = resolveQuestionSet(cfg.jev);
         const { model } = resolveSignalModel({ config: cfg.jev, env });
         const run = await runSignals(deps.store, repoId, model, qs, { budgetUsd: cfg.jev.budgetUsdPerRun, now: now() });
         const artifact = await calibrateRepo(deps.store, repoId, cfg.priors, qs, model.id, {
@@ -335,6 +490,201 @@ export function createApp(deps: AppDeps) {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, JSON.stringify(artifact, null, 2) + "\n");
         return { path, artifact, run };
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const cfg = await configFor(repoId);
+        const versions = await deps.store.listConfigVersions(repoId);
+        const { calibration: artifact, gate } = approvalFor(repoId, cfg);
+        return {
+          repoId,
+          path: cfg.path,
+          version: cfg.version,
+          hash: cfg.hash,
+          mode: namedModeOf(cfg.authority),
+          file: cfg.file,
+          repo: cfg.repo ?? {},
+          effective: effectiveConfigFile(cfg.file, cfg.repo),
+          sources: cfg.sources,
+          latest: versions.at(-1) ?? null,
+          versionCount: versions.length,
+          // Approve · Act stays locked until this gate passes *and* delivery is live.
+          approval: {
+            fastPathGatePassed: artifact?.fastPathGate.passed ?? false,
+            liveActuator: delivery === "live",
+            unlocked: gate.unlocked,
+            lockedReason: gate.reason,
+          },
+          questionSet: (() => {
+            const base = resolveQuestionSet({ ...cfg.jev, customQuestions: [], disabledQuestions: [] });
+            return { version: resolveQuestionSet(cfg.jev).version, builtIn: base.sensitive, escalating: base.escalating };
+          })(),
+        };
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config\/versions$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const base = deps.config();
+        const versions = await deps.store.listConfigVersions(repoId);
+        // Each version with its field-level diff against the one before it.
+        return versions
+          .map((v, i) => {
+            const prev = i > 0 ? versions[i - 1]!.config : null;
+            return {
+              ...v,
+              changes: diffConfig(effectiveConfigFile(base.file, prev), effectiveConfigFile(base.file, v.config)),
+            };
+          })
+          .reverse();
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config\/validate$/,
+      async (m, _url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const { config } = z.object({ config: z.unknown() }).parse(await readBody(req));
+        const parsed = configFileSchema.safeParse(config ?? {});
+        if (!parsed.success) return { ok: false, issues: issuesOf(parsed.error), changes: [], loosened: [] };
+        const current = await configFor(repoId);
+        const next = draftConfig(current, parsed.data, current.version);
+        const changes = diffConfig(effectiveConfigFile(current.file, current.repo), effectiveConfigFile(next.file, next.repo));
+        return { ok: true, issues: [], changes, loosened: loosening(changes), hash: next.hash, mode: namedModeOf(next.authority) };
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config\/preview$/,
+      async (m, _url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const { config } = z.object({ config: z.unknown() }).parse(await readBody(req));
+        const current = await configFor(repoId);
+        const draft = draftConfig(current, parseRepoLayer(config), current.version);
+        return previewConfig(
+          deps.store,
+          repoId,
+          { config: current, jev: await jevRuntime(repoId, current.jev.mode, current) },
+          { config: draft, jev: await jevRuntime(repoId, draft.jev.mode, draft) },
+          { now: now() },
+        );
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config$/,
+      async (m, _url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const body = z
+          .object({
+            config: z.unknown(),
+            note: z.string().trim().max(200).default(""),
+            baseVersion: z.number().int().min(1).nullable(),
+            confirmLoosen: z.string().optional(),
+          })
+          .parse(await readBody(req));
+        return saveVersion(repoId, { ...body, config: parseRepoLayer(body.config) });
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/config\/restore\/(\d+)$/,
+      async (m, _url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const body = z
+          .object({ baseVersion: z.number().int().min(1).nullable(), confirmLoosen: z.string().optional() })
+          .parse(await readBody(req));
+        const target = (await deps.store.listConfigVersions(repoId)).find((v) => v.version === Number(m[3]));
+        if (!target) throw new HttpError(404, `No config version ${m[3]} for ${repoId}.`);
+        return saveVersion(repoId, {
+          config: parseRepoLayer(target.config),
+          note: `Restored v${target.version}${target.note ? ` (${target.note})` : ""}`,
+          baseVersion: body.baseVersion,
+          confirmLoosen: body.confirmLoosen,
+          restoredFrom: target.version,
+        });
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/stats\/sizes$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const cfg = await configFor(repoId);
+        // Sizes counted the way the size guardrail counts them (excludes applied).
+        const results = await evaluateRepoGuardrails(deps.store, repoId, cfg.policy, cfg.guardrails, now(), {
+          states: ["merged"],
+        });
+        const merged = (await deps.store.listMergedPulls(repoId))
+          .sort((a, b) => (b.mergedAt ?? "").localeCompare(a.mergedAt ?? ""))
+          .slice(0, 500);
+        const rows = merged.map((p) => results.get(p.number)).filter((r) => r !== undefined);
+        return { count: rows.length, lines: rows.map((r) => r.lines), files: rows.map((r) => r.files) };
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/questions\/try$/,
+      async (m, _url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const body = z
+          .object({ text: z.string(), pullNumber: z.number().int().optional() })
+          .parse(await readBody(req));
+        const screened = screenCustomQuestion(body.text);
+        if (!screened.ok) {
+          throw new HttpError(400, `Custom question ${screened.problems[0]}.`, {
+            issues: screened.problems.map((p) => ({ path: "text", message: p })),
+          });
+        }
+        const pulls = await deps.store.listPulls(repoId);
+        const pull =
+          body.pullNumber !== undefined
+            ? pulls.find((p) => p.number === body.pullNumber)
+            : [...pulls].filter((p) => p.state === "open").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        if (!pull) throw new HttpError(404, "No PR to try the question on.");
+        const cfg = await configFor(repoId);
+        const id = customQuestionId(screened.normalized);
+        // A one-question set: nothing else is asked, and nothing is cached.
+        const qs: QuestionSet = {
+          version: "try",
+          questions: { [id]: { kind: "noul", text: customQuestionText(screened.normalized) } },
+          sensitive: [],
+          escalating: [],
+          lowRisk: [],
+          injection: "",
+          changeKind: "",
+          lowRiskKinds: [],
+          blastRadius: "",
+          custom: [id],
+        };
+        const units = buildUnits(await deps.store.listHunks(repoId, pull.number), qs, { area: pull.area }).slice(0, 20);
+        const { model, note } = resolveSignalModel({ config: cfg.jev, env });
+        const answers = await model.evaluate(units, qs);
+        return {
+          question: customQuestionText(screened.normalized),
+          pullNumber: pull.number,
+          title: pull.title,
+          model: model.id,
+          note,
+          units: units.map((u, i) => {
+            const a = answers[i]?.answers[id];
+            return { key: u.key, path: u.path, p: a && a.kind === "noul" ? a.p : null };
+          }),
+        };
       },
     ],
     [
@@ -363,8 +713,10 @@ export function createApp(deps: AppDeps) {
       if (deps.staticDir && req.method === "GET") return serveStatic(deps.staticDir, url.pathname, res);
       throw new HttpError(404, "Not found");
     } catch (err) {
-      if (err instanceof HttpError) return json(res, err.status, { error: err.message });
-      if (err instanceof z.ZodError) return json(res, 400, { error: err.issues.map((i) => i.message).join("; ") });
+      if (err instanceof HttpError) return json(res, err.status, { error: err.message, ...err.details });
+      if (err instanceof z.ZodError) {
+        return json(res, 400, { error: err.issues.map((i) => i.message).join("; "), issues: issuesOf(err) });
+      }
       console.error(err);
       return json(res, 500, { error: (err as Error).message });
     }

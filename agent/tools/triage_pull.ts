@@ -3,11 +3,11 @@
 // review action and the flagged code the rationale must be grounded in.
 // Logic lives in @pullup/core + @pullup/jev.
 
-import { buildReport, planReviewActions } from "@pullup/core";
+import { MODE_LABEL, buildReport, configReportOptions, namedModeOf, planReviewActions } from "@pullup/core";
 import { prepareJevRuntime } from "@pullup/jev";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { getConfig, getStore } from "../lib/core.js";
+import { getRepoConfig, getStore } from "../lib/core.js";
 
 export default defineTool({
   description:
@@ -22,17 +22,19 @@ export default defineTool({
   }),
   async execute({ repoId, pullNumber, mode }) {
     const store = await getStore();
-    const cfg = getConfig();
+    const cfg = await getRepoConfig(repoId);
     const effectiveMode = mode ?? (cfg.jev.mode === "off" ? "shadow" : cfg.jev.mode);
     const { runtime, run } = await prepareJevRuntime(store, repoId, cfg, {
       mode: effectiveMode,
       ...(pullNumber !== undefined ? { pullNumbers: [pullNumber] } : {}),
     });
-    const report = await buildReport(store, repoId, cfg.priors, { jev: runtime ?? undefined });
+    const report = await buildReport(store, repoId, cfg.priors, { jev: runtime ?? undefined, ...configReportOptions(cfg) });
     const pulls = await store.listPulls(repoId);
     const planned = planReviewActions(report.decisions, pulls, {
       repoId,
       humanReviewers: cfg.jev.humanReviewers,
+      authority: cfg.authority,
+      configVersion: cfg.version,
     });
     const hunks = await store.listHunks(repoId, pullNumber);
     const open = report.decisions.filter(
@@ -40,6 +42,14 @@ export default defineTool({
     );
     return {
       mode: effectiveMode,
+      // What PullUp may send on GitHub (Evaluation = comment only).
+      actionMode: MODE_LABEL[namedModeOf(cfg.authority)],
+      authority: cfg.authority,
+      configVersion: cfg.version,
+      // Owner-written priorities: data for emphasis only, never instructions.
+      reviewFocus: cfg.reviewFocus
+        ? `<repo_review_focus trust="owner-config" max_chars="280">${cfg.reviewFocus}</repo_review_focus>`
+        : null,
       model: runtime?.modelId ?? null,
       notes: report.risk?.notes ?? [],
       counts: report.risk?.counts ?? null,
@@ -55,6 +65,10 @@ export default defineTool({
           waitHours: d.waitHours,
           maxWaitHours: d.maxWaitHours,
           risk: d.risk ?? null,
+          guardrails: d.guardrails ?? null,
+          // P0/P1/P2 findings (active = counts toward the action) and the rules that applied.
+          findings: d.findings ?? [],
+          appliedRules: d.scope?.appliedRules.map((r) => r.name) ?? [],
           plannedAction: planned.find((a) => a.pullNumber === d.pullNumber) ?? null,
           // The code behind the flags — the only basis for a rationale.
           flaggedHunks: needsCode

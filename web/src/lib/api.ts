@@ -3,9 +3,17 @@
 // can't drift from the engine's shapes.
 
 import type {
+  ActionAuthority,
   CalibrationArtifact,
+  ConfigChange,
+  ConfigFile,
+  ConfigPreview,
+  ConfigSource,
+  ConfigVersionRecord,
   CostCurvePoint,
   CostPriors,
+  GuardrailsConfig,
+  NamedMode,
   IngestResult,
   JevConfig,
   JevMode,
@@ -21,7 +29,14 @@ import type {
 } from "@pullup/core";
 
 export type {
+  ActionAuthority,
   CalibrationArtifact,
+  ConfigChange,
+  ConfigFile,
+  ConfigPreview,
+  ConfigSource,
+  ConfigVersionRecord,
+  NamedMode,
   CostCurvePoint,
   JevMode,
   PlannedReviewAction,
@@ -45,11 +60,16 @@ export interface AppConfig {
   readonly priors: CostPriors;
   readonly jev: JevConfig;
   readonly policy: PolicyRules;
+  readonly guardrails: GuardrailsConfig;
+  readonly authority: ActionAuthority;
+  readonly hash: string;
   readonly env: { readonly typesafeApiKey: boolean; readonly signalModel: string; readonly signalModelId: string };
   readonly fixtures: readonly string[];
 }
 
 export interface ReportResponse {
+  /** The repo's action mode (what PullUp may send on GitHub). */
+  readonly mode: NamedMode | "custom";
   readonly report: PullupReport;
   readonly actions: readonly PlannedReviewAction[];
   readonly maxWaitByType: Readonly<Record<string, number>>;
@@ -91,6 +111,8 @@ export interface PullDetail {
     readonly escalating: readonly string[];
     readonly injection: string;
     readonly lowRisk: readonly string[];
+    readonly custom: readonly string[];
+    readonly texts: Readonly<Record<string, string>>;
   };
   readonly modelId: string;
   readonly units: readonly UnitDetail[];
@@ -99,10 +121,73 @@ export interface PullDetail {
   readonly loggedActions: readonly ReviewActionRecord[];
 }
 
+export interface RepoConfigResponse {
+  readonly repoId: string;
+  readonly path: string | null;
+  readonly version: number | null;
+  readonly hash: string;
+  readonly mode: NamedMode | "custom";
+  /** The file layer (pullup.config.json). */
+  readonly file: ConfigFile;
+  /** The repo layer — what the settings page edits. */
+  readonly repo: ConfigFile;
+  /** Defaults < file < repo, in file shape. */
+  readonly effective: ConfigFile;
+  readonly sources: Readonly<Record<string, ConfigSource>>;
+  readonly latest: ConfigVersionRecord | null;
+  readonly versionCount: number;
+  readonly approval: {
+    readonly fastPathGatePassed: boolean;
+    /** Operator turned live GitHub delivery on (PULLUP_GITHUB_DELIVERY=live). */
+    readonly liveActuator: boolean;
+    readonly unlocked?: boolean;
+    readonly lockedReason?: string | null;
+  };
+  readonly questionSet: { readonly version: string; readonly builtIn: readonly string[]; readonly escalating: readonly string[] };
+}
+
+export interface Issue {
+  readonly path: string;
+  readonly message: string;
+}
+
+export interface ValidateResponse {
+  readonly ok: boolean;
+  readonly issues: readonly Issue[];
+  readonly changes: readonly ConfigChange[];
+  readonly loosened: readonly ConfigChange[];
+  readonly hash?: string;
+  readonly mode?: NamedMode | "custom";
+}
+
+export interface SaveResponse {
+  readonly version: ConfigVersionRecord;
+  readonly changes: readonly ConfigChange[];
+}
+
+export type VersionEntry = ConfigVersionRecord & { readonly changes: readonly ConfigChange[] };
+
+export interface SizeStats {
+  readonly count: number;
+  readonly lines: readonly number[];
+  readonly files: readonly number[];
+}
+
+export interface TryQuestionResponse {
+  readonly question: string;
+  readonly pullNumber: number;
+  readonly title: string;
+  readonly model: string;
+  readonly note: string | null;
+  readonly units: ReadonlyArray<{ readonly key: string; readonly path: string; readonly p: number | null }>;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** Extra fields from the error body (issues, needsConfirm, loosened, conflict…). */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -110,10 +195,16 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new ApiError(res.status, body.error ?? `${res.status} ${res.statusText}`);
+  const body = (await res.json().catch(() => ({}))) as { error?: string } & Record<string, unknown>;
+  if (!res.ok) {
+    const { error, ...details } = body;
+    throw new ApiError(res.status, error ?? `${res.status} ${res.statusText}`, details);
+  }
   return body as T;
 }
+
+const postJson = <T,>(path: string, body: unknown) =>
+  request<T>(path, { method: "POST", body: JSON.stringify(body) });
 
 const repoPath = (repoId: string) => `/api/repos/${repoId}`;
 const q = (mode: JevMode) => `?mode=${mode}`;
@@ -134,11 +225,25 @@ export const api = {
       body: JSON.stringify({ scope: "open" }),
     }),
   logActions: (repoId: string, mode: JevMode) =>
-    request<{ logged: ReviewActionRecord[]; sent: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),
+    request<{ logged: ReviewActionRecord[]; delivery?: "log" | "live"; sent: number; failed?: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),
   calibrate: (repoId: string) =>
     request<{ path: string; artifact: CalibrationArtifact; run: SignalRunRecord }>(`${repoPath(repoId)}/calibrate`, {
       method: "POST",
     }),
   ingest: (fixture: string) =>
     request<IngestResult>("/api/ingest", { method: "POST", body: JSON.stringify({ fixture }) }),
+
+  repoConfig: (repoId: string) => request<RepoConfigResponse>(`${repoPath(repoId)}/config`),
+  configVersions: (repoId: string) => request<VersionEntry[]>(`${repoPath(repoId)}/config/versions`),
+  validateConfig: (repoId: string, config: ConfigFile) =>
+    postJson<ValidateResponse>(`${repoPath(repoId)}/config/validate`, { config }),
+  previewConfig: (repoId: string, config: ConfigFile) =>
+    postJson<ConfigPreview>(`${repoPath(repoId)}/config/preview`, { config }),
+  saveConfig: (repoId: string, body: { config: ConfigFile; note: string; baseVersion: number | null; confirmLoosen?: string }) =>
+    postJson<SaveResponse>(`${repoPath(repoId)}/config`, body),
+  restoreConfig: (repoId: string, version: number, body: { baseVersion: number | null; confirmLoosen?: string }) =>
+    postJson<SaveResponse>(`${repoPath(repoId)}/config/restore/${version}`, body),
+  sizeStats: (repoId: string) => request<SizeStats>(`${repoPath(repoId)}/stats/sizes`),
+  tryQuestion: (repoId: string, text: string, pullNumber?: number) =>
+    postJson<TryQuestionResponse>(`${repoPath(repoId)}/questions/try`, { text, pullNumber }),
 };

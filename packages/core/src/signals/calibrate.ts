@@ -241,8 +241,8 @@ export interface CalibrationArtifact {
   /** Gates the (upward-only) risk multiplier. */
   readonly gate: { readonly passed: boolean; readonly checks: readonly GateCheck[] };
   /**
-   * Gates the fast path separately. Approval is stubbed (logged only) in this
-   * build; a live approval actuator must require this to pass.
+   * Gates the fast path separately: a real APPROVE needs this to pass plus
+   * live delivery (see actions/approval.ts).
    */
   readonly fastPathGate: { readonly passed: boolean; readonly checks: readonly GateCheck[] };
   readonly hash: string;

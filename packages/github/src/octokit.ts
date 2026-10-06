@@ -18,6 +18,11 @@ import { parseFilePatch, parseRepoId } from "@pullup/core";
 export interface OctokitSourceOptions {
   readonly repoId: string;
   readonly octokit: Octokit;
+  /**
+   * Only these PRs (a webhook refresh of an already-ingested repo). Default:
+   * every PR in the repo.
+   */
+  readonly pullNumbers?: readonly number[];
 }
 
 const REVERT_RE = /\b(revert|hotfix|rollback)\b/i;
@@ -84,20 +89,34 @@ export class OctokitPullSource implements PullSource {
   }
 
   async listPulls(): Promise<SourcePull[]> {
-    const pulls = (await this.opts.octokit.paginate(
-      this.opts.octokit.rest.pulls.list,
-      { owner: this.owner, repo: this.repo, state: "all", per_page: 100 },
-    )) as unknown as GHPull[];
+    const only = this.opts.pullNumbers;
+    const pulls = only
+      ? await Promise.all(
+          only.map(
+            async (n) =>
+              (await this.opts.octokit.rest.pulls.get({ owner: this.owner, repo: this.repo, pull_number: n }))
+                .data as unknown as GHPull,
+          ),
+        )
+      : ((await this.opts.octokit.paginate(
+          this.opts.octokit.rest.pulls.list,
+          { owner: this.owner, repo: this.repo, state: "all", per_page: 100 },
+        )) as unknown as GHPull[]);
     const result: SourcePull[] = [];
     for (const p of pulls) {
       let files: string[] = [];
       let hunks: SourceHunk[] | undefined;
+      // pulls.list omits additions/deletions; sum them from the file list instead.
+      let additions = p.additions;
+      let deletions = p.deletions;
       try {
         const filePages = (await this.opts.octokit.paginate(
           this.opts.octokit.rest.pulls.listFiles,
           { owner: this.owner, repo: this.repo, pull_number: p.number, per_page: 100 },
-        )) as unknown as Array<{ filename: string; patch?: string }>;
+        )) as unknown as Array<{ filename: string; patch?: string; additions?: number; deletions?: number }>;
         files = filePages.map((f) => f.filename);
+        additions ??= filePages.reduce((n, f) => n + (f.additions ?? 0), 0);
+        deletions ??= filePages.reduce((n, f) => n + (f.deletions ?? 0), 0);
         // `patch` is absent for binary or very large files → a noPatch marker
         // hunk, which the Jev layer routes to human review.
         hunks = filePages.flatMap((f) => parseFilePatch(f.filename, f.patch));
@@ -114,8 +133,8 @@ export class OctokitPullSource implements PullSource {
         state: p.merged_at ? "merged" : p.state === "open" ? "open" : "closed",
         baseBranch: p.base.ref,
         headSha: p.head.sha,
-        additions: p.additions ?? 0,
-        deletions: p.deletions ?? 0,
+        additions: additions ?? 0,
+        deletions: deletions ?? 0,
         changedFiles: p.changed_files ?? files.length,
         labels: p.labels.map((l) => l.name),
         draft: p.draft ?? false,

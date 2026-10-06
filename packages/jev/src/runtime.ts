@@ -3,7 +3,7 @@
 // Shared by the CLI and the Eve tools so both behave identically.
 
 import { existsSync } from "node:fs";
-import { QUESTION_SETS, loadCalibration, runSignals } from "@pullup/core";
+import { loadCalibration, resolveQuestionSet, runSignals } from "@pullup/core";
 import type {
   CalibrationArtifact,
   JevMode,
@@ -40,8 +40,7 @@ export async function prepareJevRuntime(
   const config = { ...cfg.jev, mode: opts.mode ?? cfg.jev.mode };
   if (config.mode === "off") return { runtime: null, run: null };
 
-  const qs = QUESTION_SETS[config.questionSet];
-  if (!qs) throw new Error(`Unknown question set "${config.questionSet}".`);
+  const qs = resolveQuestionSet(config);
 
   const { model, note } = resolveSignalModel({
     kind: opts.kind,

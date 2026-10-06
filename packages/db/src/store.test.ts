@@ -128,3 +128,28 @@ describe("SqliteStore", () => {
     expect(actions[0]).toEqual(actions[1]);
   });
 });
+
+describe("SqliteStore config versions", () => {
+  it("appends numbered versions, round-trips them, and rejects stale saves", async () => {
+    const store = await openStore();
+    const rec = {
+      repoId: "o/r",
+      config: { guardrails: { maxAutoApproveLines: 300 } },
+      hash: "h1",
+      note: "first",
+      loosened: [],
+      author: "local",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      restoredFrom: null,
+    };
+    const v1 = await store.appendConfigVersion(rec, null);
+    expect(v1.version).toBe(1);
+    const v2 = await store.appendConfigVersion({ ...rec, hash: "h2", loosened: ["guardrails.maxAutoApproveLines"] }, 1);
+    expect(v2.version).toBe(2);
+    await expect(store.appendConfigVersion(rec, 1)).rejects.toThrow(/changed since/);
+    const all = await store.listConfigVersions("o/r");
+    expect(all.map((v) => v.version)).toEqual([1, 2]);
+    expect(all[1]).toEqual(v2);
+    expect(await store.listConfigVersions("other/repo")).toEqual([]);
+  });
+});

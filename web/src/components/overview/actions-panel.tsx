@@ -36,13 +36,14 @@ export function ActionsPanel(props: { planned: readonly PlannedReviewAction[] })
         </div>
         <p class="text-xs leading-relaxed text-muted-foreground">
           Planned from current decisions as GitHub PR reviews (<code class="num">APPROVE</code> · <code class="num">REQUEST_CHANGES</code> ·{" "}
-          <code class="num">COMMENT</code> + reviewers). Approval authority is stubbed: logging records the exact call and sends nothing.
+          <code class="num">COMMENT</code> + reviewers). Recorded as logged, or sent to GitHub when the operator has turned live delivery on.
+          Approve · Act also needs this repo's fast-path calibration gate.
         </p>
         <Button size="sm" variant="secondary" disabled={repo.busy() !== null || props.planned.length === 0} onClick={() => void repo.logActions()}>
           <Show when={repo.busy() === "Log review actions"} fallback={<Send class="size-3.5" />}>
             <Spinner size="sm" />
           </Show>
-          Log {props.planned.length} action{props.planned.length === 1 ? "" : "s"}
+          Apply {props.planned.length} action{props.planned.length === 1 ? "" : "s"}
         </Button>
       </div>
     </Panel>

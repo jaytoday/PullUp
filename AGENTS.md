@@ -11,7 +11,7 @@ surface are thin adapters over it.
 | `pnpm install` | Install dependencies |
 | `pnpm build` | Build the six `@pullup/*` packages (web builds via `pnpm web:build`) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 65 · db 4 · github 3 · jev 4 · server 8) |
+| `pnpm -r test` | Package tests (core 149 · db 5 · github 17 · jev 4 · server 20) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |
@@ -27,7 +27,7 @@ evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
 packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
-docs/       architecture · cost-model · analytics · jev
+docs/       architecture · cost-model · analytics · jev · configuration · github
 ```
 
 ## Working in `agent/`
@@ -47,7 +47,9 @@ docs/       architecture · cost-model · analytics · jev
   its vitest config.
 - The GitHub channel needs App credentials from env to dispatch (`GITHUB_APP_ID`,
   `GITHUB_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`). Missing creds in dev → channel
-  present, webhooks inert (`eve info` still lists it).
+  present, webhooks inert (`eve info` still lists it). The same App creds drive
+  live reads/writes (`createRepoOctokit`); `@octokit/*` is pinned at the root
+  too, for the same bundler reason as drizzle.
 
 ## Drizzle
 
@@ -68,22 +70,50 @@ docs/       architecture · cost-model · analytics · jev
   never gets the fast path, shadow equals off, and `w*` never shortens. If you
   intentionally change report output, update `MAIN_BASELINE` in the same
   commit and say why.
-- Approval is **stubbed**: `LoggingReviewActuator` logs GitHub review calls
-  to `review_actions` and sends nothing. Don't add a live actuator without an
-  explicit decision.
+- Delivery (`docs/github.md`): `LoggingReviewActuator` logs by default;
+  `GitHubReviewActuator` sends only when the operator sets
+  `PULLUP_GITHUB_DELIVERY=live` (env, never repo settings). Get actuators via
+  `createReviewActuator`, and compute `approvalGate` (live delivery + this repo's
+  passing fast-path gate) for every plan; never pass `approvalUnlocked: true`
+  from anywhere else. Actuator tests use a fake `ReviewClient`, never the network.
 - Question-set wording is a versioned contract: edit → bump `version`.
 - Regenerate fixtures with `pnpm exec tsx scripts/generate-fixtures.ts`. It
   augments healthy/congested in place, so existing timestamps and reports stay
   stable. Use `--regenerate` to rebuild them.
+
+## Configuration (`docs/configuration.md`)
+
+- Layers: defaults < `pullup.config.json` < repo settings version (DB,
+  append-only). Resolve per repo with `loadRepoConfig` / `withRepoLayer`, and
+  pass `configReportOptions(cfg)` + `authority: cfg.authority` everywhere a
+  report or plan is built — never `loadConfig` alone for a repo.
+- `config/schema.ts` and the `@pullup/core/config-schema` entry are
+  browser-safe: no `node:` imports there (hashing lives in `config/config.ts`).
+- Every new config leaf gets a `config/fields.ts` entry with its `loosens`
+  direction; the save diff and typed-confirm rule depend on it.
+- Action authority changes only what is sent. `comment`/`off` must never emit
+  APPROVE/REQUEST_CHANGES, and approve `act` stays clamped until `approvalGate`
+  unlocks it (tests in `actions/authority.test.ts`).
+- Free text (review focus, custom questions) goes through `screenFreeText` in
+  the schema; custom questions are raise-only (review band at most).
+- Severity mode: decisions built with guardrails carry `findings` (P0/P1/P2,
+  rule vs signal) and `scope`; `planReviewActions` uses them instead of the
+  legacy band logic. Signal findings never request changes unless opted in,
+  never on an injection PR, and never count in Observe. Invariants live in
+  `findings/severity.test.ts` (defaults reproduce legacy actions; partial-path
+  rules never add approvals).
 
 ## Web dashboard (`web/`, `packages/server`)
 
 - The server is a thin JSON layer over the **same** core calls the CLI uses
   (`prepareJevRuntime`, `buildReport`, `planReviewActions`). Never compute
   decisions in the browser. The web app imports `@pullup/core` for **types
-  only**, because core pulls in `node:fs`/`node:crypto`.
+  only**, because core pulls in `node:fs`/`node:crypto` — except the
+  browser-safe `@pullup/core/config-schema` entry (schema, field registry,
+  presets, screen), used to validate settings drafts exactly like the server.
 - GETs are side-effect free (cached signals only). Model calls, logged actions,
-  and calibration are explicit POSTs. Nothing posts to GitHub.
+  and calibration are explicit POSTs. Only POST `…/actions` can reach GitHub,
+  and only with live delivery.
 - `web/src/components/ui/` holds owned copies of nikala-ui components (see its
   README for the upstream commit and local modifications). Kit rules: `splitProps`,
   semantic tokens only, `rounded-lg` max. Feature components are grouped by

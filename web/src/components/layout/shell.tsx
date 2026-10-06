@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   Settings,
   Search,
+  SlidersHorizontal,
 } from "lucide-solid";
 import { Dynamic } from "solid-js/web";
 import { Kbd } from "@/components/ui/kbd";
@@ -25,6 +26,7 @@ const NAV = [
   { path: "/actions", label: "Review actions", icon: History },
   { path: "/calibration", label: "Calibration", icon: FlaskConical },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
+  { path: "/settings", label: "Settings", icon: SlidersHorizontal },
 ] as const;
 
 function NavLink(props: { href: string; active: boolean; icon: Component<{ class?: string }>; label: string; count?: number }) {
@@ -122,7 +124,7 @@ export const Shell: ParentComponent = (props) => {
         </nav>
 
         <div class="space-y-2 border-t border-sidebar-border p-3">
-          <NavLink href={withMode("/settings", mode())} active={location.pathname === "/settings"} icon={Settings} label="Settings" />
+          <NavLink href={withMode("/settings", mode())} active={location.pathname === "/settings"} icon={Settings} label="Environment" />
           <Show when={config()}>
             {(c) => (
               <div class="flex items-center justify-between rounded-md bg-background/50 px-2.5 py-2">

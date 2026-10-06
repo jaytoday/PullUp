@@ -5,6 +5,7 @@
 // implementation simply resolves. Upserts are idempotent on primary keys.
 
 import type { ReviewActionRecord } from "../actions/review.js";
+import type { ConfigFile } from "../config/schema.js";
 import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
 import type {
   DefectEventRecord,
@@ -50,6 +51,38 @@ export interface PullStore {
   /** Bot review actions (logged, not sent — see actions/review.ts). */
   recordReviewAction(action: ReviewActionRecord): Promise<void>;
   listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]>;
+
+  /** Append-only per-repo config versions (the "repo" config layer), oldest first. */
+  listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]>;
+  /** Appends a version, numbering it max+1. Throws if `expectedPrevious` isn't the latest. */
+  appendConfigVersion(rec: NewConfigVersion, expectedPrevious: number | null): Promise<ConfigVersionRecord>;
+}
+
+export interface ConfigVersionRecord {
+  readonly repoId: string;
+  readonly version: number;
+  /** The repo layer only (partial config), not the resolved config. */
+  readonly config: ConfigFile;
+  /** sha256 of the canonical effective config at save time. */
+  readonly hash: string;
+  readonly note: string;
+  /** Field paths flagged as loosening the gate. */
+  readonly loosened: readonly string[];
+  readonly author: string;
+  readonly createdAt: string;
+  /** Set when this version restores an earlier one. */
+  readonly restoredFrom: number | null;
+}
+
+export type NewConfigVersion = Omit<ConfigVersionRecord, "version">;
+
+export class ConfigVersionConflictError extends Error {
+  constructor(
+    readonly expected: number | null,
+    readonly actual: number | null,
+  ) {
+    super(`Config changed since you loaded it (expected v${expected ?? 0}, latest is v${actual ?? 0}).`);
+  }
 }
 
 /** In-memory PullStore for fixtures, tests, and the offline CLI default. */
@@ -64,6 +97,7 @@ export class InMemoryStore implements PullStore {
   private signals = new Map<string, SignalRecord>();
   private signalRuns: SignalRunRecord[] = [];
   private reviewActions = new Map<string, ReviewActionRecord>();
+  private configVersions: ConfigVersionRecord[] = [];
 
   private keyPull(repoId: string, number: number): string {
     return `${repoId}#${number}`;
@@ -168,6 +202,18 @@ export class InMemoryStore implements PullStore {
     return [...this.reviewActions.values()].filter(
       (a) => a.repoId === repoId && (pullNumber === undefined || a.pullNumber === pullNumber),
     );
+  }
+
+  async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {
+    return this.configVersions.filter((v) => v.repoId === repoId);
+  }
+
+  async appendConfigVersion(rec: NewConfigVersion, expectedPrevious: number | null): Promise<ConfigVersionRecord> {
+    const latest = (await this.listConfigVersions(rec.repoId)).at(-1)?.version ?? null;
+    if (latest !== expectedPrevious) throw new ConfigVersionConflictError(expectedPrevious, latest);
+    const saved: ConfigVersionRecord = { ...rec, version: (latest ?? 0) + 1 };
+    this.configVersions.push(saved);
+    return saved;
   }
 }
 

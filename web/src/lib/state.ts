@@ -1,4 +1,5 @@
-// App-level state: the view mode (off / shadow / active) lives in the URL
+// App-level state: the signals view (off / observe / use in decisions — stored
+// as off / shadow / active) lives in the URL
 // (`?mode=`) so every view is linkable. It only changes what the API computes
 // for display — it never writes config.
 
@@ -7,7 +8,7 @@ import type { JevMode } from "./api";
 
 const MODES: readonly JevMode[] = ["off", "shadow", "active"];
 
-/** Default view is shadow: observe the Jev layer without it changing anything. */
+/** Default view is shadow ("Observe"): see the Jev layer without it changing anything. */
 export const DEFAULT_MODE: JevMode = "shadow";
 
 export function useMode(): [() => JevMode, (m: JevMode) => void] {
@@ -40,3 +41,10 @@ export function useActiveRepo(): () => string | null {
 export function safeLatest<T>(r: { readonly error: unknown; readonly latest: T | undefined }): T | undefined {
   return r.error ? undefined : r.latest;
 }
+
+/** UI labels for the Jev signals mode (stored values stay off / shadow / active). */
+export const SIGNALS_LABEL: Readonly<Record<JevMode, string>> = {
+  off: "Off",
+  shadow: "Observe",
+  active: "Use in decisions",
+};

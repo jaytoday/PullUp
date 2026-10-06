@@ -17,6 +17,10 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   (signals only raise risk), shadow → calibrate → active rollout, and bot review
   actions (approve / request changes / defer to human) that are **logged, not
   sent**. See `docs/jev.md`.
+- **Configurable gate** — per-repo Settings (presets, action mode
+  Evaluation / Block only / Full, size limits, always-human categories, tiers,
+  review focus, custom raise-only questions) with a what-if preview and
+  versioned, loosen-confirmed saves. See `docs/configuration.md`.
 - **Skeleton build** — PullUp *reports* on dynamic-CI economics. Enforcement
   (auto-merge, gate changes, posting reviews) is explicitly deferred.
 
@@ -54,7 +58,7 @@ node packages/cli/dist/index.js analyze fixtures/congested \
 | `report <repoId> [--jev-mode]` | print the markdown report |
 | `signals <repoId> [--model] [--record] [--pr] [--open-only]` | evaluate Jev risk signals (cached by content) |
 | `calibrate <repoId> [--model] [--out]` | fit + validate the risk model on labelled history; write the artifact |
-| `actions <repoId> [--jev-mode]` | plan bot review actions and **log** them (nothing is sent) |
+| `actions <repoId> [--jev-mode] [--send]` | plan bot review actions; **log** them, or send to GitHub with `--send` / `PULLUP_GITHUB_DELIVERY=live` |
 | `config [--config <path>]` | show resolved priors + provenance |
 
 Jev flags: `--jev-mode off|shadow|active`, `--model jev|synthetic|replay`
@@ -70,7 +74,9 @@ node packages/cli/dist/index.js fetch fixtures/calibration --fixture fixtures/ca
 node packages/cli/dist/index.js calibrate fixtures/calibration
 ```
 
-Live fetch uses `GITHUB_TOKEN` (a GitHub App installation token works too).
+Live fetch and sending use a GitHub App (`GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY`)
+or `GITHUB_TOKEN`. Setup, permissions and the approval gate are in
+[`docs/github.md`](docs/github.md).
 
 ## Web dashboard
 
@@ -87,7 +93,8 @@ pnpm web          # build everything, then serve web/dist from the API on :4174
 With nothing ingested, the home page offers the bundled fixtures (dev only).
 The top bar's **Off / Shadow / Active** switch changes only the view
 (`?mode=`), never config. The only mutations are **Run signals**, **Log review
-actions** (recorded, never sent to GitHub), and **Run calibration**. The API
+actions** (logged, or sent to GitHub when `PULLUP_GITHUB_DELIVERY=live`),
+and **Run calibration**. The API
 binds to `127.0.0.1` and has **no auth**. It's a local tool, so don't expose it.
 Env: `PULLUP_DB_PATH`, `PULLUP_API_PORT`, `PULLUP_NOW` (pin the clock for
 demos and tests).

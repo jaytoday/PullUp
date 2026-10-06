@@ -1,11 +1,12 @@
 // SQLite PullStore implementation (libsql + drizzle). Idempotent upserts on
 // primary keys, JSON-encoded arrays, 0/1 integers for booleans.
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import type { Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type {
+  ConfigVersionRecord,
   DefectEventRecord,
   HunkRecord,
   PullRecord,
@@ -15,14 +16,17 @@ import type {
   RepositoryRecord,
   ReviewCommentRecord,
   ReviewRecord,
+  NewConfigVersion,
 } from "@pullup/core";
 import type { PullStore } from "@pullup/core";
+import { ConfigVersionConflictError } from "@pullup/core";
 import {
   defectEvents,
   hunks,
   pulls,
   repositories,
   reviewActions,
+  repoConfigVersions,
   reviewComments,
   reviews,
   signalRuns,
@@ -143,6 +147,13 @@ export class SqliteStore implements PullStore {
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, head_sha TEXT NOT NULL,
         action TEXT NOT NULL, record TEXT NOT NULL, logged_at TEXT NOT NULL,
         PRIMARY KEY (repo_id, pull_number, head_sha, action))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS repo_config_versions (
+        repo_id TEXT NOT NULL, version INTEGER NOT NULL, config TEXT NOT NULL,
+        hash TEXT NOT NULL, note TEXT NOT NULL, loosened TEXT NOT NULL,
+        author TEXT NOT NULL, created_at TEXT NOT NULL, restored_from INTEGER,
+        PRIMARY KEY (repo_id, version))`,
     );
   }
 
@@ -492,5 +503,56 @@ export class SqliteStore implements PullStore {
           .from(reviewActions)
           .where(and(eq(reviewActions.repoId, repoId), eq(reviewActions.pullNumber, pullNumber)));
     return rows.map((r) => JSON.parse(r.record) as ReviewActionRecord);
+  }
+
+  async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(repoConfigVersions)
+      .where(eq(repoConfigVersions.repoId, repoId))
+      .orderBy(asc(repoConfigVersions.version));
+    return rows.map((r) => ({
+      repoId: r.repoId,
+      version: r.version,
+      config: JSON.parse(r.config) as ConfigVersionRecord["config"],
+      hash: r.hash,
+      note: r.note,
+      loosened: JSON.parse(r.loosened) as string[],
+      author: r.author,
+      createdAt: r.createdAt,
+      restoredFrom: r.restoredFrom ?? null,
+    }));
+  }
+
+  async appendConfigVersion(rec: NewConfigVersion, expectedPrevious: number | null): Promise<ConfigVersionRecord> {
+    const [latestRow] = await this.db
+      .select({ version: repoConfigVersions.version })
+      .from(repoConfigVersions)
+      .where(eq(repoConfigVersions.repoId, rec.repoId))
+      .orderBy(desc(repoConfigVersions.version))
+      .limit(1);
+    const latest = latestRow?.version ?? null;
+    if (latest !== expectedPrevious) throw new ConfigVersionConflictError(expectedPrevious, latest);
+    const saved: ConfigVersionRecord = { ...rec, version: (latest ?? 0) + 1 };
+    try {
+      await this.db.insert(repoConfigVersions).values({
+        repoId: saved.repoId,
+        version: saved.version,
+        config: JSON.stringify(saved.config),
+        hash: saved.hash,
+        note: saved.note,
+        loosened: JSON.stringify(saved.loosened),
+        author: saved.author,
+        createdAt: saved.createdAt,
+        restoredFrom: saved.restoredFrom,
+      });
+    } catch (err) {
+      // A concurrent save took this version number first (primary key).
+      if (/UNIQUE|PRIMARY KEY|constraint/i.test(String((err as Error).message))) {
+        throw new ConfigVersionConflictError(expectedPrevious, saved.version);
+      }
+      throw err;
+    }
+    return saved;
   }
 }

@@ -4,13 +4,13 @@
 
 import { createClient } from "@libsql/client";
 import type { Client } from "@libsql/client";
-import { DEFAULT_PRIORS, loadConfig } from "@pullup/core";
+import { DEFAULT_PRIORS, configReportOptions, loadConfig, loadRepoConfig, resolveQuestionSet } from "@pullup/core";
 import type { JevMode, JevRuntime, PullSource, ResolvedConfig } from "@pullup/core";
 import type { SignalModelKind } from "@pullup/jev";
 import { SqliteStore } from "@pullup/db";
 import { OctokitPullSource } from "@pullup/github";
 import { Command } from "commander";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 interface GlobalOpts {
   db?: string;
 }
@@ -39,15 +39,13 @@ async function resolveSource(repoId: string, fixture: string | undefined): Promi
     const { loadFixture } = await import("@pullup/github");
     return loadFixture(fixture, repoId);
   }
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
+  const { createRepoOctokit, githubAuthMode } = await import("@pullup/github");
+  if (!githubAuthMode()) {
     throw new Error(
-      "Live fetch needs a GitHub token: set GITHUB_TOKEN (or use --fixture <file.json> for offline mode).",
+      "Live fetch needs GitHub credentials: GITHUB_APP_ID + GITHUB_PRIVATE_KEY (App) or GITHUB_TOKEN (or use --fixture <file.json> for offline mode).",
     );
   }
-  const { Octokit } = await import("@octokit/rest");
-  const octokit = new Octokit({ auth: token });
-  return new OctokitPullSource({ repoId, octokit });
+  return new OctokitPullSource({ repoId, octokit: await createRepoOctokit(repoId) });
 }
 
 interface JevCliOpts {
@@ -81,7 +79,7 @@ async function jevRuntimeFor(
 
 function addJevOptions(cmd: Command): Command {
   return cmd
-    .option("--jev-mode <mode>", "Jev risk layer: off | shadow | active (default: config)")
+    .option("--jev-mode <mode>", "Jev risk signals: off | shadow (observe) | active (use in decisions); default: config")
     .option("--model <kind>", "signal model: jev | synthetic | replay (default: jev if TYPESAFE_API_KEY)")
     .option("--replay <path>", "replay file for --model replay")
     .option("--calibration <path>", "calibration artifact (default: config jev.calibrationPath)");
@@ -101,7 +99,6 @@ program
   .option("-f, --force", "overwrite existing config")
   .action(async (opts: { force?: boolean }) => {
     const target = "pullup.config.json";
-    const { existsSync } = await import("node:fs");
     if (existsSync(target) && !opts.force) {
       console.error(`pullup.config.json already exists (use --force to overwrite).`);
       process.exit(1);
@@ -141,9 +138,9 @@ addJevOptions(program
         await ingestRepo(source, s);
       }
       const { buildReport, renderMarkdown, renderJson } = await import("@pullup/core");
-      const cfg = loadConfig(opts.config);
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
       const jev = await jevRuntimeFor(s, repoId, cfg, opts);
-      const report = await buildReport(s, repoId, cfg.priors, { jev });
+      const report = await buildReport(s, repoId, cfg.priors, { jev, configPath: cfg.path, ...configReportOptions(cfg) });
       const md = renderMarkdown(report);
       const json = renderJson(report);
       mkdirSync(opts.out, { recursive: true });
@@ -161,9 +158,9 @@ addJevOptions(program
   .action(async (repoId: string, opts: { config: string } & JevCliOpts) => {
     await withStore(program.opts<GlobalOpts>(), async (s) => {
       const { buildReport, renderMarkdown } = await import("@pullup/core");
-      const cfg = loadConfig(opts.config);
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
       const jev = await jevRuntimeFor(s, repoId, cfg, opts);
-      const report = await buildReport(s, repoId, cfg.priors, { jev });
+      const report = await buildReport(s, repoId, cfg.priors, { jev, configPath: cfg.path, ...configReportOptions(cfg) });
       console.log(renderMarkdown(report));
     });
   });
@@ -183,15 +180,14 @@ program
       repoId: string,
       opts: { config: string; model?: SignalModelKind; replay?: string; record?: string; pr?: string[]; openOnly?: boolean },
     ) => {
-      const { QUESTION_SETS, exportReplayFile, runSignals } = await import("@pullup/core");
+      const { exportReplayFile, runSignals } = await import("@pullup/core");
       const { resolveSignalModel } = await import("@pullup/jev");
-      const cfg = loadConfig(opts.config);
-      const qs = QUESTION_SETS[cfg.jev.questionSet];
-      if (!qs) throw new Error(`Unknown question set "${cfg.jev.questionSet}".`);
-      const { model, note } = resolveSignalModel({ kind: opts.model, replayPath: opts.replay, config: cfg.jev });
-      if (note) console.error(`[jev] ${note}`);
       const pullNumbers = opts.pr?.map(Number);
       await withStore(program.opts<GlobalOpts>(), async (s) => {
+        const cfg = await loadRepoConfig(s, repoId, opts.config);
+        const qs = resolveQuestionSet(cfg.jev);
+        const { model, note } = resolveSignalModel({ kind: opts.model, replayPath: opts.replay, config: cfg.jev });
+        if (note) console.error(`[jev] ${note}`);
         const run = await runSignals(s, repoId, model, qs, {
           pullNumbers,
           openOnly: opts.openOnly,
@@ -218,14 +214,13 @@ program
   .option("-o, --out <path>", "artifact path (default .pullup/calibration.<owner>__<repo>.json)")
   .action(
     async (repoId: string, opts: { config: string; model?: SignalModelKind; replay?: string; out?: string }) => {
-      const { QUESTION_SETS, calibrateRepo, runSignals } = await import("@pullup/core");
+      const { calibrateRepo, runSignals } = await import("@pullup/core");
       const { resolveSignalModel } = await import("@pullup/jev");
-      const cfg = loadConfig(opts.config);
-      const qs = QUESTION_SETS[cfg.jev.questionSet];
-      if (!qs) throw new Error(`Unknown question set "${cfg.jev.questionSet}".`);
-      const { model, note } = resolveSignalModel({ kind: opts.model, replayPath: opts.replay, config: cfg.jev });
-      if (note) console.error(`[jev] ${note}`);
       await withStore(program.opts<GlobalOpts>(), async (s) => {
+        const cfg = await loadRepoConfig(s, repoId, opts.config);
+        const qs = resolveQuestionSet(cfg.jev);
+        const { model, note } = resolveSignalModel({ kind: opts.model, replayPath: opts.replay, config: cfg.jev });
+        if (note) console.error(`[jev] ${note}`);
         // Labelled history = merged pulls; evaluate them (cached) first.
         const run = await runSignals(s, repoId, model, qs, { budgetUsd: cfg.jev.budgetUsdPerRun });
         console.error(`[jev] ${run.evaluated} evaluated · ${run.cached} cached · $${run.costUsd}`);
@@ -257,34 +252,66 @@ program
 
 addJevOptions(program
   .command("actions"))
-  .description("Plan bot review actions (approve / request changes / defer to human) and LOG them — nothing is sent to GitHub")
+  .description(
+    "Plan bot review actions (approve / request changes / defer to human). Logged only, unless --send (or PULLUP_GITHUB_DELIVERY=live) sends them to GitHub",
+  )
   .argument("<repoId>", "owner/repo as ingested")
   .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
-  .action(async (repoId: string, opts: { config: string } & JevCliOpts) => {
-    const { buildReport, planReviewActions, LoggingReviewActuator } = await import("@pullup/core");
-    const cfg = loadConfig(opts.config);
+  .option("--send", "send the actions to GitHub (needs GITHUB_APP_ID + GITHUB_PRIVATE_KEY or GITHUB_TOKEN)")
+  .action(async (repoId: string, opts: { config: string; send?: boolean } & JevCliOpts) => {
+    const { buildReport, planReviewActions, approvalGate, calibrationPathFor, loadCalibration, resolveDelivery, namedModeOf, MODE_LABEL } =
+      await import("@pullup/core");
+    const { createReviewActuator } = await import("@pullup/github");
+    const delivery = opts.send ? "live" : resolveDelivery();
     await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
       const jev = await jevRuntimeFor(s, repoId, cfg, opts);
-      const report = await buildReport(s, repoId, cfg.priors, { jev });
+      const calPath = opts.calibration ?? calibrationPathFor(cfg.jev, repoId);
+      const calibration = jev?.calibration ?? (existsSync(calPath) ? loadCalibration(calPath) : null);
+      const gate = approvalGate({ repoId, delivery, calibration });
+      const report = await buildReport(s, repoId, cfg.priors, { jev, ...configReportOptions(cfg) });
       const planned = planReviewActions(report.decisions, await s.listPulls(repoId), {
         repoId,
         humanReviewers: cfg.jev.humanReviewers,
+        authority: cfg.authority,
+        configVersion: cfg.version,
+        approvalUnlocked: gate.unlocked,
+        ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
       });
-      const logged = await new LoggingReviewActuator(s).apply(planned);
-      console.log(JSON.stringify(logged, null, 2));
-      console.error(`[actions] logged ${logged.length} review action(s); approval authority is stubbed — nothing sent.`);
+      const actuator = await createReviewActuator(s, repoId, { delivery });
+      const records = await actuator.apply(planned);
+      console.log(JSON.stringify(records, null, 2));
+      const count = (st: string) => records.filter((r) => r.status === st).length;
+      console.error(
+        delivery === "live"
+          ? `[actions] mode ${MODE_LABEL[namedModeOf(cfg.authority)]}: sent ${count("sent")} · skipped ${count("skipped")} · failed ${count("failed")} · suppressed ${count("suppressed")}. Approval ${gate.unlocked ? "unlocked" : `locked (${gate.reason})`}.`
+          : `[actions] mode ${MODE_LABEL[namedModeOf(cfg.authority)]}: logged ${records.length} review action(s); nothing was sent (pass --send or set PULLUP_GITHUB_DELIVERY=live).`,
+      );
+      if (count("failed") > 0) process.exitCode = 1;
     });
   });
 
 program
   .command("config")
-  .description("Show the resolved configuration and provenance")
+  .description("Show the resolved configuration and provenance (with --repo: including its saved version)")
   .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
-  .action(async (opts: { config: string }) => {
-    const cfg = loadConfig(opts.config);
+  .option("-r, --repo <repoId>", "layer this repo's latest saved config version on top")
+  .action(async (opts: { config: string; repo?: string }) => {
+    const { namedModeOf } = await import("@pullup/core");
+    const cfg = opts.repo
+      ? await withStore(program.opts<GlobalOpts>(), (s) => loadRepoConfig(s, opts.repo!, opts.config))
+      : loadConfig(opts.config);
     const out = {
       path: cfg.path,
+      version: cfg.version,
+      hash: cfg.hash,
       fileOverrides: cfg.fileOverrides,
+      mode: namedModeOf(cfg.authority),
+      authority: cfg.authority,
+      guardrails: cfg.guardrails,
+      policy: cfg.policy,
+      jev: { ...cfg.jev, weights: undefined },
+      reviewFocus: cfg.reviewFocus,
       priors: cfg.priors,
     };
     console.log(JSON.stringify(out, null, 2));

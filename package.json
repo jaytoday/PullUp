@@ -2,7 +2,7 @@
   "name": "pullup",
   "private": true,
   "version": "0.1.0",
-  "description": "PullUp \u2014 workflows for dynamic CI. Compiles code-review economics from a repo's own PR history: the cost of waiting for human review vs the cost of shipping a bug, and a per-PR max-wait threshold. Built on Eve.",
+  "description": "PullUp — workflows for dynamic CI. Compiles code-review economics from a repo's own PR history: the cost of waiting for human review vs the cost of shipping a bug, and a per-PR max-wait threshold. Built on Eve.",
   "type": "module",
   "packageManager": "pnpm@9.14.2",
   "engines": {
@@ -29,6 +29,8 @@
     "@ai-sdk/anthropic": "^4.0.49",
     "@anthropic-ai/sdk": "^0.70.0",
     "@libsql/client": "^0.17.3",
+    "@octokit/auth-app": "^8.3.1",
+    "@octokit/rest": "^21.0.2",
     "@pullup/core": "workspace:*",
     "@pullup/db": "workspace:*",
     "@pullup/github": "workspace:*",

@@ -9,6 +9,7 @@ import { api, type PullDetail } from "@/lib/api";
 import { devHours, hours, num, pct, shortSha } from "@/lib/format";
 import { safeLatest } from "@/lib/state";
 import { ActionPreview } from "./action-preview";
+import { FindingsList } from "./findings-list";
 import { SignalBreakdown } from "./signal-breakdown";
 
 function Section(props: { title: string; children: JSX.Element; aside?: JSX.Element }) {
@@ -59,7 +60,31 @@ function Detail(props: { d: PullDetail }) {
         <p class="text-sm text-muted-foreground">{dec().reason}</p>
       </header>
 
-      <Show when={policyHits().length > 0}>
+      <Show when={dec().guardrails}>
+        {(g) => (
+          <>
+            <Show when={g().requireHuman.length > 0}>
+              <Callout variant="danger" data-testid="guardrail-require-human">
+                <CalloutTitle>Guardrails require a human</CalloutTitle>
+                <CalloutDescription>
+                  <For each={g().requireHuman}>{(h) => <div class="num">{h}</div>}</For>
+                  <div class="mt-1 opacity-80">Set in Settings → “Always require a human for…”. No model signal can clear it.</div>
+                </CalloutDescription>
+              </Callout>
+            </Show>
+            <Show when={g().approveBlockers.length > 0}>
+              <Callout variant="warning" data-testid="guardrail-blockers">
+                <CalloutTitle>PullUp can't auto-approve this</CalloutTitle>
+                <CalloutDescription>
+                  <For each={g().approveBlockers}>{(b) => <div class="num">{b}</div>}</For>
+                  <div class="mt-1 opacity-80">Once review stops paying, PullUp asks a human instead of approving.</div>
+                </CalloutDescription>
+              </Callout>
+            </Show>
+          </>
+        )}
+      </Show>
+      <Show when={policyHits().length > 0 && !dec().guardrails}>
         <Callout variant="danger">
           <CalloutTitle>Policy requires a human</CalloutTitle>
           <CalloutDescription>
@@ -98,6 +123,12 @@ function Detail(props: { d: PullDetail }) {
         </Callout>
       </Show>
 
+      <Show when={dec().findings}>
+        <Section title="Findings">
+          <FindingsList decision={dec()} />
+        </Section>
+      </Show>
+
       <Section title="Two-cost economics">
         <CostCurveChart points={props.d.curve} wait={dec().waitHours} wStar={dec().maxWaitHours} shadowWStar={risk()?.shadowMaxWaitHours} />
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -105,6 +136,14 @@ function Detail(props: { d: PullDetail }) {
           <Stat label="Max wait w*" value={hours(dec().maxWaitHours)} tone="text-primary" />
           <Stat label="Delay cost D(w)" value={devHours(dec().delayCost)} tone="text-clay" />
           <Stat label="Defect cost E(w)" value={devHours(dec().expectedDefectCost)} tone="text-band-review" />
+          <Show when={dec().guardrails}>
+            {(g) => (
+              <>
+                <Stat label="Tier" value={g().tier} tone={g().tier === "critical" || g().tier === "high" ? "text-band-escalate" : ""} />
+                <Stat label="Lines (counted)" value={`${g().lines}${g().aiAuthored ? " · AI" : ""}`} />
+              </>
+            )}
+          </Show>
           <Stat label="Marginal delay" value={`${num(dec().marginalDelayPerHour, 3)} /h`} />
           <Stat label="Marginal review benefit" value={`${num(dec().marginalReviewBenefitPerHour, 3)} /h`} />
           <Show when={risk()}>

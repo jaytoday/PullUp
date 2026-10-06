@@ -23,7 +23,7 @@ inside a larger gate.
                      │
                      ▼
              5. bot review action: approve / request_changes / defer_to_human
-                (LoggingReviewActuator — logged, never sent)
+                (logged, or sent when delivery is live — docs/github.md)
 ```
 
 ## Modes
@@ -31,11 +31,13 @@ inside a larger gate.
 | mode | effect |
 |---|---|
 | `off` (default) | Layer skipped. Report is **byte-identical** to a build without it (tested against hashes captured on `main`). |
-| `shadow` | Signals computed and shown; recommendations unchanged. Each decision records the `active →` recommendation and `w*` for comparison. |
-| `active` | Policy hits and escalating signals produce `escalate`. The risk multiplier moves `P_defect` **only** with a passing calibration artifact; otherwise `m = 1`. |
+| `shadow` (UI: **Observe**) | Signals computed and shown; recommendations unchanged. Each decision records the `active →` recommendation and `w*` for comparison. |
+| `active` (UI: **Use in decisions**) | Policy hits and escalating signals produce `escalate`. The risk multiplier moves `P_defect` **only** with a passing calibration artifact; otherwise `m = 1`. |
 
-Set via `pullup.config.json` → `jev.mode`, or `--jev-mode` on `report` /
-`analyze` / `actions`.
+Set via `pullup.config.json` → `jev.mode` (or repo Settings), or `--jev-mode` on
+`report` / `analyze` / `actions`. This is separate from the **action mode**
+(Evaluation / Block only / Full), which only controls what PullUp sends — see
+`docs/configuration.md`.
 
 ## Question set `q-v1`
 
@@ -95,7 +97,7 @@ Computed in `signals/aggregate.ts`, in precedence order:
 An attacker therefore has to move a whole change into an allowlisted category,
 not flip one verdict — and even then, approval is only logged.
 
-## Bot review actions (approval is stubbed)
+## Bot review actions
 
 A code-review bot acts through the GitHub pull-request review API.
 `planReviewActions` (`actions/review.ts`) maps each open-PR decision to one:
@@ -106,11 +108,12 @@ A code-review bot acts through the GitHub pull-request review API.
 | `request_changes` | `pulls.createReview { event: "REQUEST_CHANGES" }` | TCM `request-changes` (not re-issuing a human's own) |
 | `approve` | `pulls.createReview { event: "APPROVE" }` | TCM `auto-approve`, or fast-path in active mode |
 
-Deferral beats approval. The only actuator in this build is
-`LoggingReviewActuator`: it persists the exact call (with `commit_id` = head
-SHA, idempotent per pull × SHA × action) to `review_actions` and sends
-nothing. A live octokit actuator is a later, explicit enablement and should
-require the calibration artifact's **fast-path gate** to pass.
+Deferral beats approval. `LoggingReviewActuator` (the default) persists the
+exact call (with `commit_id` = head SHA, keyed per pull × SHA × action) to
+`review_actions` and sends nothing. With `PULLUP_GITHUB_DELIVERY=live`,
+`GitHubReviewActuator` sends it (`docs/github.md`). A real APPROVE also needs
+the repo's calibration artifact to pass its **fast-path gate** (`approvalGate`);
+otherwise it is clamped to a comment.
 
 ## Calibration (`pullup calibrate`)
 
@@ -132,7 +135,7 @@ shipped a defect proxy (revert / hotfix / follow-up fix / reopen).
 - **Multiplier gate** (defaults): ≥ 200 labelled PRs, ≥ 20 defects, AUROC ≥
   0.75, adaptive ECE ≤ 0.05, backtest cost ≤ rules-only.
 - **Fast-path gate** (separate): fast-path precision ≥ 0.98 on merged PRs.
-  It doesn't affect the multiplier; it's the bar for ever un-stubbing approval.
+  It doesn't affect the multiplier; it's the bar for a real APPROVE (with live delivery).
 
 The artifact (`calibration.json`) is versioned and integrity-hashed. It
 applies only when its model id, question-set version, and repo all match, and
@@ -143,7 +146,7 @@ defects): AUROC 0.80, adaptive ECE 0.071 (uncalibrated 0.107), backtest
 −571 dev-hours vs rules-only. The **multiplier gate fails on ECE** and the
 **fast-path gate fails at 0.89 precision**, because synthetic docs PRs ship
 defects at the same rate as the rest. That's the gate doing its job: the
-multiplier stays at 1 and approval stays stubbed.
+multiplier stays at 1 and approval stays clamped to a comment.
 
 ## Models
 

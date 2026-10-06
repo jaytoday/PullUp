@@ -7,6 +7,7 @@ import { Empty, EmptyDescription, EmptyIcon, EmptyTitle } from "@/components/ui/
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ActionBadge } from "@/components/shared/badges";
+import { AuthorityPill } from "@/components/shared/authority-pill";
 import { Panel } from "@/components/shared/panel";
 import { PageHeader, PageSkeleton } from "@/components/layout/repo-layout";
 import { useRepo } from "@/components/layout/repo-context";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { dateTime, shortSha } from "@/lib/format";
 import { ACTIONS, type BotAction } from "@/lib/meta";
 import { safeLatest, withMode } from "@/lib/state";
+import { DeliveryStatus } from "@/components/shared/delivery-status";
 
 export default function Actions() {
   const repo = useRepo();
@@ -30,7 +32,7 @@ export default function Actions() {
     <div class="space-y-5">
       <PageHeader
         title="Review actions"
-        description="What the review bot decided, as GitHub pull-request reviews. Approval authority is stubbed: each call is recorded exactly and nothing is sent."
+        description="What the review bot decided, shaped by the repo's action mode (act · comment only · silent). Each call is recorded exactly and nothing is sent to GitHub in this build."
         actions={
           <Button onClick={() => void repo.logActions()} disabled={repo.busy() !== null}>
             <Show when={repo.busy() === "Log review actions"} fallback={<Send class="size-4" />}>
@@ -46,8 +48,9 @@ export default function Actions() {
         <span>
           <span class="font-medium">0 sent to GitHub.</span>{" "}
           <span class="text-muted-foreground">
-            Logged calls use <code class="num">pulls.createReview</code> (APPROVE / REQUEST_CHANGES / COMMENT) and{" "}
-            <code class="num">pulls.requestReviewers</code> for deferrals. A live actuator is a separate, explicit enablement.
+            Acting calls use <code class="num">pulls.createReview</code> (APPROVE / REQUEST_CHANGES) and{" "}
+            <code class="num">pulls.requestReviewers</code>; comment-only actions become one PullUp comment per PR, edited in place. A live
+            actuator is a separate, explicit enablement.
           </span>
         </span>
       </div>
@@ -95,6 +98,7 @@ export default function Actions() {
                     <div class="flex flex-wrap items-center justify-between gap-2">
                       <div class="flex min-w-0 items-center gap-2.5">
                         <ActionBadge action={a.action} tip={false} />
+                        <Show when={a.authority}>{(l) => <AuthorityPill level={l()} />}</Show>
                         <A
                           href={withMode(`/r/${repo.repoId()}/pulls/${a.pullNumber}`, repo.mode())}
                           class="truncate text-sm font-medium hover:text-primary focus-visible:outline-none focus-visible:underline"
@@ -106,12 +110,16 @@ export default function Actions() {
                     </div>
                     <p class="mt-2 text-sm text-muted-foreground">{a.reason}</p>
                     <div class="num mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                      <span>event {a.call.createReview.event}</span>
+                      <span>{a.call.createReview ? `event ${a.call.createReview.event}` : a.call.upsertComment ? "PullUp comment" : "no call"}</span>
                       <span>commit {shortSha(a.headSha)}</span>
                       <span>source {a.source}</span>
                       <Show when={a.call.requestReviewers}>{(r) => <span>reviewers {r().reviewers.join(", ")}</span>}</Show>
-                      <span class="text-band-review">status {a.status}</span>
+                      <Show when={a.configVersion}>{(v) => <span>config v{v()}</span>}</Show>
+                      <DeliveryStatus record={a} />
                     </div>
+                    <Show when={a.delivery?.errors?.length || a.delivery?.skipped}>
+                      <p class="mt-1.5 text-xs text-muted-foreground">{a.delivery?.errors?.join(" · ") ?? a.delivery?.skipped}</p>
+                    </Show>
                   </div>
                 </li>
               )}

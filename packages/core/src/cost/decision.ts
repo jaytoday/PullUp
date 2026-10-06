@@ -8,9 +8,8 @@
 //   auto-approve     — wait ≥ w*: further review no longer pays
 //   keep-reviewing   — wait < w*: review still pays
 //
-// The walking skeleton recommends, it does not enforce (enforcement is a
-// follow-up phase). Bot review actions are planned and logged only — see
-// actions/review.ts.
+// Decisions recommend; they never merge. Bot review actions are planned from
+// them and logged, or sent when delivery is live — see actions/review.ts.
 
 import { hoursBetween } from "../schema/domain.js";
 import type { PullRecord, ReviewRecord, ReviewState } from "../schema/domain.js";
@@ -25,6 +24,12 @@ import {
 } from "./model.js";
 import type { CostParams } from "./params.js";
 import type { Band, RiskAssessment, TopSignal } from "../signals/aggregate.js";
+import type { Tier } from "../config/guardrails.js";
+import type { GuardrailResult } from "../policy/guardrails.js";
+import type { AppliedRule } from "../config/rules.js";
+import type { SeverityActions, SeverityConfig } from "../config/severity.js";
+import type { Finding, RuleFindingInput } from "../findings/findings.js";
+import { collectFindings } from "../findings/findings.js";
 
 export type Recommendation =
   | "auto-approve"
@@ -58,6 +63,33 @@ export interface RiskOverlay {
   readonly assessment: RiskAssessment;
 }
 
+/** Guardrail overlay on a decision (absent when guardrails aren't evaluated). */
+export interface DecisionGuardrails {
+  readonly tier: Tier;
+  readonly lines: number;
+  readonly files: number;
+  readonly aiAuthored: boolean;
+  /** Category hits — these escalate. */
+  readonly requireHuman: readonly string[];
+  /** The bot may not approve; after w* it defers to a human instead. */
+  readonly approveBlockers: readonly string[];
+  readonly notes: readonly string[];
+}
+
+/** This PR's severity policy after scoped rules. */
+export interface DecisionScope {
+  readonly appliedRules: readonly AppliedRule[];
+  readonly actions: SeverityActions;
+  readonly signalsCanRequestChanges: boolean;
+  readonly extraReviewers: readonly string[];
+}
+
+/** What findings need to be levelled: the severity policy and the high threshold. */
+export interface FindingContext {
+  readonly severity: SeverityConfig;
+  readonly sensitiveHigh: number;
+}
+
 export interface PullDecision {
   readonly pullNumber: number;
   readonly title: string;
@@ -75,6 +107,10 @@ export interface PullDecision {
   readonly recommendation: Recommendation;
   readonly reason: string;
   readonly risk?: DecisionRisk;
+  readonly guardrails?: DecisionGuardrails;
+  /** P0/P1/P2 findings — present when guardrails were evaluated (severity mode). */
+  readonly findings?: readonly Finding[];
+  readonly scope?: DecisionScope;
 }
 
 function lastReviewState(reviews: readonly ReviewRecord[]): ReviewState | null {
@@ -98,12 +134,72 @@ export function decideOne(
   params: CostParams,
   now: string,
   overlay?: RiskOverlay,
+  guard?: GuardrailResult,
+  ctx?: FindingContext,
 ): PullDecision {
-  if (!overlay) return decideCore(pull, reviews, params, now);
+  if (!guard) return decideRisk(pull, reviews, params, now, overlay);
+  const d = decideRisk(pull, reviews, params, now, overlay, guard);
+  const guardrails: DecisionGuardrails = {
+    tier: guard.tier,
+    lines: guard.lines,
+    files: guard.files,
+    aiAuthored: guard.aiAuthored,
+    requireHuman: guard.requireHuman,
+    approveBlockers: guard.approveBlockers,
+    notes: guard.notes,
+  };
+  const approving = d.recommendation === "auto-approve" || (d.risk?.mode === "active" && d.risk.fastPathEligible && d.recommendation === "keep-reviewing");
+  const reason =
+    approving && guard.approveBlockers.length > 0
+      ? `${d.reason} Auto-approval blocked by guardrails: ${guard.approveBlockers.join("; ")}.`
+      : d.reason;
+  if (!ctx) return { ...d, reason, guardrails };
+  const ruleInputs: RuleFindingInput[] = [...guard.ruleFindings];
+  if (d.recommendation === "request-changes" && d.lastReviewState !== "CHANGES_REQUESTED") {
+    ruleInputs.push({ kind: "net-negative", detail: d.reason });
+  }
+  const findings = collectFindings({
+    hits: overlay?.assessment.hits ?? null,
+    signalsActive: overlay?.mode === "active",
+    sensitiveHigh: ctx.sensitiveHigh,
+    severity: ctx.severity,
+    rules: ruleInputs,
+  });
+  return {
+    ...d,
+    reason,
+    guardrails,
+    findings,
+    scope: {
+      appliedRules: guard.appliedRules,
+      actions: guard.scope.actions,
+      signalsCanRequestChanges: ctx.severity.signalsCanRequestChanges,
+      extraReviewers: guard.scope.extraReviewers,
+    },
+  };
+}
+
+function decideRisk(
+  pull: PullRecord,
+  reviews: readonly ReviewRecord[],
+  params: CostParams,
+  now: string,
+  overlay?: RiskOverlay,
+  guard?: GuardrailResult,
+): PullDecision {
+  // A guardrail category hit escalates in every mode, like a policy hit.
+  const guardHits = guard?.requireHuman ?? [];
+  const guardOverride: CoreOverride | undefined =
+    guardHits.length > 0 ? { escalate: true, escalateReason: `Escalated to a human by guardrails: ${guardHits.join("; ")}.` } : undefined;
+  if (!overlay) return decideCore(pull, reviews, params, now, guardOverride);
   const a = overlay.assessment;
   const pDefect = defectProbability(params, pull.changeType) * a.multiplier;
-  const escalate = a.band === "escalate";
-  const activeDecision = decideCore(pull, reviews, params, now, { pDefect, escalate });
+  const escalate = a.band === "escalate" || guardHits.length > 0;
+  const activeDecision = decideCore(pull, reviews, params, now, {
+    pDefect,
+    escalate,
+    escalateReason: guardHits.length > 0 ? guardOverride!.escalateReason : undefined,
+  });
   const risk: DecisionRisk = {
     mode: overlay.mode,
     band: a.band,
@@ -120,7 +216,7 @@ export function decideOne(
   if (overlay.mode === "active") return { ...activeDecision, risk };
   // Shadow: the decision is exactly the layer-off decision; the active outcome
   // is recorded alongside for comparison.
-  const offDecision = decideCore(pull, reviews, params, now);
+  const offDecision = decideCore(pull, reviews, params, now, guardOverride);
   return {
     ...offDecision,
     risk: {
@@ -132,8 +228,9 @@ export function decideOne(
 }
 
 interface CoreOverride {
-  readonly pDefect: number;
+  readonly pDefect?: number;
   readonly escalate: boolean;
+  readonly escalateReason?: string;
 }
 
 function decideCore(
@@ -193,7 +290,7 @@ function decideCore(
     return {
       ...base,
       recommendation: "escalate",
-      reason: "Escalated to a human: policy rule or high-risk signal (see risk reasons).",
+      reason: override.escalateReason ?? "Escalated to a human: policy rule or high-risk signal (see risk reasons).",
     };
   }
 
@@ -233,6 +330,8 @@ export async function decideForRepo(
   params: CostParams,
   now: string,
   overlays?: ReadonlyMap<number, RiskOverlay>,
+  guards?: ReadonlyMap<number, GuardrailResult>,
+  ctx?: FindingContext,
 ): Promise<PullDecision[]> {
   const pulls = await store.listPulls(repoId);
   const reviews = await store.listReviews(repoId);
@@ -243,7 +342,7 @@ export async function decideForRepo(
     else byPull.set(r.pullNumber, [r]);
   }
   return pulls.map((p) =>
-    decideOne(p, byPull.get(p.number) ?? [], params, now, overlays?.get(p.number)),
+    decideOne(p, byPull.get(p.number) ?? [], params, now, overlays?.get(p.number), guards?.get(p.number), ctx),
   );
 }
 

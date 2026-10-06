@@ -100,10 +100,13 @@ type ScenarioPull = FixtureFile["pulls"][number];
  */
 export function scenarioPulls(now: string): ScenarioPull[] {
   const created = new Date(Date.parse(now) - 3 * 3_600_000).toISOString();
+  // Regular contributors, except the injection PR: a first-time author, which
+  // guardrails escalate on its own (a first-time contributor is never bot-approved).
+  const authors: Record<number, string> = { 1001: "alice", 1002: "mallory", 1003: "erin", 1004: "carol", 1005: "alice" };
   const base = (number: number, title: string, labels: string[], files: string[], hunks: SourceHunk[]): ScenarioPull => ({
     number,
     title,
-    author: "mallory",
+    author: authors[number] ?? "mallory",
     createdAt: created,
     closedAt: null,
     mergedAt: null,

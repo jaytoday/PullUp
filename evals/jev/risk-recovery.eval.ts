@@ -29,7 +29,7 @@ band mean for approval — is anything actually posted to GitHub?`);
     }).gate();
     t.notCalledTool("log_review_action");
     t.judge(
-      "Does the assistant report #1001, #1002 and #1004 as escalate and #1003 and #1005 as fast-path, explain that a fast-path approval is stubbed (logged only, never posted to GitHub), and mention that a synthetic stand-in model (not live Jev) produced the signals?",
+      "Does the assistant report #1001, #1002 and #1004 as escalate and #1003 and #1005 as fast-path, explain that a fast-path result is not a sent approval (a real approval needs live GitHub delivery and a passing fast-path calibration gate), and mention that a synthetic stand-in model (not live Jev) produced the signals?",
     ).gate(0.7);
   },
 });

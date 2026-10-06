@@ -64,7 +64,7 @@ export const BANDS: Record<Band, Meta> = {
     soft: "bg-band-fast/12 border-band-fast/35 text-band-fast",
     fill: "bg-band-fast",
     icon: Zap as Icon,
-    hint: "Allowlisted low-risk change, every signal high-confidence. Approval is logged only.",
+    hint: "Allowlisted low-risk change, every signal high-confidence. Approves only once approval is unlocked.",
   },
 };
 

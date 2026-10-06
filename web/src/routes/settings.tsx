@@ -20,7 +20,7 @@ function Row(props: { k: string; v: JSX.Element; from?: boolean }) {
   );
 }
 
-/** Read-only view of the resolved config. Secrets appear as presence only. */
+/** Read-only view of the environment and the file-level config. Secrets appear as presence only. */
 export default function Settings() {
   const { config } = useApp();
   return (
@@ -29,10 +29,11 @@ export default function Settings() {
         {(c) => (
           <div class="space-y-5">
             <PageHeader
-              title="Settings"
+              title="Environment"
               description={
                 <>
-                  Resolved from <span class="num">{c().path ?? "defaults (no pullup.config.json)"}</span>. Read-only here — edit the file and reload.
+                  The file layer, resolved from <span class="num">{c().path ?? "defaults (no pullup.config.json)"}</span>. Read-only here.
+                  Per-repo settings — mode, limits, what always needs a human — live under each repository's <em>Settings</em> and are layered on top.
                 </>
               }
             />

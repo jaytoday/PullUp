@@ -75,7 +75,7 @@ export default function Pulls() {
             <PullTable decisions={filtered()} actions={data.actions} selected={selected() ?? undefined} />
             <p class="text-xs text-muted-foreground">
               Showing <span class="num">{filtered().length}</span> PRs. Meter: teal tick = w*
-              <Show when={repo.mode() === "shadow"}>, ochre tick = w* if active mode were on</Show>.
+              <Show when={repo.mode() === "shadow"}>, ochre tick = w* if signals were used in decisions</Show>.
             </p>
             <PullSheet pullNumber={selected()} onClose={close} />
           </div>

@@ -2038,7 +2038,7 @@
     {
       "number": 1001,
       "title": "Bump CI node version",
-      "author": "mallory",
+      "author": "alice",
       "createdAt": "2026-08-31T21:00:00.000Z",
       "closedAt": null,
       "mergedAt": null,
@@ -2100,7 +2100,7 @@
     {
       "number": 1003,
       "title": "Fix typo in guide",
-      "author": "mallory",
+      "author": "erin",
       "createdAt": "2026-08-31T21:00:00.000Z",
       "closedAt": null,
       "mergedAt": null,
@@ -2132,7 +2132,7 @@
     {
       "number": 1004,
       "title": "Add session refresh",
-      "author": "mallory",
+      "author": "carol",
       "createdAt": "2026-08-31T21:00:00.000Z",
       "closedAt": null,
       "mergedAt": null,
@@ -2164,7 +2164,7 @@
     {
       "number": 1005,
       "title": "Reformat cache module",
-      "author": "mallory",
+      "author": "alice",
       "createdAt": "2026-08-31T21:00:00.000Z",
       "closedAt": null,
       "mergedAt": null,

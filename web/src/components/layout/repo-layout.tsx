@@ -1,5 +1,7 @@
 import { ErrorBoundary, Match, Show, Suspense, Switch, type JSX, type ParentComponent } from "solid-js";
-import { Play, RefreshCw, TriangleAlert } from "lucide-solid";
+import { A } from "@solidjs/router";
+import { MessageSquareText, Play, RefreshCw, TriangleAlert } from "lucide-solid";
+import { MODE_HINT as ACTION_MODE_HINT, MODE_LABEL } from "@pullup/core/config-schema";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -8,13 +10,13 @@ import { Callout, CalloutDescription, CalloutTitle } from "@/components/ui/callo
 import { Spinner } from "@/components/ui/spinner";
 import type { JevMode, ReportResponse } from "@/lib/api";
 import { dateTime } from "@/lib/format";
-import { safeLatest } from "@/lib/state";
+import { SIGNALS_LABEL, safeLatest, withMode } from "@/lib/state";
 import { RepoProvider, useRepo } from "./repo-context";
 
 const MODE_HINT: Record<JevMode, string> = {
-  off: "Jev layer skipped — the plain two-cost report.",
-  shadow: "Signals shown, recommendations unchanged (shows what active would do).",
-  active: "Policy hits and escalations take effect. Approval stays logged-only.",
+  off: "Risk signals skipped — the plain two-cost report (guardrails still apply).",
+  shadow: "Observe: signals shown, recommendations unchanged (shows what using them would do).",
+  active: "Use in decisions: escalations and the review band take effect. Nothing is sent to GitHub.",
 };
 
 function TopBar() {
@@ -34,6 +36,25 @@ function TopBar() {
         </Show>
       </div>
       <div class="flex items-center gap-2">
+        <Show when={safeLatest(repo.report)?.mode}>
+          {(m) => (
+            <Tooltip openDelay={300}>
+              <TooltipTrigger
+                as={A}
+                href={withMode(`/r/${repo.repoId()}/settings`, repo.mode())}
+                class="hidden items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-input hover:text-foreground md:inline-flex"
+                data-testid="action-mode-chip"
+              >
+                <MessageSquareText class="size-3.5" />
+                {MODE_LABEL[m()]}
+              </TooltipTrigger>
+              <TooltipContent class="max-w-72">
+                <div class="font-medium">Action mode · {MODE_LABEL[m()]}</div>
+                <div class="text-muted-foreground">{ACTION_MODE_HINT[m()]} Change it in Settings.</div>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </Show>
         <Tooltip openDelay={300}>
           <TooltipTrigger as="div">
             <ToggleGroup
@@ -41,15 +62,15 @@ function TopBar() {
               size="sm"
               value={repo.mode()}
               onChange={(v) => v && repo.setMode(v as JevMode)}
-              aria-label="Jev layer view mode"
+              aria-label="Risk signals view"
             >
               <ToggleGroupItem value="off">Off</ToggleGroupItem>
-              <ToggleGroupItem value="shadow">Shadow</ToggleGroupItem>
+              <ToggleGroupItem value="shadow">Observe</ToggleGroupItem>
               <ToggleGroupItem value="active">Active</ToggleGroupItem>
             </ToggleGroup>
           </TooltipTrigger>
           <TooltipContent class="max-w-72">
-            <div class="font-medium">View mode · {repo.mode()}</div>
+            <div class="font-medium">Signals view · {SIGNALS_LABEL[repo.mode()]}</div>
             <div class="text-muted-foreground">{MODE_HINT[repo.mode()]} Changes this view only — never your config.</div>
           </TooltipContent>
         </Tooltip>

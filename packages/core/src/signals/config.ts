@@ -3,6 +3,7 @@
 // — is explicit, versioned, and shows up in report provenance.
 
 import { z } from "zod";
+import { screenCustomQuestion } from "../config/screen.js";
 
 export type JevMode = "off" | "shadow" | "active";
 
@@ -53,6 +54,15 @@ export interface JevConfig {
   /** Reviewers requested when the bot defers to a human. */
   readonly humanReviewers: readonly string[];
   readonly gate: PromotionGate;
+  /** Owner-written yes/no questions ("Does this code …?"), raise-only. Max 3. */
+  readonly customQuestions: readonly CustomQuestion[];
+  /** Built-in sensitive questions switched off (never the injection tripwire). */
+  readonly disabledQuestions: readonly string[];
+}
+
+export interface CustomQuestion {
+  /** The fragment after the fixed prefix "Does this code". */
+  readonly text: string;
 }
 
 const SENSITIVE_DEFAULT_WEIGHT = 1.2;
@@ -97,6 +107,8 @@ export const DEFAULT_JEV_CONFIG: JevConfig = {
   concurrency: 8,
   requestsPerMinute: 1200,
   humanReviewers: [],
+  customQuestions: [],
+  disabledQuestions: [],
   gate: {
     minMerged: 200,
     minDefects: 20,
@@ -134,7 +146,24 @@ export const jevConfigSchema = z
     budgetUsdPerRun: z.number().min(0).optional(),
     concurrency: z.number().int().min(1).max(64).optional(),
     requestsPerMinute: z.number().int().min(1).optional(),
-    humanReviewers: z.array(z.string()).optional(),
+    humanReviewers: z
+      .array(z.string().regex(/^@?[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\/[A-Za-z0-9._-]{1,100})?$/, "not a GitHub user or org/team"))
+      .max(20)
+      .optional(),
+    customQuestions: z
+      .array(
+        z
+          .object({
+            text: z.string().superRefine((t, ctx) => {
+              const r = screenCustomQuestion(t);
+              for (const p of r.problems) ctx.addIssue({ code: "custom", message: `Custom question ${p}.` });
+            }),
+          })
+          .strict(),
+      )
+      .max(3, "At most 3 custom questions.")
+      .optional(),
+    disabledQuestions: z.array(z.string().max(64)).max(20).optional(),
     gate: z
       .object({
         minMerged: z.number().int().min(0).optional(),
@@ -159,5 +188,7 @@ export function resolveJevConfig(file: JevConfigFile = {}): JevConfig {
     gate: { ...DEFAULT_JEV_CONFIG.gate, ...file.gate },
     calibrationPath: file.calibrationPath ?? null,
     humanReviewers: file.humanReviewers ?? [],
+    customQuestions: (file.customQuestions ?? []).map((q) => ({ text: screenCustomQuestion(q.text).normalized })),
+    disabledQuestions: file.disabledQuestions ?? [],
   };
 }
