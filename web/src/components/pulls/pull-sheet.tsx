@@ -1,4 +1,7 @@
 import { createResource, For, Show, type JSX } from "solid-js";
+import { SearchCheck } from "lucide-solid";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Callout, CalloutDescription, CalloutTitle } from "@/components/ui/callout";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +37,7 @@ function Stat(props: { label: string; value: JSX.Element; tone?: string }) {
 }
 
 function Detail(props: { d: PullDetail }) {
+  const repo = useRepo();
   const dec = () => props.d.decision;
   const risk = () => dec().risk;
   const policyHits = () => props.d.policy.hits;
@@ -124,7 +128,19 @@ function Detail(props: { d: PullDetail }) {
       </Show>
 
       <Show when={dec().findings}>
-        <Section title="Findings">
+        <Section
+          title="Findings"
+          aside={
+            <Show when={(dec().findings ?? []).some((f) => f.source === "signal" && f.kind === "signal" && f.level !== "p2")}>
+              <Button variant="secondary" size="xs" onClick={() => void repo.verify(props.d.pull.number)} disabled={repo.busy() !== null} data-testid="check-evidence">
+                <Show when={repo.busy() === "Check evidence"} fallback={<SearchCheck class="size-3.5" />}>
+                  <Spinner size="sm" />
+                </Show>
+                Check evidence
+              </Button>
+            </Show>
+          }
+        >
           <FindingsList decision={dec()} inline={props.d.plannedAction?.inline} comments={props.d.findingComments ?? []} />
         </Section>
       </Show>

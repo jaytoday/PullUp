@@ -92,10 +92,14 @@ function body(f: Finding, first: FindingLocation, rest: readonly FindingLocation
           .join("\n")}\n\n</details>`
       : "";
   const q = f.id.replace(/^signal:/, "");
+  const v = f.verdict?.accepted && f.verdict.verdict === "confirmed" ? f.verdict : null;
+  const evidence = v
+    ? `\n\nChecked against the code: ${v.evidence.map((e) => `\`${e.path}:${e.line}\` ${"`"}${e.quote.replace(/`/g, "'")}${"`"}`).join("; ")}.${v.fix ? ` Suggested fix: ${v.fix}` : ""}`
+    : "";
   return [
-    `**${c.title}** · ${LEVEL_WORD[f.level]}${observe}`,
+    `**${c.title}** · ${LEVEL_WORD[f.level]}${observe}${v ? " · confirmed" : ""}`,
     "",
-    `${c.why}${p ? ` (\`${q}\`, ${p})` : ""} A human should confirm the change is intended and safe.${also}`,
+    `${c.why}${p ? ` (\`${q}\`, ${p})` : ""} A human should confirm the change is intended and safe.${evidence}${also}`,
     "",
     `<sub>PullUp${questionSet ? ` \`${questionSet}\`` : ""} · \`${f.id}\` · head \`${headSha.slice(0, 7)}\` · \`${first.path}:${first.startLine}\`</sub>`,
     findingMarker(key),

@@ -29,6 +29,8 @@ import type { ChecksConfig } from "./checks.js";
 import { DEFAULT_CHECKS, checksSchema, resolveChecks } from "./checks.js";
 import type { InlineConfig } from "./inline.js";
 import { DEFAULT_INLINE, inlineSchema, resolveInline } from "./inline.js";
+import type { VerifyConfig } from "./verify.js";
+import { DEFAULT_VERIFY, resolveVerify, verifySchema } from "./verify.js";
 
 export const PRESET_IDS = ["conservative", "balanced", "fast-lane"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
@@ -175,6 +177,8 @@ export const configFileSchema = z
     checks: checksSchema.optional(),
     /** Inline finding comments on the diff (see config/inline.ts). */
     inline: inlineSchema.optional(),
+    /** Evidence verifier for strong risk-signal findings (see config/verify.ts). */
+    verify: verifySchema.optional(),
     /** Owner's review focus: context for the rationale writer only, never for decisions. */
     review: z
       .object({
@@ -207,6 +211,7 @@ export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
     rules: _rules,
     checks: _checks,
     inline: _inline,
+    verify: _verify,
     review: _review,
     preset: _preset,
     ...file
@@ -263,6 +268,7 @@ export interface ResolvedLayers {
   readonly rules: readonly ReviewRule[];
   readonly checks: ChecksConfig;
   readonly inline: InlineConfig;
+  readonly verify: VerifyConfig;
   /** Normalised review focus, or null. */
   readonly reviewFocus: string | null;
 }
@@ -280,6 +286,7 @@ export function resolveConfigFile(file: ConfigFile = {}): ResolvedLayers {
     rules: (file.rules ?? []) as ReviewRule[],
     checks: resolveChecks(file.checks),
     inline: resolveInline(file.inline),
+    verify: resolveVerify(file.verify),
     reviewFocus: focus === "" ? null : focus,
   };
 }
@@ -352,6 +359,7 @@ export function defaultConfigFile(): ConfigFile {
     rules: [],
     checks: { ...DEFAULT_CHECKS },
     inline: { ...DEFAULT_INLINE },
+    verify: { ...DEFAULT_VERIFY },
     review: { focus: "" },
     preset: null,
   };

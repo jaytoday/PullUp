@@ -43,6 +43,37 @@ function InlineStatus(props: { findingId: string; inline?: PlannedReviewAction["
   );
 }
 
+const VERDICT: Record<string, { label: string; cls: string; hint: string }> = {
+  confirmed: { label: "Confirmed", cls: "border-band-escalate/45 text-band-escalate", hint: "The evidence check found changed lines that do what the question asks." },
+  "not-confirmed": { label: "Not confirmed", cls: "border-border text-muted-foreground", hint: "The evidence check didn't confirm this. It still asks a human; it never lowers the level." },
+  unsure: { label: "Unsure", cls: "border-band-review/45 text-band-review", hint: "The evidence check couldn't tell, or its answer failed PullUp's checks." },
+};
+
+/** The evidence verifier's verdict on one finding: a chip, the quoted lines and the suggested fix. */
+function VerdictView(props: { verdict: NonNullable<Finding["verdict"]> }) {
+  const v = () => (props.verdict.accepted || props.verdict.verdict !== "confirmed" ? props.verdict.verdict : "unsure");
+  return (
+    <span class="flex w-full flex-col gap-1 pl-0.5 text-[11px]" data-testid="verdict" data-verdict={v()}>
+      <span class="flex flex-wrap items-center gap-2">
+        <span class={cn("rounded border px-1 py-px font-semibold", VERDICT[v()]!.cls)} title={VERDICT[v()]!.hint}>
+          {VERDICT[v()]!.label}
+        </span>
+        <span class="text-muted-foreground">{props.verdict.reason}</span>
+      </span>
+      <For each={props.verdict.accepted ? props.verdict.evidence : []}>
+        {(e) => (
+          <code class="num block truncate rounded bg-muted/40 px-1.5 py-0.5 text-[11px]">
+            {e.path}:{e.line} {e.quote}
+          </code>
+        )}
+      </For>
+      <Show when={props.verdict.fix}>
+        <span class="text-muted-foreground">Suggested fix: {props.verdict.fix}</span>
+      </Show>
+    </span>
+  );
+}
+
 /** Findings grouped P0 / P1 / P2, with source and whether they count toward the action. */
 export function FindingsList(props: { decision: PullDecision; inline?: PlannedReviewAction["inline"]; comments?: Comments }) {
   const findings = () => props.decision.findings ?? [];
@@ -78,6 +109,7 @@ export function FindingsList(props: { decision: PullDecision; inline?: PlannedRe
                           {f.source === "rule" ? "rule" : "model signal"}
                           {f.active ? "" : " · observe only"}
                         </span>
+                        <Show when={f.verdict}>{(v) => <VerdictView verdict={v()} />}</Show>
                         <Show when={f.source === "signal" && (props.inline || (props.comments ?? []).length > 0)}>
                           <InlineStatus findingId={f.id} inline={props.inline} comments={props.comments ?? []} />
                         </Show>

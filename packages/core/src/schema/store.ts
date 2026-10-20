@@ -7,6 +7,7 @@
 import type { ReviewActionRecord } from "../actions/review.js";
 import type { ConfigFile } from "../config/schema.js";
 import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
+import type { VerdictRecord, VerifyRunRecord } from "../verify/types.js";
 import type {
   AgentRecord,
   ControlState,
@@ -63,6 +64,13 @@ export interface PullStore {
   /** PullUp's own inline finding comments, keyed by (repo, pull, finding key). */
   upsertFindingComment(rec: FindingCommentRecord): Promise<void>;
   listFindingComments(repoId: string, pullNumber?: number): Promise<FindingCommentRecord[]>;
+
+  /** Evidence-verifier verdict cache (content-addressed) and run log. */
+  getVerdict(cacheKey: string): Promise<VerdictRecord | null>;
+  upsertVerdict(rec: VerdictRecord): Promise<void>;
+  listVerdicts(repoId: string, pullNumber?: number): Promise<VerdictRecord[]>;
+  recordVerifyRun(run: VerifyRunRecord): Promise<void>;
+  listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]>;
 
   /** Append-only per-repo config versions (the "repo" config layer), oldest first. */
   listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]>;
@@ -127,6 +135,8 @@ export class InMemoryStore implements PullStore {
   private signalRuns: SignalRunRecord[] = [];
   private reviewActions = new Map<string, ReviewActionRecord>();
   private findingComments = new Map<string, FindingCommentRecord>();
+  private verdicts = new Map<string, VerdictRecord>();
+  private verifyRuns: VerifyRunRecord[] = [];
   private configVersions: ConfigVersionRecord[] = [];
   private controlStates = new Map<string, ControlState>();
   private enrollments = new Map<string, RepoEnrollment>();
@@ -247,6 +257,26 @@ export class InMemoryStore implements PullStore {
     return [...this.findingComments.values()].filter(
       (c) => c.repoId === repoId && (pullNumber === undefined || c.pullNumber === pullNumber),
     );
+  }
+
+  async getVerdict(cacheKey: string): Promise<VerdictRecord | null> {
+    return this.verdicts.get(cacheKey) ?? null;
+  }
+
+  async upsertVerdict(rec: VerdictRecord): Promise<void> {
+    this.verdicts.set(rec.cacheKey, rec);
+  }
+
+  async listVerdicts(repoId: string, pullNumber?: number): Promise<VerdictRecord[]> {
+    return [...this.verdicts.values()].filter((v) => v.repoId === repoId && (pullNumber === undefined || v.pullNumber === pullNumber));
+  }
+
+  async recordVerifyRun(run: VerifyRunRecord): Promise<void> {
+    this.verifyRuns.push(run);
+  }
+
+  async listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]> {
+    return this.verifyRuns.filter((r) => r.repoId === repoId);
   }
 
   async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {

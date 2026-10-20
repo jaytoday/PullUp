@@ -92,7 +92,11 @@ export function checkAnnotations(
         end_line: loc.endLine,
         annotation_level: LEVEL_ANNOTATION[f.level],
         title: `${f.level.toUpperCase()} ${f.title}`.slice(0, 255),
-        message: `${f.detail} (${f.source === "rule" ? "rule" : "risk signal"}; PullUp ${f.id})`,
+        message: `${f.detail} (${f.source === "rule" ? "rule" : "risk signal"}; PullUp ${f.id})${
+          f.verdict?.accepted && f.verdict.verdict === "confirmed"
+            ? `\nConfirmed against the code: ${f.verdict.evidence.map((e) => `${e.path}:${e.line} ${e.quote}`).join("; ")}${f.verdict.fix ? `\nSuggested fix: ${f.verdict.fix}` : ""}`
+            : ""
+        }`,
       });
     }
   }

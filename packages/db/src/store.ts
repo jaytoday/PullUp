@@ -12,6 +12,8 @@ import type {
   PullRecord,
   ReviewActionRecord,
   FindingCommentRecord,
+  VerdictRecord,
+  VerifyRunRecord,
   SignalRecord,
   SignalRunRecord,
   RepositoryRecord,
@@ -33,6 +35,8 @@ import {
   repositories,
   reviewActions,
   findingComments,
+  verdicts,
+  verifyRuns,
   repoConfigVersions,
   reviewComments,
   reviews,
@@ -165,6 +169,16 @@ export class SqliteStore implements PullStore {
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, finding_key TEXT NOT NULL,
         record TEXT NOT NULL, updated_at TEXT NOT NULL,
         PRIMARY KEY (repo_id, pull_number, finding_key))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS verdicts (
+        cache_key TEXT PRIMARY KEY, repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL,
+        record TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS verify_runs (
+        repo_id TEXT NOT NULL, run_at TEXT NOT NULL, verifier_id TEXT NOT NULL,
+        record TEXT NOT NULL, PRIMARY KEY (repo_id, run_at, verifier_id))`,
     );
     await this.client.execute(
       `CREATE TABLE IF NOT EXISTS repo_config_versions (
@@ -571,6 +585,37 @@ export class SqliteStore implements PullStore {
           .from(findingComments)
           .where(and(eq(findingComments.repoId, repoId), eq(findingComments.pullNumber, pullNumber)));
     return rows.map((r) => JSON.parse(r.record) as FindingCommentRecord);
+  }
+
+  async getVerdict(cacheKey: string): Promise<VerdictRecord | null> {
+    const rows = await this.db.select().from(verdicts).where(eq(verdicts.cacheKey, cacheKey));
+    return rows[0] ? (JSON.parse(rows[0].record) as VerdictRecord) : null;
+  }
+
+  async upsertVerdict(rec: VerdictRecord): Promise<void> {
+    await this.db
+      .insert(verdicts)
+      .values({ cacheKey: rec.cacheKey, repoId: rec.repoId, pullNumber: rec.pullNumber, record: JSON.stringify(rec), createdAt: rec.createdAt })
+      .onConflictDoUpdate({ target: verdicts.cacheKey, set: { record: JSON.stringify(rec), createdAt: rec.createdAt } });
+  }
+
+  async listVerdicts(repoId: string, pullNumber?: number): Promise<VerdictRecord[]> {
+    const rows = pullNumber === undefined
+      ? await this.db.select().from(verdicts).where(eq(verdicts.repoId, repoId))
+      : await this.db.select().from(verdicts).where(and(eq(verdicts.repoId, repoId), eq(verdicts.pullNumber, pullNumber)));
+    return rows.map((r) => JSON.parse(r.record) as VerdictRecord);
+  }
+
+  async recordVerifyRun(run: VerifyRunRecord): Promise<void> {
+    await this.db
+      .insert(verifyRuns)
+      .values({ repoId: run.repoId, runAt: run.runAt, verifierId: run.verifierId, record: JSON.stringify(run) })
+      .onConflictDoUpdate({ target: [verifyRuns.repoId, verifyRuns.runAt, verifyRuns.verifierId], set: { record: JSON.stringify(run) } });
+  }
+
+  async listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]> {
+    const rows = await this.db.select().from(verifyRuns).where(eq(verifyRuns.repoId, repoId)).orderBy(asc(verifyRuns.runAt));
+    return rows.map((r) => JSON.parse(r.record) as VerifyRunRecord);
   }
 
   async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {

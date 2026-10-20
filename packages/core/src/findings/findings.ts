@@ -8,6 +8,7 @@
 
 import type { SeverityConfig, SeverityLevel } from "../config/severity.js";
 import type { SignalHit } from "../signals/aggregate.js";
+import type { FindingVerdict } from "../verify/types.js";
 
 export type FindingSource = "rule" | "signal";
 
@@ -24,6 +25,8 @@ export interface Finding {
   readonly active: boolean;
   /** Signal findings: the unit keys (`path#hunkIndex[.part]`) behind it, for locating it in the diff. */
   readonly units?: readonly string[];
+  /** The evidence verifier's checked verdict, when one is cached for these hunks (verify/). */
+  readonly verdict?: FindingVerdict;
 }
 
 export interface RuleFindingInput {

@@ -25,7 +25,7 @@ agent/      Eve agent — agent.ts, instructions.ts, channels/github.ts,
             lib/core.ts (store+config wiring), tools/ (5 thin wrappers)
 evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
-packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/server · @pullup/cli
+packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/verify · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
 docs/       architecture · cost-model · analytics · jev · configuration · github · authority
 ```
@@ -102,6 +102,17 @@ docs/       architecture · cost-model · analytics · jev · configuration · g
   `pnpm pullup agents approve <hash>`.
 - Scenario tests: `packages/github/src/conformance.test.ts`, named after the
   control each one evidences. Shared fakes: `harness.test-util.ts`.
+
+## Evidence verifier (`@pullup/verify`, core `verify/`)
+
+- Core stays network-free: verifiers plug in through the `EvidenceVerifier`
+  port; `SyntheticEvidenceVerifier` (in `@pullup/core/testing`) is the offline
+  default. Live Claude verifier tests use a scripted fake client.
+- Raise-only: a verdict is attached to a finding (`attachVerdicts`) and can
+  only let it request changes under `signalsCanRequestChanges: "verified"`.
+  Never let a verdict remove or re-level a finding (tests in `verify/verify.test.ts`).
+- Every quote is re-checked in `acceptVerdict`; never show unaccepted evidence.
+- Bump `VERIFIER_PROMPT_VERSION` on any prompt, tool or schema change (cache key).
 
 ## Configuration (`docs/configuration.md`)
 

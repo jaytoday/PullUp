@@ -34,6 +34,7 @@ import type {
   EvidenceSheet,
   ChainBreak,
   FindingCommentRecord,
+  VerifyRunRecord,
 } from "@pullup/core";
 
 export type {
@@ -260,6 +261,11 @@ export const api = {
     request<{ run: SignalRunRecord; note: string | null }>(`${repoPath(repoId)}/signals`, {
       method: "POST",
       body: JSON.stringify({ scope: "open" }),
+    }),
+  verify: (repoId: string, mode: JevMode, pullNumber?: number) =>
+    request<{ run: VerifyRunRecord; note: string | null }>(`${repoPath(repoId)}/verify${q(mode)}`, {
+      method: "POST",
+      body: JSON.stringify(pullNumber ? { pullNumber } : {}),
     }),
   logActions: (repoId: string, mode: JevMode) =>
     request<{ logged: ReviewActionRecord[]; delivery?: "log" | "live"; sent: number; failed?: number; denied?: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),

@@ -81,6 +81,38 @@ for loosening because none of them changes a decision or an action.
 comments ride on PullUp's action for the pull request; a pull request with no
 action (for example still inside its wait window with nothing to flag) gets none.
 
+## Evidence check (`verify`)
+
+```json
+"verify": { "enabled": false, "model": "claude-opus-5", "maxPerPull": 3, "inObserve": false, "budgetUsdPerDay": 5 }
+```
+
+A second, read-only pass on the risk-signal findings that could change an
+action: built-in questions at P0 or P1, active (or observed with `inObserve`),
+at most `maxPerPull` per pull request, never on a pull request where the
+injection tripwire fired. It runs only when asked (`pullup verify`, or "Check
+evidence" on a pull request) and is cached by finding, hunk contents and
+verifier version.
+
+- **The live verifier** (`@pullup/verify`) is a Claude tool loop with three
+  read-only tools over the repo at the head commit (read a file, list a
+  directory, search code) and a `submit_verdict` tool. It sees the question
+  that fired and the finding's hunks with line numbers, never the pull
+  request's title, body or comments. Server-side refusal fallbacks are on; a
+  refusal or error is `unsure` and is not cached. Without `ANTHROPIC_API_KEY`
+  the deterministic synthetic verifier is used.
+- **Checked in core** (`verify/accept.ts`): a `confirmed` verdict is accepted
+  only if every quote is an added or removed line of the finding's own hunks
+  at the stated path and line (±3), and the fix and reason pass the free-text
+  screen. Otherwise it is downgraded to `unsure`.
+- **Raise-only:** with `severity.signalsCanRequestChanges: "verified"`, an
+  accepted confirmed P0/P1 signal finding may request changes; every other
+  verdict leaves the finding asking a human. A verdict never removes a finding,
+  lowers a level, changes a recommendation or `w*`, or enables an approval.
+  Confirmed evidence is quoted in the decision comment, inline comments and
+  check annotations.
+- `budgetUsdPerDay` stops live calls once the day's recorded spend reaches it.
+
 ## Guardrails (the approval envelope)
 
 `guardrails` runs in every Jev mode. Two outcomes:

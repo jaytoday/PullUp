@@ -72,5 +72,6 @@ export function configReportOptions(cfg: ResolvedConfig) {
   return {
     guardrails: { config: cfg.guardrails, policy: cfg.policy, rules: cfg.rules, severity: cfg.severity },
     configProvenance: { version: cfg.version, hash: cfg.hash },
+    verify: cfg.verify.enabled,
   } as const;
 }

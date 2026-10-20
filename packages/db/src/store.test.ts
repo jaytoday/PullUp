@@ -193,6 +193,27 @@ describe("SqliteStore authority layer", () => {
     expect(await store.listFindingComments("acme/api")).toHaveLength(2);
   });
 
+  it("verdicts and verify runs round-trip", async () => {
+    const store = await openStore();
+    const rec = {
+      cacheKey: "k1",
+      repoId: "acme/api",
+      pullNumber: 7,
+      findingId: "signal:touchesAuthz",
+      hunksHash: "h",
+      verdict: { verdict: "confirmed" as const, accepted: true, evidence: [{ path: "a.ts", line: 3, quote: "x = 1;" }], fix: null, reason: "r", verifierId: "v1" },
+      costUsd: 0.02,
+      createdAt: "2026-10-19T00:00:00.000Z",
+    };
+    await store.upsertVerdict(rec);
+    expect(await store.getVerdict("k1")).toEqual(rec);
+    expect(await store.listVerdicts("acme/api", 7)).toEqual([rec]);
+    expect(await store.getVerdict("nope")).toBeNull();
+    const run = { repoId: "acme/api", runAt: "2026-10-19T00:00:00.000Z", verifierId: "v1", verified: 1, cached: 0, skipped: [], costUsd: 0.02, errors: [] };
+    await store.recordVerifyRun(run);
+    expect(await store.listVerifyRuns("acme/api")).toEqual([run]);
+  });
+
   it("permit nonces are single use", async () => {
     const store = await openStore();
     expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(true);

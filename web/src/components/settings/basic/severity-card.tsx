@@ -8,7 +8,6 @@ import {
   type SeverityAction,
 } from "@pullup/core/config-schema";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { SwitchField } from "../controls";
 import { FieldRow, SettingsCard } from "../field-row";
 import { useSettings } from "../settings-context";
 
@@ -46,10 +45,22 @@ export function SeverityCard() {
           </FieldRow>
         )}
       </For>
-      <SwitchField
+      <FieldRow
         path="severity.signalsCanRequestChanges"
-        help="Off (recommended): only rule-confirmed findings request changes; findings from model signals ask a human instead, so a false positive never blocks an author. The injection tripwire always asks a human."
-      />
+        help="Off (recommended): only rule-confirmed findings request changes; findings from model signals ask a human instead, so a false positive never blocks an author. Verified: a model finding may request changes only when the evidence check confirmed it with quotes from the diff (needs “Check strong findings against the code”). The injection tripwire always asks a human."
+      >
+        <ToggleGroup
+          type="single"
+          size="sm"
+          value={String(s.get<boolean | "verified">("severity.signalsCanRequestChanges"))}
+          onChange={(v) => v && s.set("severity.signalsCanRequestChanges", v === "verified" ? "verified" : v === "true")}
+          aria-label="Let model signals request changes"
+        >
+          <ToggleGroupItem value="false">Off</ToggleGroupItem>
+          <ToggleGroupItem value="verified">Verified only</ToggleGroupItem>
+          <ToggleGroupItem value="true">Always</ToggleGroupItem>
+        </ToggleGroup>
+      </FieldRow>
     </SettingsCard>
   );
 }

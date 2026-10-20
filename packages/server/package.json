@@ -1,7 +1,7 @@
 {
   "name": "@pullup/server",
   "version": "0.1.0",
-  "description": "PullUp local JSON API for the web dashboard: reports, PR triage detail, logged review actions, calibration — thin over @pullup/core, @pullup/db, @pullup/jev.",
+  "description": "PullUp local JSON API for the web dashboard: reports, PR triage detail, logged review actions, calibration \u2014 thin over @pullup/core, @pullup/db, @pullup/jev.",
   "type": "module",
   "exports": {
     ".": {
@@ -22,6 +22,7 @@
     "@pullup/db": "workspace:*",
     "@pullup/github": "workspace:*",
     "@pullup/jev": "workspace:*",
+    "@pullup/verify": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

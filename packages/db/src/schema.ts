@@ -152,6 +152,27 @@ export const findingComments = sqliteTable(
   (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.findingKey] })],
 );
 
+/** Evidence-verifier verdict cache (content-addressed by verifier, finding and hunks). */
+export const verdicts = sqliteTable("verdicts", {
+  cacheKey: text("cache_key").primaryKey(),
+  repoId: text("repo_id").notNull(),
+  pullNumber: integer("pull_number").notNull(),
+  record: text("record").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** One row per verifier run (counts, cost, errors). */
+export const verifyRuns = sqliteTable(
+  "verify_runs",
+  {
+    repoId: text("repo_id").notNull(),
+    runAt: text("run_at").notNull(),
+    verifierId: text("verifier_id").notNull(),
+    record: text("record").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.runAt, t.verifierId] })],
+);
+
 /** Append-only per-repo config versions (the "repo" layer over pullup.config.json). */
 export const repoConfigVersions = sqliteTable(
   "repo_config_versions",

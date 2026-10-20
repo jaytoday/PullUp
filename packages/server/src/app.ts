@@ -58,6 +58,7 @@ import {
   resolveDelivery,
   resolveQuestionSet,
   runSignals,
+  runVerification,
   screenCustomQuestion,
   withRepoLayer,
 } from "@pullup/core";
@@ -75,6 +76,7 @@ import type {
 import type { CredentialBroker } from "@pullup/github";
 import { createReviewActuator, credentialKind, loadFixture } from "@pullup/github";
 import { prepareJevRuntime, resolveSignalModel } from "@pullup/jev";
+import { resolveEvidenceVerifier } from "@pullup/verify";
 import { z } from "zod";
 
 export interface AppDeps {
@@ -490,6 +492,36 @@ export function createApp(deps: AppDeps) {
           openOnly: body.scope === "open",
           budgetUsd: cfg.jev.budgetUsdPerRun,
           now: now(),
+        });
+        return { run, note };
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/verify-runs$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        return (await deps.store.listVerifyRuns(repoId)).reverse();
+      },
+    ],
+    [
+      // Model calls: checks strong risk-signal findings against the code (evidence verifier).
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/verify$/,
+      async (m, url, req) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const body = z.object({ pullNumber: z.number().int().positive().optional() }).parse(await readBody(req));
+        const cfg = await configFor(repoId);
+        if (!cfg.verify.enabled) throw new HttpError(409, "The evidence verifier is off for this repo (Settings → Check strong findings against the code).");
+        const { report: r } = await report(repoId, parseMode(url, cfg), cfg);
+        const { verifier, note } = resolveEvidenceVerifier({ config: cfg.verify, env });
+        const run = await runVerification(deps.store, repoId, r.decisions, verifier, {
+          config: cfg.verify,
+          qs: resolveQuestionSet(cfg.jev),
+          now: now(),
+          ...(body.pullNumber ? { pullNumbers: [body.pullNumber] } : {}),
         });
         return { run, note };
       },

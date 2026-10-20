@@ -33,6 +33,11 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
 - **Inline finding comments** (optional) — located findings posted on the
   diff lines, never duplicated across pushes, and resolved by PullUp when a
   later push fixes them (only PullUp's own threads). Information only.
+- **Evidence check** (optional) — a read-only Claude pass on strong
+  risk-signal findings that quotes the changed lines behind them; PullUp
+  re-checks every quote against the diff. Raise-only: a confirmed finding may
+  request changes (`signalsCanRequestChanges: "verified"`), nothing it says can
+  remove a finding or enable an approval. `pullup verify`, `@pullup/verify`.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 
@@ -69,6 +74,7 @@ node packages/cli/dist/index.js analyze fixtures/congested \
 | `analyze <repoId> [--fixture] [--out] [--jev-mode]` | write `.md` + `.json` report |
 | `report <repoId> [--jev-mode]` | print the markdown report |
 | `signals <repoId> [--model] [--record] [--pr] [--open-only]` | evaluate Jev risk signals (cached by content) |
+| `verify <repoId> [--verifier claude\|synthetic] [--pr]` | check strong risk-signal findings against the code (cached by content) |
 | `calibrate <repoId> [--model] [--out]` | fit + validate the risk model on labelled history; write the artifact |
 | `actions <repoId> [--jev-mode] [--send]` | plan bot review actions; **log** them, or send to GitHub with `--send` / `PULLUP_GITHUB_DELIVERY=live` |
 | `config [--config <path>]` | show resolved priors + provenance |

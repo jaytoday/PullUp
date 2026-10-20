@@ -27,7 +27,7 @@ import type { Band, RiskAssessment, TopSignal } from "../signals/aggregate.js";
 import type { Tier } from "../config/guardrails.js";
 import type { GuardrailResult } from "../policy/guardrails.js";
 import type { AppliedRule } from "../config/rules.js";
-import type { SeverityActions, SeverityConfig } from "../config/severity.js";
+import type { SeverityActions, SeverityConfig, SignalsCanRequestChanges } from "../config/severity.js";
 import type { Finding, RuleFindingInput } from "../findings/findings.js";
 import { collectFindings } from "../findings/findings.js";
 
@@ -80,7 +80,7 @@ export interface DecisionGuardrails {
 export interface DecisionScope {
   readonly appliedRules: readonly AppliedRule[];
   readonly actions: SeverityActions;
-  readonly signalsCanRequestChanges: boolean;
+  readonly signalsCanRequestChanges: SignalsCanRequestChanges;
   readonly extraReviewers: readonly string[];
 }
 

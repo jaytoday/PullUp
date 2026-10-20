@@ -26,6 +26,8 @@ interface RepoContextValue {
   runSignals: () => Promise<void>;
   logActions: () => Promise<void>;
   calibrate: () => Promise<void>;
+  /** Evidence verifier on one PR's strong findings (model calls). */
+  verify: (pullNumber: number) => Promise<void>;
 }
 
 const RepoContext = createContext<RepoContextValue>();
@@ -70,6 +72,15 @@ export const RepoProvider: ParentComponent = (props) => {
     version,
     refresh,
     busy,
+    verify: (pullNumber: number) =>
+      guarded("Check evidence", async () => {
+        const { run, note } = await api.verify(repoId(), mode(), pullNumber);
+        showToast({
+          title: `Evidence: ${run.verified} checked · ${run.cached} cached`,
+          description: `${usd(run.costUsd)} · ${run.verifierId}${run.skipped.length ? ` · ${run.skipped.length} skipped (${run.skipped[0]!.reason})` : ""}${run.errors.length ? ` · ${run.errors.length} error(s)` : ""}${note ? ` — ${note}` : ""}`,
+          variant: run.errors.length ? "warning" : "success",
+        });
+      }),
     runSignals: () =>
       guarded("Run signals", async () => {
         const { run, note } = await api.runSignals(repoId());

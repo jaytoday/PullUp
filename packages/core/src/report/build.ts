@@ -1,5 +1,6 @@
 // Assembles the full typed PullUp report: analytics + cost params + decisions.
 
+import { attachVerdicts } from "../verify/run.js";
 import type { AnalyticsReport } from "../analytics/types.js";
 import type { CostPriors } from "../config/config.js";
 import { decideForRepo, summarizeDecisions } from "../cost/decision.js";
@@ -70,6 +71,8 @@ export interface BuildReportOptions {
     readonly severity?: SeverityConfig;
   };
   readonly configProvenance?: ConfigProvenance;
+  /** Attach cached evidence-verifier verdicts to signal findings. Absent ⇒ the report is unchanged. */
+  readonly verify?: boolean;
 }
 
 export async function buildReport(
@@ -93,7 +96,8 @@ export async function buildReport(
         sensitiveHigh: (opts.jev?.config ?? DEFAULT_JEV_CONFIG).thresholds.sensitiveHigh,
       }
     : undefined;
-  const decisions = await decideForRepo(store, repoId, params, now, risk?.overlays, guards, ctx);
+  const decided = await decideForRepo(store, repoId, params, now, risk?.overlays, guards, ctx);
+  const decisions = opts.verify ? await attachVerdicts(store, repoId, decided) : decided;
 
   const maxWaits = decisions.map((d) => d.maxWaitHours);
   const sorted = [...maxWaits].sort((a, b) => a - b);

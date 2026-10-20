@@ -54,11 +54,16 @@ export interface SeverityActions {
 
 export interface SeverityConfig {
   readonly actions: SeverityActions;
-  /** Let signal (model) findings request changes, not just rule-confirmed ones. */
-  readonly signalsCanRequestChanges: boolean;
+  /**
+   * Let signal (model) findings request changes, not just rule-confirmed ones:
+   * false (ask a human), "verified" (only with an accepted confirmed verdict), or true.
+   */
+  readonly signalsCanRequestChanges: SignalsCanRequestChanges;
   /** Per-question level overrides (question id → level). Custom questions are capped at P1. */
   readonly questionLevels: Readonly<Record<string, SeverityLevel>>;
 }
+
+export type SignalsCanRequestChanges = boolean | "verified";
 
 export const DEFAULT_SEVERITY: SeverityConfig = {
   actions: { p0: "request-changes", p1: "ask-human", p2: "note" },
@@ -79,7 +84,7 @@ export const severityActionsSchema = z
 export const severitySchema = z
   .object({
     actions: severityActionsSchema.optional(),
-    signalsCanRequestChanges: z.boolean().optional(),
+    signalsCanRequestChanges: z.union([z.boolean(), z.literal("verified")]).optional(),
     questionLevels: z.record(z.string().max(64), levelEnum).optional(),
   })
   .strict();

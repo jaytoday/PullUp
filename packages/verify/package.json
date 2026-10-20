@@ -1,0 +1,29 @@
+{
+  "name": "@pullup/verify",
+  "version": "0.1.0",
+  "description": "PullUp's live evidence verifier: a read-only Claude pass that checks strong risk-signal findings against the code at the pull request head and returns quoted evidence (checked again in @pullup/core).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@octokit/rest": "^21.0.2",
+    "@pullup/core": "workspace:*",
+    "@pullup/github": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

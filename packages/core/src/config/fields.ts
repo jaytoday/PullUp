@@ -47,7 +47,8 @@ export type FieldGroup =
   | "severity"
   | "rules"
   | "checks"
-  | "inline";
+  | "inline"
+  | "verify";
 
 export interface FieldSpec {
   /** Dot path into the config file; `*` matches one record key. */
@@ -116,7 +117,7 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "severity.actions.p0", label: "P0 findings", help: "Blocking: auth, secrets, injection, unsafe schema changes.", group: "severity", widget: "select", loosens: "rank", order: ["request-changes", "ask-human"], options: ["request-changes", "ask-human"] },
   { path: "severity.actions.p1", label: "P1 findings", help: "Important: tests missing, risky but unconfirmed changes.", group: "severity", widget: "select", loosens: "rank", order: ["request-changes", "ask-human", "note"], options: ["request-changes", "ask-human", "note"] },
   { path: "severity.actions.p2", label: "P2 findings", help: "Minor: advisory, never blocks.", group: "severity", widget: "select", loosens: "rank", order: ["ask-human", "note"], options: ["ask-human", "note"] },
-  { path: "severity.signalsCanRequestChanges", label: "Let model signals request changes", help: "Off: only rule-confirmed findings request changes; model signals ask a human instead.", group: "severity", widget: "switch", loosens: "neutral" },
+  { path: "severity.signalsCanRequestChanges", label: "Let model signals request changes", help: "Off: only rule-confirmed findings request changes; model signals ask a human instead. Verified: only when the evidence verifier confirmed the finding with quotes from the diff.", group: "severity", widget: "select", loosens: "neutral", options: ["false", "verified", "true"] },
   { path: "severity.questionLevels.*", label: "Question level", help: "The P-level a risk question's “yes” produces.", group: "signals", widget: "select", loosens: "rank", order: ["p0", "p1", "p2"], options: ["p0", "p1", "p2"] },
   { path: "checks.enabled", label: "Post a GitHub check", help: "One “PullUp” check per commit, with the decision and findings. Adds output only; it never makes approval easier.", group: "checks", widget: "switch", loosens: "neutral" },
   { path: "checks.name", label: "Check name", help: "The name branch protection requires. Renaming it breaks any rule that requires the old name.", group: "checks", widget: "text", loosens: "neutral" },
@@ -128,6 +129,11 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "inline.maxComments", label: "New comments per commit", help: "Most severe first.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 30, step: 1 },
   { path: "inline.resolveFixed", label: "Resolve fixed findings", help: "Resolve PullUp's own threads when a later push makes the finding go away. Never touches anyone else's comments.", group: "inline", widget: "switch", loosens: "neutral" },
   { path: "inline.maxResolutions", label: "Resolutions per run", help: "A cap so a bad run can't resolve everything.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 50, step: 1 },
+  { path: "verify.enabled", label: "Check strong findings against the code", help: "A second, read-only model pass on P0/P1 risk-signal findings that returns quotes from the diff. It can only add friction: a confirmed finding may request changes (with “Verified” above); it never removes a finding or enables an approval.", group: "verify", widget: "switch", loosens: "neutral" },
+  { path: "verify.model", label: "Verifier model", help: "The model the live verifier uses.", group: "verify", widget: "text", loosens: "neutral" },
+  { path: "verify.maxPerPull", label: "Findings checked per pull request", help: "Most severe first.", group: "verify", widget: "number", loosens: "neutral", min: 1, max: 10, step: 1 },
+  { path: "verify.inObserve", label: "Check while signals are only observed", help: "Verdicts are shown, never used.", group: "verify", widget: "switch", loosens: "neutral" },
+  { path: "verify.budgetUsdPerDay", label: "Verifier budget per day", help: "Hard stop on live verifier spend per repo per UTC day.", group: "verify", widget: "number", loosens: "neutral", min: 0, max: 500, step: 1, unit: "USD" },
   { path: "rules", label: "Special cases (rules)", help: "Scoped policy for folders, authors or labels.", group: "rules", widget: "text", loosens: "neutral" },
 
   // Basic: limits

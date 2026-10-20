@@ -24,6 +24,7 @@
     "@pullup/db": "workspace:*",
     "@pullup/github": "workspace:*",
     "@pullup/jev": "workspace:*",
+    "@pullup/verify": "workspace:*",
     "commander": "^12.1.0"
   },
   "devDependencies": {

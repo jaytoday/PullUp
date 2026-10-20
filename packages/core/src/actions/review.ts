@@ -347,12 +347,17 @@ function activeFindings(d: PullDecision): Finding[] {
   return (d.findings ?? []).filter((f) => f.active);
 }
 
-/** What the severity policy says to do about one finding (signals can't request changes unless opted in). */
+/**
+ * What the severity policy says to do about one finding. Signals can't request
+ * changes unless opted in: `true` lets them, `"verified"` only with an accepted
+ * confirmed verdict (verify/), and never on the injection tripwire itself.
+ */
 export function findingAction(d: Pick<PullDecision, "scope">, f: Finding): SeverityAction {
   const a = d.scope!.actions[f.level];
-  if (a === "request-changes" && f.source === "signal" && (!d.scope!.signalsCanRequestChanges || f.kind === "injection")) {
-    return "ask-human";
-  }
+  if (a !== "request-changes" || f.source !== "signal") return a;
+  const allowed = d.scope!.signalsCanRequestChanges;
+  const verified = f.verdict?.accepted === true && f.verdict.verdict === "confirmed";
+  if (f.kind === "injection" || allowed === false || (allowed === "verified" && !verified)) return "ask-human";
   return a;
 }
 
@@ -414,6 +419,15 @@ const CC_LABEL: Record<Finding["level"], string> = {
   p2: "suggestion (non-blocking)",
 };
 
+/** The verifier's checked evidence for a finding, as a short suffix (empty when none is accepted). */
+function verdictNote(f: Finding): string {
+  const v = f.verdict;
+  if (!v) return "";
+  if (!(v.accepted && v.verdict === "confirmed")) return v.verdict === "not-confirmed" ? " — PullUp's evidence check did not confirm this; a human should still look." : "";
+  const quotes = v.evidence.map((e) => `\`${e.path}:${e.line}\``).join(", ");
+  return ` — confirmed against the code at ${quotes}${v.fix ? `. Suggested fix: ${v.fix}` : ""}`;
+}
+
 /** Findings grouped P0 / P1 / P2 with Conventional-Comments labels (empty when none). */
 export function findingsSection(findings: readonly Finding[]): string {
   if (findings.length === 0) return "";
@@ -422,7 +436,7 @@ export function findingsSection(findings: readonly Finding[]): string {
   for (const lvl of ["p0", "p1", "p2"] as const) {
     const fs = findings.filter((f) => f.level === lvl);
     if (fs.length === 0) continue;
-    parts.push(`**${heads[lvl]}**\n${fs.map((f) => `- ${CC_LABEL[lvl]}: ${f.title} — ${f.detail} _(${f.source})_`).join("\n")}`);
+    parts.push(`**${heads[lvl]}**\n${fs.map((f) => `- ${CC_LABEL[lvl]}: ${f.title} — ${f.detail} _(${f.source})_${verdictNote(f)}`).join("\n")}`);
   }
   return `\n\n${parts.join("\n\n")}`;
 }

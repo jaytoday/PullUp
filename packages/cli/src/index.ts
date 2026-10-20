@@ -207,6 +207,34 @@ program
   );
 
 program
+  .command("verify")
+  .description("Check strong risk-signal findings against the code (evidence verifier; cached by content)")
+  .argument("<repoId>", "owner/repo as ingested")
+  .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
+  .option("--verifier <kind>", "claude | synthetic (default: claude when ANTHROPIC_API_KEY is set)")
+  .option("--jev-mode <mode>", "off | shadow | active (default: config)")
+  .option("--pr <numbers...>", "only these pull numbers")
+  .action(async (repoId: string, opts: { config: string; verifier?: "claude" | "synthetic"; jevMode?: "off" | "shadow" | "active"; pr?: string[] }) => {
+    const { buildReport, runVerification } = await import("@pullup/core");
+    const { resolveEvidenceVerifier } = await import("@pullup/verify");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
+      if (!cfg.verify.enabled) console.error("[verify] verify.enabled is off: verdicts are stored but not attached to reports until it is on.");
+      const jev = await jevRuntimeFor(s, repoId, cfg, opts);
+      const report = await buildReport(s, repoId, cfg.priors, { jev, ...configReportOptions(cfg) });
+      const { verifier, note } = resolveEvidenceVerifier({ kind: opts.verifier, config: cfg.verify });
+      if (note) console.error(`[verify] ${note}`);
+      const run = await runVerification(s, repoId, report.decisions, verifier, {
+        config: cfg.verify,
+        qs: resolveQuestionSet(cfg.jev),
+        ...(opts.pr ? { pullNumbers: opts.pr.map(Number) } : {}),
+      });
+      console.log(JSON.stringify(run, null, 2));
+      process.exitCode = run.errors.length > 0 ? 1 : 0;
+    });
+  });
+
+program
   .command("calibrate")
   .description("Fit + validate the Jev risk model on the repo's labelled history; write a calibration artifact")
   .argument("<repoId>", "owner/repo as ingested")
