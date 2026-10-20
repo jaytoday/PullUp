@@ -18,8 +18,8 @@ stop switch, a signed per-action permit and a per-action token. See
 
 1. Create a GitHub App.
    - **Repository permissions:** Pull requests *read & write*, Issues *read &
-     write* (the decision comment is an issue comment), Contents *read*,
-     Metadata *read*.
+     write* (the decision comment is an issue comment), Checks *read & write*
+     (only needed when the PullUp check is on), Contents *read*, Metadata *read*.
    - **Webhook events:** Pull request, Issue comment, Pull request review
      comment.
    - **Webhook URL:** the eve deployment's GitHub channel route.
@@ -55,6 +55,33 @@ agent approval, credential). The actuator only carries out the result:
 | `act` | approve | `pulls.createReview APPROVE` pinned to `commit_id` = planned head |
 | `act` | request changes | `pulls.createReview REQUEST_CHANGES` pinned to the planned head |
 | `act` | ask a human | decision comment + `pulls.requestReviewers` |
+| any but `off` | any, with `checks.enabled` | also one PullUp check run on the head (`checks.create`, or `checks.update` when one with the same name exists) |
+
+### The PullUp check
+
+With `checks.enabled`, every action also posts a check run named `checks.name`
+(default "PullUp") on the planned commit, with the decision as its summary and
+located findings as line annotations (P0 failure · P1 warning · P2 notice, at
+most 50). Its conclusion never makes approval easier than the review itself:
+
+| action | level | conclusion |
+|---|---|---|
+| approve | `act` (gate passed) | `success` |
+| approve | `comment` or clamped | `neutral` ("PullUp would approve (approval locked)") |
+| request changes | `act` and `checks.blockOn = "request-changes"` | `failure` |
+| request changes | otherwise | `neutral` |
+| ask a human | any | `neutral` |
+| any | `off` | no check |
+
+GitHub treats `neutral` as passing for a required check, so a required PullUp
+check blocks a merge only through `failure`. In Evaluation it only proves that
+PullUp ran. Asking a human never fails the check: once a human reviews, PullUp
+stops acting on the pull request, so a failing check would be left behind.
+Governance lowers the check with the action (a standing token or an Observe
+profile → `neutral`; stop switch → nothing is sent, so a required check stays
+pending until PullUp is resumed or the requirement is removed). The token for a
+check carries `checks: write` on top of the action's usual permissions, and
+verification re-reads the check's head and conclusion.
 
 **Approve · Act is gated.** A real APPROVE needs live delivery *and* this repo's
 calibration artifact (`.pullup/calibration.<owner>__<repo>.json`, or
@@ -109,7 +136,8 @@ need only live delivery, because they add friction and never remove it.
 
 - The App auth path (including per-action token minting and revocation) is tested with fakes only. Token auth was verified with a
   read-only live fetch.
-- There is no check-run or commit-status output. The review itself is the CI
-  signal, and branch protection can require an approving review.
+- The check reports the decision at planning time. It doesn't count down the
+  wait window (`w*`); nothing re-plans a pull request when `w*` passes except
+  the next webhook or an explicit run.
 - A full first ingest of a large repo is one `pulls.listFiles` call per PR, so
   expect it to be slow the first time.

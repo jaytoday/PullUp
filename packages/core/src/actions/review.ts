@@ -26,6 +26,10 @@ import type { SeverityAction } from "../config/severity.js";
 import type { Authorization, PullUpTask } from "../authority/authorize.js";
 import type { Permit } from "../authority/permit.js";
 import { appendEvidence, outcomeEvidence, planEvidence, withoutPermit } from "../authority/evidence.js";
+import type { ChecksConfig } from "../config/checks.js";
+import type { HunkRecord } from "../schema/domain.js";
+import type { CheckRunCall, CheckSpec } from "./check.js";
+import { buildCheckSpec, checkRunCall } from "./check.js";
 
 export type BotReviewAction = "approve" | "request_changes" | "defer_to_human";
 
@@ -62,6 +66,8 @@ export interface GitHubReviewCall {
     readonly pull_number: number;
     readonly reviewers: readonly string[];
   } | null;
+  /** PullUp's check run on this head (checks.create, or checks.update when one exists). Absent when checks are off. */
+  readonly checkRun?: CheckRunCall | null;
 }
 
 export interface PlannedReviewAction {
@@ -92,6 +98,8 @@ export interface PlannedReviewAction {
   readonly authorization?: Authorization;
   /** Signed, single-use, short-lived authority for a live send. Never persisted or shown to the model. */
   readonly permit?: Permit;
+  /** Inputs for the check run (present when checks are enabled); `call.checkRun` is rebuilt from it. */
+  readonly check?: CheckSpec;
 }
 
 /**
@@ -111,6 +119,8 @@ export interface ReviewDelivery {
   /** GitHub ids of what was created/edited (for dedupe, edits and dismissal). */
   readonly reviewId?: number;
   readonly commentId?: number;
+  /** PullUp's check run on this head. */
+  readonly checkRunId?: number;
   readonly reviewersRequested?: readonly string[];
   /** The bot's own earlier REQUEST_CHANGES reviews dismissed by this delivery. */
   readonly dismissedReviewIds?: readonly number[];
@@ -158,6 +168,10 @@ export interface PlanOptions {
   /** Why approval is locked (shown as `clamped`); defaults to the generic reason. */
   readonly approvalLockedReason?: string;
   readonly configVersion?: number | null;
+  /** Check run settings; only used with an authority (no checks in the legacy plan). */
+  readonly checks?: ChecksConfig;
+  /** This repo's stored hunks, to pin findings to diff lines in the check. */
+  readonly hunks?: readonly HunkRecord[];
 }
 
 const BOT_FOOTER = "\n\n_— PullUp_";
@@ -261,6 +275,20 @@ export function planReviewActions(
       band,
       reason,
       ...(d.findings ? { findings: activeFindings(d) } : {}),
+      ...(opts.authority && opts.checks?.enabled
+        ? {
+            check: buildCheckSpec({
+              checks: opts.checks,
+              findings: activeFindings(d),
+              hunks: (opts.hunks ?? []).filter((h) => h.pullNumber === d.pullNumber),
+              recommendation: d.recommendation,
+              band,
+              waitHours: d.waitHours,
+              maxWaitHours: d.maxWaitHours,
+              configVersion: opts.configVersion ?? null,
+            }),
+          }
+        : {}),
     };
     if (!opts.authority) {
       out.push({ ...base, call: legacyCall });
@@ -375,6 +403,20 @@ export function decisionCommentBody(
 }
 
 /**
+ * The check run for a planned action at `level` (undefined when the action has
+ * no check). The body is the decision comment's text without its marker.
+ */
+export function plannedCheckRun(
+  planned: Pick<PlannedReviewAction, "repoId" | "headSha" | "action" | "reason" | "rationale" | "findings" | "check">,
+  level: AuthorityLevel,
+  clamped: string | null = null,
+): CheckRunCall | null | undefined {
+  if (!planned.check) return undefined;
+  const body = decisionCommentBody({ ...planned, reason: planned.rationale ?? planned.reason }, level).replace(`${DECISION_COMMENT_MARKER}\n`, "");
+  return checkRunCall({ ...planned, clamped }, planned.check, level, body);
+}
+
+/**
  * Shapes one planned action by the configured authority. Never changes the
  * decision, only what would be sent: `comment` and `off` can never emit an
  * APPROVE or REQUEST_CHANGES event.
@@ -416,6 +458,8 @@ export function applyAuthority(
   } else {
     call = { ...planned.call, upsertComment: null, requestReviewers: null };
   }
+  const checkRun = plannedCheckRun(planned, level, clamped);
+  if (checkRun !== undefined) call = { ...call, checkRun };
   return { ...planned, call, authority: level, clamped, configVersion: opts.configVersion ?? null };
 }
 
@@ -427,6 +471,7 @@ export function applyAuthority(
 export function withReviewBody(planned: PlannedReviewAction, body: string): PlannedReviewAction {
   const call = planned.call;
   const level = planned.authority ?? "act";
+  const checkRun = call.checkRun ? plannedCheckRun({ ...planned, rationale: body }, level, planned.clamped ?? null) : undefined;
   return {
     ...planned,
     rationale: body,
@@ -436,6 +481,7 @@ export function withReviewBody(planned: PlannedReviewAction, body: string): Plan
       ...(call.upsertComment
         ? { upsertComment: { ...call.upsertComment, body: decisionCommentBody({ ...planned, reason: body }, level) } }
         : {}),
+      ...(checkRun !== undefined ? { checkRun } : {}),
     },
   };
 }

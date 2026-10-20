@@ -56,6 +56,8 @@ export default defineTool({
         humanReviewers: cfg.jev.humanReviewers,
         authority: cfg.authority,
         configVersion: cfg.version,
+        checks: cfg.checks,
+        hunks: cfg.checks.enabled ? await store.listHunks(repoId, pullNumber) : [],
         approvalUnlocked: gate.unlocked,
         ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
       },

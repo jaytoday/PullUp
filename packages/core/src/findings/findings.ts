@@ -22,6 +22,8 @@ export interface Finding {
   readonly detail: string;
   /** Signal findings only count toward actions when signals are "Use in decisions". */
   readonly active: boolean;
+  /** Signal findings: the unit keys (`path#hunkIndex[.part]`) behind it, for locating it in the diff. */
+  readonly units?: readonly string[];
 }
 
 export interface RuleFindingInput {
@@ -94,6 +96,7 @@ export function collectFindings(input: CollectInput): Finding[] {
             : humanize(h.question),
       detail: h.kind === "unevaluated" ? units : `p=${h.p.toFixed(2)} · ${units}`,
       active: input.signalsActive,
+      units: [...h.units],
     });
   }
   return out.sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level) || a.id.localeCompare(b.id));

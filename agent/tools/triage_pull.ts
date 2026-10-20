@@ -35,6 +35,8 @@ export default defineTool({
       humanReviewers: cfg.jev.humanReviewers,
       authority: cfg.authority,
       configVersion: cfg.version,
+      checks: cfg.checks,
+      hunks: await store.listHunks(repoId, pullNumber),
     });
     const hunks = await store.listHunks(repoId, pullNumber);
     const open = report.decisions.filter(

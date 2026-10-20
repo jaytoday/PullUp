@@ -45,7 +45,8 @@ export type FieldGroup =
   | "gates"
   | "model"
   | "severity"
-  | "rules";
+  | "rules"
+  | "checks";
 
 export interface FieldSpec {
   /** Dot path into the config file; `*` matches one record key. */
@@ -116,6 +117,10 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "severity.actions.p2", label: "P2 findings", help: "Minor: advisory, never blocks.", group: "severity", widget: "select", loosens: "rank", order: ["ask-human", "note"], options: ["ask-human", "note"] },
   { path: "severity.signalsCanRequestChanges", label: "Let model signals request changes", help: "Off: only rule-confirmed findings request changes; model signals ask a human instead.", group: "severity", widget: "switch", loosens: "neutral" },
   { path: "severity.questionLevels.*", label: "Question level", help: "The P-level a risk question's “yes” produces.", group: "signals", widget: "select", loosens: "rank", order: ["p0", "p1", "p2"], options: ["p0", "p1", "p2"] },
+  { path: "checks.enabled", label: "Post a GitHub check", help: "One “PullUp” check per commit, with the decision and findings. Adds output only; it never makes approval easier.", group: "checks", widget: "switch", loosens: "neutral" },
+  { path: "checks.name", label: "Check name", help: "The name branch protection requires. Renaming it breaks any rule that requires the old name.", group: "checks", widget: "text", loosens: "neutral" },
+  { path: "checks.blockOn", label: "Fail the check when", help: "Never: the check reports, it never blocks. Request changes: the check fails when PullUp requests changes at Act.", group: "checks", widget: "select", loosens: "rank", order: ["request-changes", "never"], options: ["never", "request-changes"] },
+  { path: "checks.annotations", label: "Pin findings to lines", help: "Annotate the diff lines behind each located finding.", group: "checks", widget: "switch", loosens: "neutral" },
   { path: "rules", label: "Special cases (rules)", help: "Scoped policy for folders, authors or labels.", group: "rules", widget: "text", loosens: "neutral" },
 
   // Basic: limits

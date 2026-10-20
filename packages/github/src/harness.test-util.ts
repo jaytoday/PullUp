@@ -32,6 +32,7 @@ export function fakeClient(opts: { state?: string; head?: string; fail?: Partial
   let nextId = 100;
   const comments = new Map<number, string>(opts.existingComment ? [[opts.existingComment, DECISION_COMMENT_MARKER]] : []);
   const reviews: Array<{ id: number; state: string; commitId: string | null }> = [];
+  const checkRuns = new Map<number, { name: string; headSha: string; conclusion: string | null }>();
   const maybeFail = (fn: string) => {
     const status = opts.fail?.[fn];
     if (status) throw Object.assign(new Error(`${fn} failed`), { status });
@@ -79,8 +80,32 @@ export function fakeClient(opts: { state?: string; head?: string; fail?: Partial
       maybeFail("listReviews");
       return reviews;
     },
+    async findCheckRun(args) {
+      calls.push({ fn: "findCheckRun", args });
+      const ids = [...checkRuns.entries()].filter(([, c]) => c.name === args.name && c.headSha === args.ref).map(([id]) => id);
+      return ids.at(-1) ?? null;
+    },
+    async createCheckRun(args) {
+      calls.push({ fn: "createCheckRun", args: { ...args } });
+      maybeFail("createCheckRun");
+      const id = nextId++;
+      checkRuns.set(id, { name: args.name, headSha: args.head_sha, conclusion: args.conclusion });
+      return { id };
+    },
+    async updateCheckRun(args) {
+      calls.push({ fn: "updateCheckRun", args: { ...args } });
+      maybeFail("updateCheckRun");
+      const prev = checkRuns.get(args.check_run_id)!;
+      checkRuns.set(args.check_run_id, { ...prev, conclusion: args.conclusion });
+      return { id: args.check_run_id };
+    },
+    async getCheckRun(args) {
+      calls.push({ fn: "getCheckRun", args });
+      const c = checkRuns.get(args.check_run_id)!;
+      return { id: args.check_run_id, ...c };
+    },
   };
-  return { client, calls, reviews, fns: () => calls.map((c) => c.fn) };
+  return { client, calls, reviews, checkRuns, fns: () => calls.map((c) => c.fn) };
 }
 
 /** A store with the repo enrolled in `review` and the test agent approved. */

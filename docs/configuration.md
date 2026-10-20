@@ -52,6 +52,20 @@ The Jev layer's own switch (`jev.mode`: `off` / `shadow` / `active`) is shown as
 **Signals: Off · Observe · Use in decisions**. It controls whether risk signals
 change decisions, not what is sent.
 
+## GitHub check (`checks`)
+
+```json
+"checks": { "enabled": false, "name": "PullUp", "blockOn": "never", "annotations": true }
+```
+
+- `enabled` posts one check run per commit with the decision and findings
+  (see `docs/github.md` for the conclusion table). It adds output only.
+- `blockOn`: `never` (default) or `request-changes`. The check fails only when
+  PullUp requests changes **at Act**. Moving it back to `never` counts as
+  loosening (typed confirm). Asking a human never fails the check.
+- `name` is what branch protection requires; renaming it breaks those rules.
+- `annotations` pins located findings to diff lines.
+
 ## Guardrails (the approval envelope)
 
 `guardrails` runs in every Jev mode. Two outcomes:

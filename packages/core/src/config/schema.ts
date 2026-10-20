@@ -25,6 +25,8 @@ import type { SeverityConfig } from "./severity.js";
 import { DEFAULT_SEVERITY, resolveSeverity, severitySchema } from "./severity.js";
 import type { ReviewRule } from "./rules.js";
 import { rulesSchema } from "./rules.js";
+import type { ChecksConfig } from "./checks.js";
+import { DEFAULT_CHECKS, checksSchema, resolveChecks } from "./checks.js";
 
 export const PRESET_IDS = ["conservative", "balanced", "fast-lane"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
@@ -167,6 +169,8 @@ export const configFileSchema = z
     severity: severitySchema.optional(),
     /** Scoped rules for folders / authors / labels (see config/rules.ts). */
     rules: rulesSchema.optional(),
+    /** The GitHub Check run PullUp posts per head (see config/checks.ts). */
+    checks: checksSchema.optional(),
     /** Owner's review focus: context for the rationale writer only, never for decisions. */
     review: z
       .object({
@@ -197,6 +201,7 @@ export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
     actions: _actions,
     severity: _severity,
     rules: _rules,
+    checks: _checks,
     review: _review,
     preset: _preset,
     ...file
@@ -251,6 +256,7 @@ export interface ResolvedLayers {
   readonly authority: ActionAuthority;
   readonly severity: SeverityConfig;
   readonly rules: readonly ReviewRule[];
+  readonly checks: ChecksConfig;
   /** Normalised review focus, or null. */
   readonly reviewFocus: string | null;
 }
@@ -266,6 +272,7 @@ export function resolveConfigFile(file: ConfigFile = {}): ResolvedLayers {
     authority: resolveAuthority(file.actions),
     severity: resolveSeverity(file.severity),
     rules: (file.rules ?? []) as ReviewRule[],
+    checks: resolveChecks(file.checks),
     reviewFocus: focus === "" ? null : focus,
   };
 }
@@ -336,6 +343,7 @@ export function defaultConfigFile(): ConfigFile {
       questionLevels: {},
     },
     rules: [],
+    checks: { ...DEFAULT_CHECKS },
     review: { focus: "" },
     preset: null,
   };

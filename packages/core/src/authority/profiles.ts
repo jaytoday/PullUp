@@ -41,6 +41,8 @@ export type GitHubPermissionLevel = "read" | "write";
 export interface GitHubPermissions {
   readonly pull_requests?: GitHubPermissionLevel;
   readonly issues?: GitHubPermissionLevel;
+  /** The PullUp check run (only when checks are enabled). */
+  readonly checks?: GitHubPermissionLevel;
 }
 
 /** The kind of credential a live send would use. Only an App token can be narrowed. */

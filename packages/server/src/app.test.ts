@@ -47,6 +47,14 @@ const post = async (path: string, body: unknown = {}) => {
   return { status: res.status, body: (await res.json()) as any };
 };
 
+/** Check-run methods for fakes in tests where checks are off (never called). */
+const noCheckRuns: Pick<ReviewClient, "findCheckRun" | "createCheckRun" | "updateCheckRun" | "getCheckRun"> = {
+  findCheckRun: async () => null,
+  createCheckRun: async () => ({ id: 1 }),
+  updateCheckRun: async (p) => ({ id: p.check_run_id }),
+  getCheckRun: async (p) => ({ id: p.check_run_id, name: "PullUp", headSha: "", conclusion: null }),
+};
+
 describe("PullUp API", () => {
   it("config reports key presence only and lists fixtures", async () => {
     const { body } = await get("/api/config");
@@ -144,6 +152,20 @@ describe("PullUp API", () => {
       const good = (await postJson(`${repo}/config/validate`, { config: { guardrails: { maxAutoApproveLines: 250 } } })).body;
       expect(good.ok).toBe(true);
       expect(good.changes).toEqual([expect.objectContaining({ path: "guardrails.maxAutoApproveLines", direction: "tightens" })]);
+    });
+
+    it("validates the check settings and labels blockOn changes", async () => {
+      const on = (await postJson(`${repo}/config/validate`, { config: { checks: { enabled: true, blockOn: "request-changes" } } })).body;
+      expect(on.ok).toBe(true);
+      expect(on.changes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "checks.enabled", direction: "neutral" }),
+          expect.objectContaining({ path: "checks.blockOn", direction: "tightens" }),
+        ]),
+      );
+      const bad = (await postJson(`${repo}/config/validate`, { config: { checks: { name: "<script>" } } })).body;
+      expect(bad.ok).toBe(false);
+      expect(bad.issues[0].path).toBe("checks.name");
     });
 
     it("rejects injection in free text", async () => {
@@ -297,6 +319,7 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
       updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
       requestReviewers: async () => {},
       listReviews: async () => [],
+      ...noCheckRuns,
     };
     const heads = new Map<number, string>();
     const app = await start({ broker: staticBroker(client, "app") });
@@ -345,6 +368,7 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
       updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
       requestReviewers: async (p) => void sent.push(`reviewers #${p.pull_number}`),
       listReviews: async () => reviews,
+      ...noCheckRuns,
     };
     return { client, sent, heads };
   }

@@ -26,6 +26,10 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   allow / comment-only / deny, a signed 5-minute single-use permit, a GitHub
   token scoped to one repo and revoked after use, verification after sending,
   a stop switch and a hash-chained evidence record. See `docs/authority.md`.
+- **GitHub check** (optional) — one "PullUp" check run per commit with the
+  decision and line annotations for findings. Neutral in Evaluation; it can
+  fail only when PullUp requests changes at Act and the owner opted in. See
+  `docs/github.md`.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 

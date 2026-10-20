@@ -55,7 +55,7 @@ export default function Actions() {
           <span class="font-medium" data-testid="sent-count">{sentCount()} sent to GitHub.</span>{" "}
           <span class="text-muted-foreground">
             Acting calls use <code class="num">pulls.createReview</code> (APPROVE / REQUEST_CHANGES) and{" "}
-            <code class="num">pulls.requestReviewers</code>; comment-only actions become one PullUp comment per PR, edited in place. Sending
+            <code class="num">pulls.requestReviewers</code>; comment-only actions become one PullUp comment per PR, edited in place. With checks on, each action also posts one PullUp check run per commit. Sending
             needs live delivery (an operator setting), a signed 5-minute permit per action and a token scoped to this repo, revoked right after.
           </span>
         </span>
@@ -138,6 +138,15 @@ export default function Actions() {
                       <span>source {a.source}</span>
                       <Show when={a.call.requestReviewers}>{(r) => <span>reviewers {r().reviewers.join(", ")}</span>}</Show>
                       <Show when={a.configVersion}>{(v) => <span>config v{v()}</span>}</Show>
+                      <Show when={a.call.checkRun}>
+                        {(c) => (
+                          <span data-testid="check-run" data-conclusion={c().conclusion} title={c().output.title}>
+                            check {c().name}: {c().conclusion}
+                            {c().output.annotations.length > 0 ? ` · ${c().output.annotations.length} annotation${c().output.annotations.length === 1 ? "" : "s"}` : ""}
+                            {a.delivery?.checkRunId ? ` · #${a.delivery.checkRunId}` : ""}
+                          </span>
+                        )}
+                      </Show>
                       <DeliveryStatus record={a} />
                     </div>
                     <Show when={a.delivery?.errors?.length || a.delivery?.skipped || a.delivery?.denied?.length}>

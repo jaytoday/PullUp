@@ -15,7 +15,7 @@ import type { AuthorityLevel } from "../actions/authority.js";
 import { AUTHORITY_RANK } from "../actions/authority.js";
 import type { DeliveryMode } from "../actions/approval.js";
 import type { BotReviewAction, PlannedReviewAction } from "../actions/review.js";
-import { AUTHORITY_KEY, DECISION_COMMENT_MARKER, decisionCommentBody } from "../actions/review.js";
+import { AUTHORITY_KEY, DECISION_COMMENT_MARKER, decisionCommentBody, plannedCheckRun } from "../actions/review.js";
 import { callHash, issuePermit } from "./permit.js";
 import type { CapabilityProfile, CredentialKind, GitHubPermissions } from "./profiles.js";
 import { PROFILE_CEILING, PROFILE_LABEL, requiredPermissions } from "./profiles.js";
@@ -144,8 +144,13 @@ export function taskMarker(taskId: string): string {
  * decision comment ("PullUp would …"); `off` sends nothing.
  */
 export function lowerAction(planned: PlannedReviewAction, level: AuthorityLevel): PlannedReviewAction {
+  // A lowered level also lowers the check: off → none, comment → neutral "would …".
+  const check = (lvl: AuthorityLevel) => {
+    const checkRun = plannedCheckRun(planned, lvl, planned.clamped ?? null);
+    return checkRun === undefined ? {} : { checkRun };
+  };
   if (level === "off") {
-    return { ...planned, call: { createReview: null, upsertComment: null, requestReviewers: null } };
+    return { ...planned, call: { createReview: null, upsertComment: null, requestReviewers: null, ...check("off") } };
   }
   if (level !== "comment" || planned.authority === "comment") return planned;
   const [owner, repo] = planned.repoId.split("/") as [string, string];
@@ -157,6 +162,7 @@ export function lowerAction(planned: PlannedReviewAction, level: AuthorityLevel)
       createReview: null,
       upsertComment: { owner, repo, issue_number: planned.pullNumber, marker: DECISION_COMMENT_MARKER, body },
       requestReviewers: null,
+      ...check("comment"),
     },
   };
 }
@@ -211,7 +217,11 @@ export function governActions(planned: readonly PlannedReviewAction[], input: Go
     if (upsert) {
       governed = { ...governed, call: { ...governed.call, upsertComment: { ...upsert, body: `${upsert.body}\n${taskMarker(taskId)}` } } };
     }
-    governed = { ...governed, taskId, task, authorization };
+    // A check run needs checks: write on the action's token.
+    const permissions = governed.call.checkRun
+      ? { ...authorization.permissions, checks: "write" as const }
+      : authorization.permissions;
+    governed = { ...governed, taskId, task, authorization: { ...authorization, permissions } };
     if (
       input.sign &&
       input.permitKey &&
@@ -230,7 +240,7 @@ export function governActions(planned: readonly PlannedReviewAction[], input: Go
           configHash: input.config.hash,
           agentId: input.agent.id,
           agentVersion: input.agent.version,
-          permissions: authorization.permissions,
+          permissions,
           callHash: callHash(governed.call),
         },
         input.permitKey,

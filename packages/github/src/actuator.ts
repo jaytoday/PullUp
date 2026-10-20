@@ -16,8 +16,11 @@
 //   6. reviewers — pulls.requestReviewers for an `act`-level deferral;
 //   7. dismiss — PullUp's own earlier REQUEST_CHANGES on an older head, once
 //                the current head no longer warrants one (act level only);
+//   7b. check  — PullUp's check run on this head (created, or updated in place
+//                when one with the same name exists), when checks are on;
 //   8. verify  — re-read GitHub: the review exists, with the planned event, on
 //                the planned commit; the comment carries this task's marker;
+//                the check has the planned conclusion on the planned head;
 //   9. revoke  — the token, whatever happened;
 //  10. evidence — every step above is appended to the hash-chained record.
 //
@@ -27,6 +30,7 @@
 
 import type { Octokit } from "@octokit/rest";
 import type {
+  CheckRunCall,
   DeliveryMode,
   ExecutionGuard,
   PlannedReviewAction,
@@ -68,7 +72,22 @@ export interface ReviewClient {
   requestReviewers(p: { owner: string; repo: string; pull_number: number; reviewers: string[] }): Promise<void>;
   /** Reviews on the PR (for post-send verification). */
   listReviews(p: { owner: string; repo: string; pull_number: number }): Promise<Array<{ id: number; state: string; commitId: string | null }>>;
+  /** Newest check run named `name` on commit `ref`, or null. */
+  findCheckRun(p: { owner: string; repo: string; ref: string; name: string }): Promise<number | null>;
+  createCheckRun(p: CheckRunCall): Promise<{ id: number }>;
+  updateCheckRun(p: CheckRunCall & { check_run_id: number }): Promise<{ id: number }>;
+  getCheckRun(p: { owner: string; repo: string; check_run_id: number }): Promise<{ id: number; name: string; headSha: string; conclusion: string | null }>;
 }
+
+const checkPayload = (c: CheckRunCall) => ({
+  owner: c.owner,
+  repo: c.repo,
+  name: c.name,
+  head_sha: c.head_sha,
+  status: c.status,
+  conclusion: c.conclusion,
+  output: { ...c.output, annotations: c.output.annotations.map((a) => ({ ...a })) },
+});
 
 export function octokitReviewClient(octokit: Octokit): ReviewClient {
   return {
@@ -103,6 +122,23 @@ export function octokitReviewClient(octokit: Octokit): ReviewClient {
       const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, { ...p, per_page: 100 });
       return reviews.map((r) => ({ id: r.id, state: r.state, commitId: r.commit_id ?? null }));
     },
+    async findCheckRun({ owner, repo, ref, name }) {
+      const { data } = await octokit.rest.checks.listForRef({ owner, repo, ref, check_name: name, filter: "latest", per_page: 100 });
+      return data.check_runs[0]?.id ?? null;
+    },
+    async createCheckRun(c) {
+      const { data } = await octokit.rest.checks.create(checkPayload(c));
+      return { id: data.id };
+    },
+    async updateCheckRun(c) {
+      const { head_sha: _sha, ...rest } = checkPayload(c);
+      const { data } = await octokit.rest.checks.update({ ...rest, check_run_id: c.check_run_id });
+      return { id: data.id };
+    },
+    async getCheckRun(p) {
+      const { data } = await octokit.rest.checks.get(p);
+      return { id: data.id, name: data.name, headSha: data.head_sha, conclusion: data.conclusion ?? null };
+    },
   };
 }
 
@@ -117,6 +153,7 @@ function landedIds(d: ReviewDelivery): Partial<ReviewDelivery> {
   return {
     ...(d.reviewId != null ? { reviewId: d.reviewId } : {}),
     ...(d.commentId != null ? { commentId: d.commentId } : {}),
+    ...(d.checkRunId != null ? { checkRunId: d.checkRunId } : {}),
     ...(d.reviewersRequested ? { reviewersRequested: d.reviewersRequested } : {}),
     ...(d.dismissedReviewIds ? { dismissedReviewIds: d.dismissedReviewIds } : {}),
   };
@@ -287,10 +324,25 @@ export class GitHubReviewActuator implements ReviewActuator {
       }
     }
 
+    // The check run: one per (head, name); an existing one is updated in place.
+    let checkRunId: number | undefined;
+    const check = a.call.checkRun;
+    if (check) {
+      try {
+        const existing = retry?.checkRunId ?? (await client.findCheckRun({ owner, repo, ref: check.head_sha, name: check.name }));
+        checkRunId =
+          existing != null
+            ? (await client.updateCheckRun({ ...check, check_run_id: existing })).id
+            : (await client.createCheckRun(check)).id;
+      } catch (err) {
+        errors.push(errText("checks", err));
+      }
+    }
+
     // VAL-04: confirm on GitHub that what we sent is what landed.
     let verified: ReviewDelivery["verified"];
-    if (errors.length === 0 && (createdNow || commentId != null)) {
-      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId);
+    if (errors.length === 0 && (createdNow || commentId != null || checkRunId != null)) {
+      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId, checkRunId);
       await this.evidence(a, "verified", this.now(), { ...verified });
       if (!verified.ok) errors.push(`verification: ${verified.detail}`);
     }
@@ -299,6 +351,7 @@ export class GitHubReviewActuator implements ReviewActuator {
       at,
       ...(reviewId != null ? { reviewId } : {}),
       ...(commentId != null ? { commentId } : {}),
+      ...(checkRunId != null ? { checkRunId } : {}),
       ...(reviewersRequested ? { reviewersRequested } : {}),
       ...(dismissed.length > 0 ? { dismissedReviewIds: dismissed } : {}),
       ...(errors.length > 0 ? { errors } : {}),
@@ -313,6 +366,7 @@ export class GitHubReviewActuator implements ReviewActuator {
     pr: { owner: string; repo: string; pull_number: number },
     reviewId: number | undefined,
     commentId: number | undefined,
+    checkRunId?: number,
   ): Promise<{ ok: boolean; detail: string }> {
     const checks: string[] = [];
     try {
@@ -333,6 +387,13 @@ export class GitHubReviewActuator implements ReviewActuator {
         });
         if (found !== commentId) return { ok: false, detail: `comment ${commentId} does not carry this task's marker` };
         checks.push(`comment ${commentId} carries task ${a.taskId}`);
+      }
+      const plannedCheck = a.call.checkRun;
+      if (checkRunId != null && plannedCheck) {
+        const c = await client.getCheckRun({ owner: pr.owner, repo: pr.repo, check_run_id: checkRunId });
+        if (c.headSha !== plannedCheck.head_sha) return { ok: false, detail: `check ${checkRunId} is on ${c.headSha.slice(0, 7)}, expected ${plannedCheck.head_sha.slice(0, 7)}` };
+        if (c.conclusion !== plannedCheck.conclusion) return { ok: false, detail: `check ${checkRunId} is ${String(c.conclusion)}, expected ${plannedCheck.conclusion}` };
+        checks.push(`check ${checkRunId} ${plannedCheck.conclusion} on ${plannedCheck.head_sha.slice(0, 7)}`);
       }
     } catch (err) {
       return { ok: false, detail: errText("verify", err) };
