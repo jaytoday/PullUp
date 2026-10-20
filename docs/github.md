@@ -9,7 +9,10 @@ PullUp connects to GitHub in three ways, all through one GitHub App:
 | **write** — review actions | the decision comment, reviews (APPROVE / REQUEST_CHANGES) and reviewer requests | `GitHubReviewActuator` (`packages/github/src/actuator.ts`) |
 
 Writes are **off by default**. Every surface (CLI, dashboard, agent) logs the
-planned calls to `review_actions` until an operator turns delivery on.
+planned calls to `review_actions` until an operator turns delivery on. Even
+then, every write is authorized separately — repo profile, agent version,
+stop switch, a signed per-action permit and a per-action token. See
+`docs/authority.md`.
 
 ## Setup
 
@@ -29,9 +32,10 @@ planned calls to `review_actions` until an operator turns delivery on.
 | `GITHUB_WEBHOOK_SECRET` | Verifies inbound webhooks (eve channel) |
 | `GITHUB_APP_SLUG` | The bot's `@mention` name |
 | `GITHUB_INSTALLATION_ID` | Optional: skips the per-repo installation lookup |
-| `GITHUB_TOKEN` | Fallback for reads and writes when no App is configured (PAT or Actions token) |
+| `GITHUB_TOKEN` | Fallback when no App is configured (PAT or Actions token). It cannot be narrowed, so it may only **comment**; acting needs the App. |
 | `GITHUB_API_URL` | Optional: GitHub Enterprise API base |
 | `PULLUP_GITHUB_DELIVERY=live` | **Turns writes on.** Any other value, or unset, means logging only. |
+| `PULLUP_PERMIT_KEY` | Signs per-action permits. **Required for live writes**: without it every send is denied. |
 
 Delivery is an operator switch (environment), not a repo setting. The
 dashboard's settings API has no auth, so it must not be able to turn on
@@ -40,8 +44,9 @@ outbound writes. What gets sent per repo is still controlled by the repo's
 
 ## What gets sent
 
-`planReviewActions` decides and authority shapes (`docs/configuration.md`). The
-actuator only carries out the plan:
+`planReviewActions` decides, the action mode shapes (`docs/configuration.md`),
+and the authority layer may lower it further (`docs/authority.md`: profile,
+agent approval, credential). The actuator only carries out the result:
 
 | authority | action | GitHub calls |
 |---|---|---|
@@ -60,6 +65,14 @@ need only live delivery, because they add friction and never remove it.
 
 ## Safety properties of the actuator
 
+- **Authority first:** an action the authorizer denied is recorded `denied`.
+  Otherwise its permit is re-checked immediately before any call (expiry,
+  single use, same call / head / config hash / agent version, stop switch,
+  quarantine); any failure is `denied` before GitHub is touched.
+- **Per-action token:** with an App, a token for this one repo and the minimum
+  permissions is minted for the action and revoked after it.
+- **Verified:** after sending, the review is re-read (event and commit) and
+  the comment is found by its task marker; a mismatch is `failed`.
 - **Stale-head guard:** before sending, it re-reads the PR. A closed or merged
   PR, or a head that moved past the planned sha, is recorded `skipped`. The next
   `synchronize` webhook re-plans the new head.
@@ -72,8 +85,9 @@ need only live delivery, because they add friction and never remove it.
   `<!-- pullup:decision -->` marker and edited in place. A deleted or foreign
   comment (403/404) falls back to a new comment.
 - **No stale blocks:** when a later head no longer warrants a change request,
-  PullUp dismisses its *own* earlier REQUEST_CHANGES reviews and records their
-  ids in `delivery.dismissedReviewIds`.
+  an act-level action dismisses PullUp's *own* earlier REQUEST_CHANGES reviews
+  and records their ids in `delivery.dismissedReviewIds`. A comment-only action
+  never dismisses (that would unblock a merge without authority to act).
 - It never merges and never touches branch protection.
 
 ## Surfaces
@@ -83,16 +97,17 @@ need only live delivery, because they add friction and never remove it.
   The exit code is 1 when any action failed.
 - **Dashboard:** *Apply actions* sends when delivery is live, and returns 503
   with the reason if credentials are missing. The Actions page shows each
-  record's status (Logged / Sent / Skipped / Failed / Suppressed) and any
-  errors. `GET …/config` returns `approval.{liveActuator, unlocked, lockedReason}`.
+  record's status (Logged / Sent / Skipped / Denied / Failed / Suppressed),
+  any errors or denial reasons, and the evidence sheet. `GET …/config` returns `approval.{liveActuator, unlocked, lockedReason}`.
 - **Agent:** on a webhook turn it refreshes the PR (`ingest_repo` with
   `pullNumbers`; the first time, the full history), runs `triage_pull`, then
-  `log_review_action` with its rationale. The tool returns `sent`, `status`
-  and `deliveryDetail`, so the agent never claims a send that didn't happen.
+  `log_review_action` with its rationale. The tool returns `sent`, `status`,
+  `taskId`, `authorization` (decision and reasons) and `deliveryDetail`, so the
+  agent never claims a send that didn't happen. It never sees a permit or token.
 
 ## Not covered
 
-- The App auth path is tested with fakes only. Token auth was verified with a
+- The App auth path (including per-action token minting and revocation) is tested with fakes only. Token auth was verified with a
   read-only live fetch.
 - There is no check-run or commit-status output. The review itself is the CI
   signal, and branch protection can require an approving review.

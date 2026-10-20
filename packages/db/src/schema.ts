@@ -155,3 +155,60 @@ export const repoConfigVersions = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.repoId, t.version] })],
 );
+
+/** Stop switch, per scope ("global" or a repo id). */
+export const controlState = sqliteTable("control_state", {
+  scope: text("scope").primaryKey(),
+  stopped: integer("stopped").notNull(),
+  reason: text("reason").notNull(),
+  by: text("by").notNull(),
+  at: text("at").notNull(),
+});
+
+/** Which capability profile each repo is enrolled in. */
+export const repoEnrollments = sqliteTable("repo_enrollments", {
+  repoId: text("repo_id").primaryKey(),
+  profile: text("profile").notNull(),
+  by: text("by").notNull(),
+  at: text("at").notNull(),
+});
+
+/** Agent registry: one row per agent id × composition hash. */
+export const agents = sqliteTable(
+  "agents",
+  {
+    agentId: text("agent_id").notNull(),
+    version: text("version").notNull(),
+    status: text("status").notNull(),
+    inputs: text("inputs").notNull(),
+    firstSeen: text("first_seen").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    updatedBy: text("updated_by"),
+    note: text("note").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.agentId, t.version] })],
+);
+
+/** Used permit nonces (single use). */
+export const permitNonces = sqliteTable("permit_nonces", {
+  nonce: text("nonce").primaryKey(),
+  taskId: text("task_id").notNull(),
+  at: text("at").notNull(),
+});
+
+/** Append-only, hash-chained evidence (never updated). */
+export const evidence = sqliteTable(
+  "evidence",
+  {
+    repoId: text("repo_id").notNull(),
+    seq: integer("seq").notNull(),
+    taskId: text("task_id"),
+    agentVersion: text("agent_version"),
+    kind: text("kind").notNull(),
+    at: text("at").notNull(),
+    payload: text("payload").notNull(),
+    prevHash: text("prev_hash"),
+    hash: text("hash").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.seq] })],
+);

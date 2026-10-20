@@ -7,13 +7,32 @@
 // unless the operator set PULLUP_GITHUB_DELIVERY=live, in which case POST
 // …/actions sends them to GitHub (Approve · Act still needs the repo's
 // fast-path calibration gate — see approvalGate).
+//
+// Every plan then goes through governPlan (Agent Baseline authority layer,
+// docs/authority.md): GETs show the authorization without issuing permits;
+// POST …/actions issues permits and the actuator re-checks them. The
+// dashboard can turn the stop switch ON (it only removes authority) but never
+// off, and can never enroll a repo or approve an agent — those are CLI-only,
+// because this API has no authentication.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { dirname, join, resolve, sep } from "node:path";
 import {
+  AGENT_IDS,
   CHANGE_TYPES,
   ConfigVersionConflictError,
+  GLOBAL_SCOPE,
+  PROFILE_HINT,
+  PROFILE_LABEL,
+  agentIdentity,
+  ensureAgent,
+  evidenceSheet,
+  governPlan,
+  loadControlSnapshot,
+  resolvePermitKey,
+  stopPullUp,
+  verifyEvidenceChain,
   approvalGate,
   calibrationPathFor as defaultCalibrationPath,
   buildReport,
@@ -50,9 +69,11 @@ import type {
   PullupReport,
   QuestionSet,
   ResolvedConfig,
-  ReviewActuator,
+  AgentIdentity,
+  CredentialKind,
 } from "@pullup/core";
-import { createReviewActuator, loadFixture } from "@pullup/github";
+import type { CredentialBroker } from "@pullup/github";
+import { createReviewActuator, credentialKind, loadFixture } from "@pullup/github";
 import { prepareJevRuntime, resolveSignalModel } from "@pullup/jev";
 import { z } from "zod";
 
@@ -69,8 +90,10 @@ export interface AppDeps {
   readonly staticDir?: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly allowIngest?: boolean;
-  /** Review actuator override (tests); default: logging, or live GitHub when delivery is live. */
-  readonly actuator?: (repoId: string) => Promise<ReviewActuator>;
+  /** GitHub credential broker override (tests); default: from env (App, else personal token). */
+  readonly broker?: CredentialBroker;
+  /** This process's agent identity override (tests); default: `pullup/dashboard` at this build. */
+  readonly agent?: AgentIdentity;
 }
 
 class HttpError extends Error {
@@ -137,6 +160,9 @@ export function createApp(deps: AppDeps) {
   const env = deps.env ?? process.env;
   const delivery = resolveDelivery(env);
   const now = deps.now ?? (() => new Date().toISOString());
+  const agent = deps.agent ?? agentIdentity({ id: AGENT_IDS.dashboard });
+  const permitKey = resolvePermitKey(env);
+  const credential: CredentialKind | null = deps.broker?.kind ?? credentialKind(env);
 
   async function ensureRepo(repoId: string): Promise<void> {
     if (!(await deps.store.getRepository(repoId))) throw new HttpError(404, `Repo ${repoId} is not ingested.`);
@@ -203,15 +229,31 @@ export function createApp(deps: AppDeps) {
     return { calibration, gate: approvalGate({ repoId, delivery, calibration }) };
   }
 
-  async function withActions(r: PullupReport, repoId: string, cfg: ResolvedConfig) {
+  /**
+   * The planned actions, governed. `sign` issues permits (only the POST that
+   * sends); read-only views show the authorization without one.
+   */
+  async function withActions(r: PullupReport, repoId: string, cfg: ResolvedConfig, sign = false) {
     const { gate } = approvalFor(repoId, cfg);
-    return planReviewActions(r.decisions, await deps.store.listPulls(repoId), {
+    const planned = planReviewActions(r.decisions, await deps.store.listPulls(repoId), {
       repoId,
       humanReviewers: cfg.jev.humanReviewers,
       authority: cfg.authority,
       configVersion: cfg.version,
       approvalUnlocked: gate.unlocked,
       ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
+    });
+    return governPlan(deps.store, planned, {
+      repoId,
+      initiator: { kind: "dashboard", ref: null },
+      agent,
+      config: { version: cfg.version, hash: cfg.hash },
+      risk: { questionSet: r.risk?.questionSetVersion ?? null, modelId: r.risk?.modelId ?? null },
+      delivery,
+      credential,
+      permitKey,
+      sign,
+      now: now(),
     });
   }
 
@@ -454,12 +496,17 @@ export function createApp(deps: AppDeps) {
         await ensureRepo(repoId);
         const cfg = await configFor(repoId);
         const { report: r } = await report(repoId, parseMode(url, cfg), cfg);
-        const planned = await withActions(r, repoId, cfg);
-        const actuator = deps.actuator
-          ? await deps.actuator(repoId)
-          : await createReviewActuator(deps.store, repoId, { delivery, env, now }).catch((err: Error) => {
-              throw new HttpError(503, `Live GitHub delivery is on, but ${err.message}`);
-            });
+        await ensureAgent(deps.store, agent, now());
+        const planned = await withActions(r, repoId, cfg, true);
+        const actuator = await createReviewActuator(deps.store, repoId, {
+          delivery,
+          env,
+          now,
+          ...(deps.broker ? { broker: deps.broker } : {}),
+          guard: { permitKey, agent, configHash: async (id) => (await configFor(id)).hash },
+        }).catch((err: Error) => {
+          throw new HttpError(503, `Live GitHub delivery is on, but ${err.message}`);
+        });
         const records = await actuator.apply(planned);
         return {
           // `logged` = every record, whatever its status (kept for older clients).
@@ -467,6 +514,7 @@ export function createApp(deps: AppDeps) {
           delivery: actuator.kind === "github" ? "live" : "log",
           sent: records.filter((a) => a.status === "sent").length,
           failed: records.filter((a) => a.status === "failed").length,
+          denied: records.filter((a) => a.status === "denied").length,
           mode: namedModeOf(cfg.authority),
         };
       },
@@ -685,6 +733,63 @@ export function createApp(deps: AppDeps) {
             return { key: u.key, path: u.path, p: a && a.kind === "noul" ? a.p : null };
           }),
         };
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/control$/,
+      async () => {
+        const stop = await deps.store.getControlState(GLOBAL_SCOPE);
+        const known = await deps.store.getAgent(agent.id, agent.version);
+        return {
+          stop: stop ?? { scope: GLOBAL_SCOPE, stopped: false, reason: "", by: "", at: "" },
+          agent: { id: agent.id, version: agent.version, status: known?.status ?? "pending", registered: Boolean(known) },
+          agents: await deps.store.listAgents(),
+          delivery,
+          // Presence only — never the value.
+          permitKey: permitKey !== null,
+          credential,
+        };
+      },
+    ],
+    [
+      "POST",
+      /^\/api\/control\/stop$/,
+      async (_m, _url, req) => {
+        const body = z
+          .object({ scope: z.string().min(1).default(GLOBAL_SCOPE), reason: z.string().trim().max(200).default("") })
+          .parse(await readBody(req));
+        if (body.scope !== GLOBAL_SCOPE) await ensureRepo(body.scope);
+        // Stopping only removes authority, so it needs no confirmation. Resuming is CLI-only.
+        return stopPullUp(deps.store, { scope: body.scope, reason: body.reason, by: "dashboard", now: now() });
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/control$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const snapshot = await loadControlSnapshot(deps.store, repoId, agent);
+        const enrollment = await deps.store.getEnrollment(repoId);
+        return {
+          repoId,
+          profile: { id: snapshot.profile, label: PROFILE_LABEL[snapshot.profile], hint: PROFILE_HINT[snapshot.profile], enrolled: Boolean(enrollment), by: enrollment?.by ?? null, at: enrollment?.at ?? null },
+          stop: snapshot.stop,
+          repoStop: await deps.store.getControlState(repoId),
+          agent: { id: agent.id, version: agent.version, status: snapshot.agentStatus },
+        };
+      },
+    ],
+    [
+      "GET",
+      /^\/api\/tasks\/([A-Za-z0-9_-]+)\/evidence$/,
+      async (m) => {
+        const rows = await deps.store.listEvidence({ taskId: m[1]! });
+        const sheet = evidenceSheet(m[1]!, rows);
+        if (!sheet) throw new HttpError(404, `No evidence for task ${m[1]}.`);
+        // The whole repo chain is checked, so an edit anywhere before this task shows.
+        return { ...sheet, chain: verifyEvidenceChain(await deps.store.listEvidence({ repoId: sheet.repoId })) };
       },
     ],
     [

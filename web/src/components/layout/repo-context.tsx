@@ -81,14 +81,14 @@ export const RepoProvider: ParentComponent = (props) => {
       }),
     logActions: () =>
       guarded("Log review actions", async () => {
-        const { logged, delivery, sent, failed = 0 } = await api.logActions(repoId(), mode());
+        const { logged, delivery, sent, failed = 0, denied = 0 } = await api.logActions(repoId(), mode());
         const n = (k: number) => `${k} review action${k === 1 ? "" : "s"}`;
         showToast(
           delivery === "live"
             ? {
                 title: `Sent ${n(sent)} to GitHub`,
-                description: `${failed ? `${failed} failed · ` : ""}${logged.length - sent - failed} skipped or suppressed. See Actions for details.`,
-                variant: failed ? "warning" : "success",
+                description: `${failed ? `${failed} failed · ` : ""}${denied ? `${denied} denied (no authority) · ` : ""}${logged.length - sent - failed - denied} skipped or suppressed. See Actions for details.`,
+                variant: failed || denied ? "warning" : "success",
               }
             : {
                 title: `Logged ${n(logged.length)}`,

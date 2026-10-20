@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // PullUp CLI — init / fetch / analyze / report / config, plus the Jev risk
-// layer: signals / calibrate / actions.
+// layer: signals / calibrate / actions, and the authority layer (operator
+// only, docs/authority.md): stop / resume / enroll / agents / evidence / impact.
 
 import { createClient } from "@libsql/client";
 import type { Client } from "@libsql/client";
@@ -11,6 +12,7 @@ import { SqliteStore } from "@pullup/db";
 import { OctokitPullSource } from "@pullup/github";
 import { Command } from "commander";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { userInfo } from "node:os";
 interface GlobalOpts {
   db?: string;
 }
@@ -259,10 +261,22 @@ addJevOptions(program
   .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
   .option("--send", "send the actions to GitHub (needs GITHUB_APP_ID + GITHUB_PRIVATE_KEY or GITHUB_TOKEN)")
   .action(async (repoId: string, opts: { config: string; send?: boolean } & JevCliOpts) => {
-    const { buildReport, planReviewActions, approvalGate, calibrationPathFor, loadCalibration, resolveDelivery, namedModeOf, MODE_LABEL } =
-      await import("@pullup/core");
-    const { createReviewActuator } = await import("@pullup/github");
+    const {
+      buildReport,
+      planReviewActions,
+      approvalGate,
+      calibrationPathFor,
+      loadCalibration,
+      resolveDelivery,
+      resolvePermitKey,
+      namedModeOf,
+      MODE_LABEL,
+      ensureAgent,
+      governPlan,
+    } = await import("@pullup/core");
+    const { createReviewActuator, credentialKind } = await import("@pullup/github");
     const delivery = opts.send ? "live" : resolveDelivery();
+    const permitKey = resolvePermitKey();
     await withStore(program.opts<GlobalOpts>(), async (s) => {
       const cfg = await loadRepoConfig(s, repoId, opts.config);
       const jev = await jevRuntimeFor(s, repoId, cfg, opts);
@@ -278,16 +292,177 @@ addJevOptions(program
         approvalUnlocked: gate.unlocked,
         ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
       });
-      const actuator = await createReviewActuator(s, repoId, { delivery });
-      const records = await actuator.apply(planned);
+      const agent = (await loadIdentities()).cli;
+      const now = new Date().toISOString();
+      await ensureAgent(s, agent, now);
+      const governed = await governPlan(s, planned, {
+        repoId,
+        initiator: { kind: "cli", ref: operator() },
+        agent,
+        config: { version: cfg.version, hash: cfg.hash },
+        risk: { questionSet: report.risk?.questionSetVersion ?? null, modelId: report.risk?.modelId ?? null },
+        delivery,
+        credential: credentialKind(),
+        permitKey,
+        sign: true,
+        now,
+      });
+      const actuator = await createReviewActuator(s, repoId, {
+        delivery,
+        guard: { permitKey, agent, configHash: async (id) => (await loadRepoConfig(s, id, opts.config)).hash },
+      });
+      const records = await actuator.apply(governed);
       console.log(JSON.stringify(records, null, 2));
       const count = (st: string) => records.filter((r) => r.status === st).length;
       console.error(
         delivery === "live"
-          ? `[actions] mode ${MODE_LABEL[namedModeOf(cfg.authority)]}: sent ${count("sent")} · skipped ${count("skipped")} · failed ${count("failed")} · suppressed ${count("suppressed")}. Approval ${gate.unlocked ? "unlocked" : `locked (${gate.reason})`}.`
+          ? `[actions] mode ${MODE_LABEL[namedModeOf(cfg.authority)]}: sent ${count("sent")} · skipped ${count("skipped")} · denied ${count("denied")} · failed ${count("failed")} · suppressed ${count("suppressed")}. Approval ${gate.unlocked ? "unlocked" : `locked (${gate.reason})`}.`
           : `[actions] mode ${MODE_LABEL[namedModeOf(cfg.authority)]}: logged ${records.length} review action(s); nothing was sent (pass --send or set PULLUP_GITHUB_DELIVERY=live).`,
       );
+      const denied = records.find((r) => r.status === "denied");
+      if (denied) console.error(`[actions] denied: ${denied.delivery?.denied?.join(" ")}`);
       if (count("failed") > 0) process.exitCode = 1;
+    });
+  });
+
+// ── Authority layer (Agent Baseline). Operator-only: these run on the host. ──
+
+/** Who is at the keyboard, for the evidence record. */
+function operator(): string {
+  try {
+    return `cli:${userInfo().username}`;
+  } catch {
+    return "cli";
+  }
+}
+
+/** This checkout's agent identities (composition hashes). */
+async function loadIdentities() {
+  const { agentIdentity, eveAgentIdentity, AGENT_IDS } = await import("@pullup/core");
+  return {
+    cli: agentIdentity({ id: AGENT_IDS.cli }),
+    dashboard: agentIdentity({ id: AGENT_IDS.dashboard }),
+    eve: eveAgentIdentity(process.cwd()),
+  };
+}
+
+program
+  .command("stop")
+  .description("Stop PullUp: deny every new GitHub write and void outstanding permits (globally, or for one repo)")
+  .option("-r, --repo <repoId>", "stop only this repo")
+  .option("--reason <text>", "why (recorded in evidence)", "")
+  .action(async (opts: { repo?: string; reason: string }) => {
+    const { stopPullUp } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const st = await stopPullUp(s, { scope: opts.repo, reason: opts.reason, by: operator(), now: new Date().toISOString() });
+      console.log(`PullUp is stopped ${st.scope === "global" ? "everywhere" : `on ${st.scope}`}. Resume with: pullup resume${opts.repo ? ` --repo ${opts.repo}` : ""}`);
+    });
+  });
+
+program
+  .command("resume")
+  .description("Turn the stop switch off (CLI only — the dashboard can stop but never resume)")
+  .option("-r, --repo <repoId>", "resume only this repo")
+  .action(async (opts: { repo?: string }) => {
+    const { resumePullUp, GLOBAL_SCOPE } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      await resumePullUp(s, { scope: opts.repo, by: operator(), now: new Date().toISOString() });
+      const global = await s.getControlState(GLOBAL_SCOPE);
+      console.log(`Resumed ${opts.repo ?? "everywhere"}.${opts.repo && global?.stopped ? " Note: PullUp is still stopped globally." : ""}`);
+    });
+  });
+
+program
+  .command("enroll")
+  .description("Enroll a repo in a capability profile: observe | review-block-only | review (the most PullUp may send there)")
+  .argument("<repoId>", "owner/repo")
+  .argument("<profile>", "observe | review-block-only | review")
+  .action(async (repoId: string, profile: string) => {
+    const { enrollRepo, isCapabilityProfile, CAPABILITY_PROFILES, PROFILE_HINT } = await import("@pullup/core");
+    if (!isCapabilityProfile(profile)) throw new Error(`Unknown profile "${profile}". Choose one of: ${CAPABILITY_PROFILES.join(", ")}.`);
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      await enrollRepo(s, { repoId, profile, by: operator(), now: new Date().toISOString() });
+      console.log(`${repoId} enrolled in ${profile}: ${PROFILE_HINT[profile]}`);
+    });
+  });
+
+const agentsCmd = program
+  .command("agents")
+  .description("Agent registry: list versions (composition hashes), approve one to act, or quarantine one")
+  .action(async () => {
+    const { ensureAgent, shortVersion } = await import("@pullup/core");
+    const ids = await loadIdentities();
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const now = new Date().toISOString();
+      // Register this checkout's versions so they can be approved before their first run.
+      for (const id of [ids.cli, ids.dashboard, ids.eve]) await ensureAgent(s, id, now);
+      const current = new Set([ids.cli.version, ids.dashboard.version, ids.eve.version]);
+      for (const a of await s.listAgents()) {
+        console.log(
+          `${a.status.padEnd(11)} ${a.agentId.padEnd(17)} ${shortVersion(a.version)}  first seen ${a.firstSeen}${a.updatedBy ? ` · ${a.status} by ${a.updatedBy}` : ""}${current.has(a.version) ? "  ← this checkout" : ""}`,
+        );
+      }
+      if (ids.eve.version === "unknown") console.error("[agents] the Eve agent's sources could not be read from ./agent; it will be denied.");
+    });
+  });
+
+for (const [name, status, help] of [
+  ["approve", "approved", "Approve an agent version (hash or ≥6-char prefix) to act"],
+  ["quarantine", "quarantined", "Quarantine an agent version: every permit for it is denied"],
+] as const) {
+  agentsCmd
+    .command(name)
+    .description(help)
+    .argument("<version>", "composition hash or a prefix of at least 6 characters")
+    .option("--note <text>", "why (recorded in evidence)", "")
+    .action(async (version: string, opts: { note: string }) => {
+      const { findAgents, setAgentStatus, shortVersion } = await import("@pullup/core");
+      await withStore(program.opts<GlobalOpts>(), async (s) => {
+        const matches = await findAgents(s, version);
+        if (matches.length === 0) throw new Error(`No agent version matches "${version}" (run \`pullup agents\` to list them).`);
+        for (const agent of matches) {
+          await setAgentStatus(s, { agent, status, by: operator(), note: opts.note, now: new Date().toISOString() });
+          console.log(`${agent.agentId} ${shortVersion(agent.version)} → ${status}`);
+        }
+      });
+    });
+}
+
+program
+  .command("evidence")
+  .description("Show the evidence for one task (WHY · WHAT · RISK · AUTHORITY · ACTION · OUTCOME · VALIDATION · VERSION), or `verify` the hash chain")
+  .argument("<taskId|verify>", "a task id, or the word verify")
+  .option("-r, --repo <repoId>", "with verify: only this repo's chain")
+  .action(async (arg: string, opts: { repo?: string }) => {
+    const { evidenceSheet, verifyEvidenceChain } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      if (arg === "verify") {
+        const res = verifyEvidenceChain(await s.listEvidence(opts.repo ? { repoId: opts.repo } : {}));
+        console.log(res.ok ? `Evidence chain intact (${res.checked} rows).` : `Evidence chain BROKEN (${res.breaks.length} problem(s) in ${res.checked} rows):`);
+        for (const b of res.breaks) console.log(`  ${b.repoId} #${b.seq}: ${b.problem}`);
+        if (!res.ok) process.exitCode = 1;
+        return;
+      }
+      const sheet = evidenceSheet(arg, await s.listEvidence({ taskId: arg }));
+      if (!sheet) throw new Error(`No evidence for task ${arg}.`);
+      const { rows, ...sections } = sheet;
+      console.log(JSON.stringify({ ...sections, rows: rows.map((r) => `${r.seq} ${r.kind} ${r.at}`) }, null, 2));
+    });
+  });
+
+program
+  .command("impact")
+  .description("Every task an agent version ran and what it touched on GitHub (for incident response)")
+  .requiredOption("--agent-version <hash>", "composition hash or a prefix of at least 6 characters")
+  .action(async (opts: { agentVersion: string }) => {
+    const { findAgents, impactOf } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const matches = await findAgents(s, opts.agentVersion);
+      if (matches.length === 0) throw new Error(`No agent version matches "${opts.agentVersion}".`);
+      for (const a of matches) {
+        const rows = impactOf(await s.listEvidence({ agentVersion: a.version }));
+        console.log(JSON.stringify({ agent: a.agentId, version: a.version, status: a.status, tasks: rows }, null, 2));
+      }
     });
   });
 

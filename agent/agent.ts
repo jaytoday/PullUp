@@ -1,5 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { defineAgent } from "eve";
+import { DEFAULT_EVE_MODEL } from "@pullup/core";
 
 // PullUp's root agent: a dynamic-CI analyst that reads a repo's PR history and
 // reports the cost of waiting for human review vs the cost of shipping a bug,
@@ -9,7 +10,7 @@ import { defineAgent } from "eve";
 // Direct Anthropic call (ANTHROPIC_API_KEY), same wiring as theory/withai-eve.
 // Override the model with PULLUP_MODEL.
 export default defineAgent({
-  model: anthropic(process.env.PULLUP_MODEL || "claude-sonnet-4-6"),
+  model: anthropic(process.env.PULLUP_MODEL || DEFAULT_EVE_MODEL),
   // The direct provider id isn't in eve's gateway catalog; give compaction the
   // context window explicitly (Sonnet = 200k).
   modelContextWindowTokens: 200_000,

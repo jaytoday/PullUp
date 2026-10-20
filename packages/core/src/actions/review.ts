@@ -23,6 +23,9 @@ import type { PullStore } from "../schema/store.js";
 import type { ActionAuthority, AuthorityAction, AuthorityLevel } from "./authority.js";
 import type { Finding } from "../findings/findings.js";
 import type { SeverityAction } from "../config/severity.js";
+import type { Authorization, PullUpTask } from "../authority/authorize.js";
+import type { Permit } from "../authority/permit.js";
+import { appendEvidence, outcomeEvidence, planEvidence, withoutPermit } from "../authority/evidence.js";
 
 export type BotReviewAction = "approve" | "request_changes" | "defer_to_human";
 
@@ -80,6 +83,15 @@ export interface PlannedReviewAction {
   readonly configVersion?: number | null;
   /** Active P0/P1/P2 findings behind this action (severity mode only). */
   readonly findings?: readonly Finding[];
+  /** The agent's own review text (withReviewBody), reused if the action is lowered to a comment. */
+  readonly rationale?: string;
+  /** Set by governActions (authority/authorize.ts): the task this action belongs to. */
+  readonly taskId?: string;
+  readonly task?: PullUpTask;
+  /** Whether PullUp may send this, decided separately from the decision itself. */
+  readonly authorization?: Authorization;
+  /** Signed, single-use, short-lived authority for a live send. Never persisted or shown to the model. */
+  readonly permit?: Permit;
 }
 
 /**
@@ -87,9 +99,11 @@ export interface PlannedReviewAction {
  *   suppressed — authority `off`: recorded for the dashboard, nothing to send
  *   sent       — every call reached GitHub (live actuator)
  *   skipped    — live, but deliberately not sent (stale head, closed PR, already sent)
+ *   denied     — PullUp had no authority to send it (stop switch, quarantine,
+ *                bad or expired permit, config changed…), see `delivery.denied`
  *   failed     — live, and at least one call failed (see `delivery`)
  */
-export type ReviewActionStatus = "logged" | "suppressed" | "sent" | "skipped" | "failed";
+export type ReviewActionStatus = "logged" | "suppressed" | "sent" | "skipped" | "denied" | "failed";
 
 /** What the live actuator did with one planned action. */
 export interface ReviewDelivery {
@@ -104,6 +118,18 @@ export interface ReviewDelivery {
   readonly skipped?: string;
   /** One entry per failed call, when status is `failed`. */
   readonly errors?: readonly string[];
+  /** Why authority was refused, when status is `denied`. */
+  readonly denied?: readonly string[];
+  /** The credential used for the send (AUT-04). */
+  readonly credential?: {
+    readonly kind: "app" | "standing-token";
+    readonly repositories: readonly string[];
+    readonly permissions: Readonly<Record<string, string>>;
+    readonly revoked: boolean;
+    readonly revokeError?: string;
+  };
+  /** Post-send check against GitHub (VAL-04). */
+  readonly verified?: { readonly ok: boolean; readonly detail: string };
 }
 
 export interface ReviewActionRecord extends PlannedReviewAction {
@@ -136,7 +162,7 @@ export interface PlanOptions {
 
 const BOT_FOOTER = "\n\n_— PullUp_";
 
-const AUTHORITY_KEY: Readonly<Record<BotReviewAction, AuthorityAction>> = {
+export const AUTHORITY_KEY: Readonly<Record<BotReviewAction, AuthorityAction>> = {
   approve: "approve",
   request_changes: "requestChanges",
   defer_to_human: "requestHuman",
@@ -403,6 +429,7 @@ export function withReviewBody(planned: PlannedReviewAction, body: string): Plan
   const level = planned.authority ?? "act";
   return {
     ...planned,
+    rationale: body,
     call: {
       ...call,
       createReview: call.createReview ? { ...call.createReview, body } : null,
@@ -444,12 +471,18 @@ export class LoggingReviewActuator implements ReviewActuator {
         records.push(delivered);
         continue;
       }
+      const at = this.now();
+      for (const e of planEvidence(a, at)) await appendEvidence(this.store, e);
+      const denied = a.authorization?.decision === "deny";
       const rec: ReviewActionRecord = {
-        ...a,
-        status: a.authority === "off" ? "suppressed" : "logged",
-        loggedAt: this.now(),
+        ...withoutPermit(a),
+        status: denied ? "denied" : a.authority === "off" ? "suppressed" : "logged",
+        loggedAt: at,
+        ...(denied ? { delivery: { at, denied: a.authorization!.reasons } } : {}),
       };
       await this.store.recordReviewAction(rec);
+      const outcome = outcomeEvidence(rec);
+      if (outcome) await appendEvidence(this.store, outcome);
       records.push(rec);
     }
     return records;

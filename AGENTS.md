@@ -11,7 +11,7 @@ surface are thin adapters over it.
 | `pnpm install` | Install dependencies |
 | `pnpm build` | Build the six `@pullup/*` packages (web builds via `pnpm web:build`) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 149 · db 5 · github 17 · jev 4 · server 20) |
+| `pnpm -r test` | Package tests (core 156 · db 8 · github 37 · jev 4 · server 22) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |
@@ -27,7 +27,7 @@ evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
 packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
-docs/       architecture · cost-model · analytics · jev · configuration · github
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority
 ```
 
 ## Working in `agent/`
@@ -80,6 +80,28 @@ docs/       architecture · cost-model · analytics · jev · configuration · g
 - Regenerate fixtures with `pnpm exec tsx scripts/generate-fixtures.ts`. It
   augments healthy/congested in place, so existing timestamps and reports stay
   stable. Use `--regenerate` to rebuild them.
+
+## Authority layer (`docs/authority.md`, Agent Baseline)
+
+- PullUp decides; the authorizer authorizes. `planReviewActions` is never
+  changed by this layer. Every surface calls `governPlan` right after planning
+  (`sign: true` only on the path that sends; GETs pass `sign: false`) and hands
+  the result to an actuator built by `createReviewActuator` **with a `guard`**
+  (permit key, this process's agent identity, current config hash). A live
+  actuator without a guard refuses to start.
+- Governance can only lower a level, never raise it (test in
+  `authority/authority.test.ts`). Deny is the default for any missing input.
+- Permits never leave the process: never persist them (`withoutPermit`), never
+  return them from a tool or API. Tokens never leave `credentials.ts`.
+- Enroll / approve / quarantine / resume are CLI-only. The dashboard may stop,
+  never resume — don't add a resume route.
+- Evidence is append-only: add rows with `appendEvidence`, never update or
+  delete. New kinds go in `EVIDENCE_KINDS`.
+- Editing `agent/agent.ts`, `agent/instructions.ts` or any tool changes the Eve
+  agent's composition hash: the new version may only comment until
+  `pnpm pullup agents approve <hash>`.
+- Scenario tests: `packages/github/src/conformance.test.ts`, named after the
+  control each one evidences. Shared fakes: `harness.test-util.ts`.
 
 ## Configuration (`docs/configuration.md`)
 

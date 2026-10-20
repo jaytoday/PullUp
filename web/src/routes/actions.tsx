@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import { History, Send, ShieldCheck } from "lucide-solid";
+import { FileSearch, History, Send, ShieldCheck } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyIcon, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,22 +17,26 @@ import { dateTime, shortSha } from "@/lib/format";
 import { ACTIONS, type BotAction } from "@/lib/meta";
 import { safeLatest, withMode } from "@/lib/state";
 import { DeliveryStatus } from "@/components/shared/delivery-status";
+import { AuthorityPanel } from "@/components/authority/authority-panel";
+import { EvidenceSheet } from "@/components/authority/evidence-sheet";
 
 export default function Actions() {
   const repo = useRepo();
   const [filter, setFilter] = createSignal<string>("all");
+  const [evidenceFor, setEvidenceFor] = createSignal<string | null>(null);
   const [logged] = createResource(() => ({ id: repo.repoId(), v: repo.version() }), (k) => api.actions(k.id));
   const titles = createMemo(
     () => new Map((safeLatest(repo.report)?.report.decisions ?? []).map((d) => [d.pullNumber, d.title])),
   );
   const rows = () => (safeLatest(logged) ?? []).filter((a) => filter() === "all" || a.action === filter());
   const count = (a: BotAction) => (safeLatest(logged) ?? []).filter((x) => x.action === a).length;
+  const sentCount = () => (safeLatest(logged) ?? []).filter((x) => x.status === "sent").length;
 
   return (
     <div class="space-y-5">
       <PageHeader
         title="Review actions"
-        description="What the review bot decided, shaped by the repo's action mode (act · comment only · silent). Each call is recorded exactly and nothing is sent to GitHub in this build."
+        description="What the review bot decided, shaped by the repo's action mode (act · comment only · silent), then authorized separately: the repo's profile, this PullUp version's approval and the stop switch decide what may actually be sent."
         actions={
           <Button onClick={() => void repo.logActions()} disabled={repo.busy() !== null}>
             <Show when={repo.busy() === "Log review actions"} fallback={<Send class="size-4" />}>
@@ -43,14 +47,16 @@ export default function Actions() {
         }
       />
 
+      <AuthorityPanel repoId={repo.repoId()} version={repo.version()} />
+
       <div class="flex items-center gap-3 rounded-lg border border-primary/25 bg-primary/6 px-4 py-3 text-sm">
         <ShieldCheck class="size-4 shrink-0 text-primary" />
         <span>
-          <span class="font-medium">0 sent to GitHub.</span>{" "}
+          <span class="font-medium" data-testid="sent-count">{sentCount()} sent to GitHub.</span>{" "}
           <span class="text-muted-foreground">
             Acting calls use <code class="num">pulls.createReview</code> (APPROVE / REQUEST_CHANGES) and{" "}
-            <code class="num">pulls.requestReviewers</code>; comment-only actions become one PullUp comment per PR, edited in place. A live
-            actuator is a separate, explicit enablement.
+            <code class="num">pulls.requestReviewers</code>; comment-only actions become one PullUp comment per PR, edited in place. Sending
+            needs live delivery (an operator setting), a signed 5-minute permit per action and a token scoped to this repo, revoked right after.
           </span>
         </span>
       </div>
@@ -99,6 +105,15 @@ export default function Actions() {
                       <div class="flex min-w-0 items-center gap-2.5">
                         <ActionBadge action={a.action} tip={false} />
                         <Show when={a.authority}>{(l) => <AuthorityPill level={l()} />}</Show>
+                        <Show when={a.authorization && a.authorization.decision !== "allow"}>
+                          <span
+                            class="num rounded border border-band-review/40 px-1.5 py-0.5 text-[10px] text-band-review"
+                            title={a.authorization!.reasons.join("\n")}
+                            data-authorization={a.authorization!.decision}
+                          >
+                            {a.authorization!.decision === "deny" ? "no authority" : "profile: comment only"}
+                          </span>
+                        </Show>
                         <A
                           href={withMode(`/r/${repo.repoId()}/pulls/${a.pullNumber}`, repo.mode())}
                           class="truncate text-sm font-medium hover:text-primary focus-visible:outline-none focus-visible:underline"
@@ -106,7 +121,15 @@ export default function Actions() {
                           <span class="num text-muted-foreground">#{a.pullNumber}</span> {titles().get(a.pullNumber) ?? ""}
                         </A>
                       </div>
-                      <span class="num text-xs text-muted-foreground">{dateTime(a.loggedAt)}</span>
+                      <div class="flex items-center gap-2">
+                        <span class="num text-xs text-muted-foreground">{dateTime(a.loggedAt)}</span>
+                        <Show when={a.taskId}>
+                          <Button variant="ghost" size="xs" onClick={() => setEvidenceFor(a.taskId!)} data-testid="open-evidence">
+                            <FileSearch class="size-3.5" />
+                            Evidence
+                          </Button>
+                        </Show>
+                      </div>
                     </div>
                     <p class="mt-2 text-sm text-muted-foreground">{a.reason}</p>
                     <div class="num mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
@@ -117,8 +140,13 @@ export default function Actions() {
                       <Show when={a.configVersion}>{(v) => <span>config v{v()}</span>}</Show>
                       <DeliveryStatus record={a} />
                     </div>
-                    <Show when={a.delivery?.errors?.length || a.delivery?.skipped}>
-                      <p class="mt-1.5 text-xs text-muted-foreground">{a.delivery?.errors?.join(" · ") ?? a.delivery?.skipped}</p>
+                    <Show when={a.delivery?.errors?.length || a.delivery?.skipped || a.delivery?.denied?.length}>
+                      <p class="mt-1.5 text-xs text-muted-foreground">
+                        {a.delivery?.errors?.join(" · ") ?? a.delivery?.denied?.join(" · ") ?? a.delivery?.skipped}
+                      </p>
+                    </Show>
+                    <Show when={a.authorization && a.authorization.decision !== "allow" && a.status !== "denied"}>
+                      <p class="mt-1.5 text-xs text-muted-foreground">{a.authorization!.reasons.join(" ")}</p>
                     </Show>
                   </div>
                 </li>
@@ -127,6 +155,7 @@ export default function Actions() {
           </ol>
         </Show>
       </Show>
+      <EvidenceSheet taskId={evidenceFor()} onClose={() => setEvidenceFor(null)} />
     </div>
   );
 }

@@ -26,6 +26,13 @@ import type {
   ReviewActionRecord,
   SignalRunRecord,
   UnitAnswers,
+  AgentRecord,
+  AgentStatus,
+  CapabilityProfile,
+  ControlState,
+  CredentialKind,
+  EvidenceSheet,
+  ChainBreak,
 } from "@pullup/core";
 
 export type {
@@ -44,7 +51,34 @@ export type {
   PullupReport,
   ReviewActionRecord,
   SignalRunRecord,
+  AgentRecord,
+  AgentStatus,
+  EvidenceSheet,
 };
+
+/** Global authority state (GET /api/control). */
+export interface ControlResponse {
+  readonly stop: ControlState;
+  readonly agent: { readonly id: string; readonly version: string; readonly status: AgentStatus; readonly registered: boolean };
+  readonly agents: readonly AgentRecord[];
+  readonly delivery: "log" | "live";
+  readonly permitKey: boolean;
+  readonly credential: CredentialKind | null;
+}
+
+/** One repo's authority state (GET /api/repos/:id/control). */
+export interface RepoControlResponse {
+  readonly repoId: string;
+  readonly profile: { readonly id: CapabilityProfile; readonly label: string; readonly hint: string; readonly enrolled: boolean; readonly by: string | null; readonly at: string | null };
+  /** Null when the stop switch could not be read (PullUp then denies every send). */
+  readonly stop: { readonly stopped: boolean; readonly reason: string } | null;
+  readonly repoStop: ControlState | null;
+  readonly agent: { readonly id: string; readonly version: string; readonly status: AgentStatus | "unknown" };
+}
+
+export interface EvidenceResponse extends EvidenceSheet {
+  readonly chain: { readonly ok: boolean; readonly checked: number; readonly breaks: readonly ChainBreak[] };
+}
 
 export interface RepoSummary {
   readonly repoId: string;
@@ -225,7 +259,7 @@ export const api = {
       body: JSON.stringify({ scope: "open" }),
     }),
   logActions: (repoId: string, mode: JevMode) =>
-    request<{ logged: ReviewActionRecord[]; delivery?: "log" | "live"; sent: number; failed?: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),
+    request<{ logged: ReviewActionRecord[]; delivery?: "log" | "live"; sent: number; failed?: number; denied?: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),
   calibrate: (repoId: string) =>
     request<{ path: string; artifact: CalibrationArtifact; run: SignalRunRecord }>(`${repoPath(repoId)}/calibrate`, {
       method: "POST",
@@ -246,4 +280,10 @@ export const api = {
   sizeStats: (repoId: string) => request<SizeStats>(`${repoPath(repoId)}/stats/sizes`),
   tryQuestion: (repoId: string, text: string, pullNumber?: number) =>
     postJson<TryQuestionResponse>(`${repoPath(repoId)}/questions/try`, { text, pullNumber }),
+
+  control: () => request<ControlResponse>("/api/control"),
+  repoControl: (repoId: string) => request<RepoControlResponse>(`${repoPath(repoId)}/control`),
+  /** Turns the stop switch on. There is deliberately no resume call: resuming is CLI-only. */
+  stop: (body: { scope?: string; reason?: string }) => postJson<ControlState>("/api/control/stop", body),
+  evidence: (taskId: string) => request<EvidenceResponse>(`/api/tasks/${taskId}/evidence`),
 };

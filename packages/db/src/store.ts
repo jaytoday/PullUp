@@ -17,6 +17,11 @@ import type {
   ReviewCommentRecord,
   ReviewRecord,
   NewConfigVersion,
+  AgentRecord,
+  ControlState,
+  EvidenceQuery,
+  EvidenceRecord,
+  RepoEnrollment,
 } from "@pullup/core";
 import type { PullStore } from "@pullup/core";
 import { ConfigVersionConflictError } from "@pullup/core";
@@ -31,6 +36,11 @@ import {
   reviews,
   signalRuns,
   signals,
+  agents,
+  controlState,
+  evidence,
+  permitNonces,
+  repoEnrollments,
 } from "./schema.js";
 
 function toBool(n: number | null): boolean {
@@ -154,6 +164,36 @@ export class SqliteStore implements PullStore {
         hash TEXT NOT NULL, note TEXT NOT NULL, loosened TEXT NOT NULL,
         author TEXT NOT NULL, created_at TEXT NOT NULL, restored_from INTEGER,
         PRIMARY KEY (repo_id, version))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS control_state (
+        scope TEXT PRIMARY KEY, stopped INTEGER NOT NULL, reason TEXT NOT NULL,
+        by TEXT NOT NULL, at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS repo_enrollments (
+        repo_id TEXT PRIMARY KEY, profile TEXT NOT NULL, by TEXT NOT NULL, at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS agents (
+        agent_id TEXT NOT NULL, version TEXT NOT NULL, status TEXT NOT NULL,
+        inputs TEXT NOT NULL, first_seen TEXT NOT NULL, updated_at TEXT NOT NULL,
+        updated_by TEXT, note TEXT NOT NULL, PRIMARY KEY (agent_id, version))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS permit_nonces (
+        nonce TEXT PRIMARY KEY, task_id TEXT NOT NULL, at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS evidence (
+        repo_id TEXT NOT NULL, seq INTEGER NOT NULL, task_id TEXT, agent_version TEXT,
+        kind TEXT NOT NULL, at TEXT NOT NULL, payload TEXT NOT NULL, prev_hash TEXT,
+        hash TEXT NOT NULL, PRIMARY KEY (repo_id, seq))`,
+    );
+    // Evidence is append-only: the database refuses updates (deletes are caught by the hash chain).
+    await this.client.execute(
+      `CREATE TRIGGER IF NOT EXISTS evidence_no_update BEFORE UPDATE ON evidence
+        BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END`,
     );
   }
 
@@ -555,4 +595,134 @@ export class SqliteStore implements PullStore {
     }
     return saved;
   }
+
+  async getControlState(scope: string): Promise<ControlState | null> {
+    const [row] = await this.db.select().from(controlState).where(eq(controlState.scope, scope));
+    return row ? { scope: row.scope, stopped: toBool(row.stopped), reason: row.reason, by: row.by, at: row.at } : null;
+  }
+
+  async setControlState(state: ControlState): Promise<void> {
+    const values = { scope: state.scope, stopped: toInt(state.stopped), reason: state.reason, by: state.by, at: state.at };
+    await this.db
+      .insert(controlState)
+      .values(values)
+      .onConflictDoUpdate({ target: controlState.scope, set: values });
+  }
+
+  async getEnrollment(repoId: string): Promise<RepoEnrollment | null> {
+    const [row] = await this.db.select().from(repoEnrollments).where(eq(repoEnrollments.repoId, repoId));
+    return row ? { repoId: row.repoId, profile: row.profile as RepoEnrollment["profile"], by: row.by, at: row.at } : null;
+  }
+
+  async setEnrollment(e: RepoEnrollment): Promise<void> {
+    const values = { repoId: e.repoId, profile: e.profile, by: e.by, at: e.at };
+    await this.db
+      .insert(repoEnrollments)
+      .values(values)
+      .onConflictDoUpdate({ target: repoEnrollments.repoId, set: values });
+  }
+
+  async getAgent(agentId: string, version: string): Promise<AgentRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(agents)
+      .where(and(eq(agents.agentId, agentId), eq(agents.version, version)));
+    return row ? toAgent(row) : null;
+  }
+
+  async upsertAgent(rec: AgentRecord): Promise<void> {
+    const values = {
+      agentId: rec.agentId,
+      version: rec.version,
+      status: rec.status,
+      inputs: JSON.stringify(rec.inputs),
+      firstSeen: rec.firstSeen,
+      updatedAt: rec.updatedAt,
+      updatedBy: rec.updatedBy,
+      note: rec.note,
+    };
+    await this.db
+      .insert(agents)
+      .values(values)
+      .onConflictDoUpdate({ target: [agents.agentId, agents.version], set: values });
+  }
+
+  async listAgents(): Promise<AgentRecord[]> {
+    const rows = await this.db.select().from(agents).orderBy(asc(agents.firstSeen));
+    return rows.map(toAgent);
+  }
+
+  async consumePermitNonce(nonce: string, taskId: string, at: string): Promise<boolean> {
+    const inserted = await this.db
+      .insert(permitNonces)
+      .values({ nonce, taskId, at })
+      .onConflictDoNothing()
+      .returning({ nonce: permitNonces.nonce });
+    return inserted.length === 1;
+  }
+
+  async lastEvidence(repoId: string): Promise<EvidenceRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(evidence)
+      .where(eq(evidence.repoId, repoId))
+      .orderBy(desc(evidence.seq))
+      .limit(1);
+    return row ? toEvidence(row) : null;
+  }
+
+  async insertEvidence(rec: EvidenceRecord): Promise<void> {
+    await this.db.insert(evidence).values({
+      repoId: rec.repoId,
+      seq: rec.seq,
+      taskId: rec.taskId,
+      agentVersion: rec.agentVersion,
+      kind: rec.kind,
+      at: rec.at,
+      payload: JSON.stringify(rec.payload),
+      prevHash: rec.prevHash,
+      hash: rec.hash,
+    });
+  }
+
+  async listEvidence(q: EvidenceQuery = {}): Promise<EvidenceRecord[]> {
+    const conds = [
+      q.repoId !== undefined ? eq(evidence.repoId, q.repoId) : undefined,
+      q.taskId !== undefined ? eq(evidence.taskId, q.taskId) : undefined,
+      q.agentVersion !== undefined ? eq(evidence.agentVersion, q.agentVersion) : undefined,
+    ].filter((c) => c !== undefined);
+    const rows = await this.db
+      .select()
+      .from(evidence)
+      .where(conds.length > 0 ? and(...conds) : undefined)
+      .orderBy(asc(evidence.repoId), asc(evidence.seq));
+    return rows.map(toEvidence);
+  }
+}
+
+function toAgent(row: typeof agents.$inferSelect): AgentRecord {
+  return {
+    agentId: row.agentId,
+    version: row.version,
+    status: row.status as AgentRecord["status"],
+    inputs: JSON.parse(row.inputs) as Record<string, string>,
+    firstSeen: row.firstSeen,
+    updatedAt: row.updatedAt,
+    updatedBy: row.updatedBy ?? null,
+    note: row.note,
+  };
+}
+
+function toEvidence(row: typeof evidence.$inferSelect): EvidenceRecord {
+  return {
+    repoId: row.repoId,
+    seq: row.seq,
+    taskId: row.taskId ?? null,
+    agentVersion: row.agentVersion ?? null,
+    kind: row.kind as EvidenceRecord["kind"],
+    at: row.at,
+    payload: JSON.parse(row.payload) as Record<string, unknown>,
+    prevHash: row.prevHash ?? null,
+    hash: row.hash,
+  };
 }

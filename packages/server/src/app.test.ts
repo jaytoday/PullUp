@@ -4,9 +4,9 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { InMemoryStore, resolveConfig } from "@pullup/core";
+import { InMemoryStore, agentIdentity, enrollRepo, ensureAgent, resolveConfig, setAgentStatus } from "@pullup/core";
 import type { ResolvedConfig } from "@pullup/core";
-import { GitHubReviewActuator } from "@pullup/github";
+import { staticBroker } from "@pullup/github";
 import type { ReviewClient } from "@pullup/github";
 import { createApp } from "./app.js";
 
@@ -265,7 +265,7 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
       now: () => NOW,
       fixturesDir,
       dataDir: mkdtempSync(join(tmpdir(), "pullup-live-")),
-      env: { PULLUP_GITHUB_DELIVERY: "live" },
+      env: { PULLUP_GITHUB_DELIVERY: "live", PULLUP_PERMIT_KEY: "test-key" },
       allowIngest: true,
       ...deps,
     });
@@ -282,18 +282,24 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
 
   it("sends through the actuator, reports sent counts, and approval stays locked without a passing gate", async () => {
     const sentCalls: string[] = [];
+    const comments = new Map<number, { issue: number; body: string }>();
     let id = 1;
     const client: ReviewClient = {
       getPull: async ({ pull_number }) => ({ state: "open", headSha: heads.get(pull_number)! }),
       createReview: async (p) => (sentCalls.push(`review ${p.event} #${p.pull_number}`), { id: id++ }),
       dismissReview: async () => {},
-      findComment: async () => null,
-      createComment: async (p) => (sentCalls.push(`comment #${p.issue_number}`), { id: id++ }),
-      updateComment: async (p) => ({ id: p.comment_id }),
+      findComment: async (p) => [...comments].reverse().find(([, c]) => c.issue === p.issue_number && c.body.includes(p.marker))?.[0] ?? null,
+      createComment: async (p) => {
+        sentCalls.push(`comment #${p.issue_number}`);
+        comments.set(id, { issue: p.issue_number, body: p.body });
+        return { id: id++ };
+      },
+      updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
       requestReviewers: async () => {},
+      listReviews: async () => [],
     };
     const heads = new Map<number, string>();
-    const app = await start({ actuator: async () => new GitHubReviewActuator(client, app.liveStore, () => NOW) });
+    const app = await start({ broker: staticBroker(client, "app") });
     try {
       for (const p of await app.liveStore.listPulls("fixtures/jev")) heads.set(p.number, p.headSha);
       const cfg = (await app.call("GET", "/api/repos/fixtures/jev/config")).body;
@@ -311,6 +317,88 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
       const before = sentCalls.length;
       await app.call("POST", "/api/repos/fixtures/jev/actions?mode=active");
       expect(sentCalls.length).toBe(before);
+    } finally {
+      await app.close();
+    }
+  });
+
+  function recordingClient() {
+    const sent: string[] = [];
+    const comments = new Map<number, { issue: number; body: string }>();
+    const reviews: Array<{ id: number; state: string; commitId: string | null }> = [];
+    const heads = new Map<number, string>();
+    let id = 1;
+    const client: ReviewClient = {
+      getPull: async ({ pull_number }) => ({ state: "open", headSha: heads.get(pull_number)! }),
+      createReview: async (p) => {
+        sent.push(`review ${p.event} #${p.pull_number}`);
+        reviews.push({ id, state: p.event === "APPROVE" ? "APPROVED" : p.event === "REQUEST_CHANGES" ? "CHANGES_REQUESTED" : "COMMENTED", commitId: p.commit_id });
+        return { id: id++ };
+      },
+      dismissReview: async () => {},
+      findComment: async (p) => [...comments].reverse().find(([, c]) => c.issue === p.issue_number && c.body.includes(p.marker))?.[0] ?? null,
+      createComment: async (p) => {
+        sent.push(`comment #${p.issue_number}`);
+        comments.set(id, { issue: p.issue_number, body: p.body });
+        return { id: id++ };
+      },
+      updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
+      requestReviewers: async (p) => void sent.push(`reviewers #${p.pull_number}`),
+      listReviews: async () => reviews,
+    };
+    return { client, sent, heads };
+  }
+
+  it("an enrolled repo with an approved agent acts; the dashboard can stop it but not resume it", async () => {
+    const agent = agentIdentity({ id: "pullup/dashboard-test" });
+    const rc = recordingClient();
+    const app = await start({ broker: staticBroker(rc.client, "app"), agent, config: () => resolveConfig({ file: { actions: { approve: "act", requestChanges: "act", requestHuman: "act" }, jev: { mode: "off", humanReviewers: ["security-team"] } } }) });
+    try {
+      for (const p of await app.liveStore.listPulls("fixtures/jev")) rc.heads.set(p.number, p.headSha);
+      await enrollRepo(app.liveStore, { repoId: "fixtures/jev", profile: "review", by: "test", now: NOW });
+      const rec = await ensureAgent(app.liveStore, agent, NOW);
+      await setAgentStatus(app.liveStore, { agent: rec!, status: "approved", by: "test", now: NOW });
+
+      const control = (await app.call("GET", "/api/repos/fixtures/jev/control")).body;
+      expect(control).toMatchObject({ profile: { id: "review", enrolled: true }, agent: { status: "approved" }, stop: { stopped: false } });
+      const report = (await app.call("GET", "/api/repos/fixtures/jev/report?mode=active")).body;
+      expect(report.actions.every((a: any) => a.authorization && !a.permit)).toBe(true);
+
+      const { body } = await app.call("POST", "/api/repos/fixtures/jev/actions?mode=active");
+      expect(body.sent).toBeGreaterThan(0);
+      expect(rc.sent.some((c) => c.startsWith("review") || c.startsWith("reviewers"))).toBe(true);
+      const sentOne = body.logged.find((a: any) => a.status === "sent");
+      expect(sentOne.permit).toBeUndefined();
+      const ev = (await app.call("GET", `/api/tasks/${sentOne.taskId}/evidence`)).body;
+      expect(ev.chain.ok).toBe(true);
+      expect(ev.outcome).toMatchObject({ kind: "sent" });
+      expect(ev.authority).toMatchObject({ profile: "review" });
+
+      // Stop from the dashboard → every new send is denied, nothing reaches GitHub.
+      const stopped = await app.call("POST", "/api/control/stop", { reason: "drill" });
+      expect(stopped.body).toMatchObject({ scope: "global", stopped: true, by: "dashboard" });
+      const before = rc.sent.length;
+      await app.liveStore.upsertPull({ ...(await app.liveStore.getPull("fixtures/jev", sentOne.pullNumber))!, headSha: "new-head" });
+      rc.heads.set(sentOne.pullNumber, "new-head");
+      const after = (await app.call("POST", "/api/repos/fixtures/jev/actions?mode=active")).body;
+      expect(rc.sent.length).toBe(before);
+      expect(after.denied).toBeGreaterThan(0);
+      expect((await app.call("GET", "/api/control")).body.stop).toMatchObject({ stopped: true });
+      // There is no resume route: resuming is CLI-only.
+      expect((await app.call("POST", "/api/control/resume")).status).toBe(404);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("denies every live send when PULLUP_PERMIT_KEY is missing", async () => {
+    const rc = recordingClient();
+    const app = await start({ broker: staticBroker(rc.client, "app"), env: { PULLUP_GITHUB_DELIVERY: "live" } });
+    try {
+      const { body } = await app.call("POST", "/api/repos/fixtures/jev/actions?mode=active");
+      expect(body.sent).toBe(0);
+      expect(body.denied).toBe(body.logged.length);
+      expect(rc.sent).toEqual([]);
     } finally {
       await app.close();
     }

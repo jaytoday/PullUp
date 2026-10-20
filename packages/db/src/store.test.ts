@@ -153,3 +153,42 @@ describe("SqliteStore config versions", () => {
     expect(await store.listConfigVersions("other/repo")).toEqual([]);
   });
 });
+
+describe("SqliteStore authority layer", () => {
+  const NOW = "2026-10-05T12:00:00.000Z";
+
+  it("stop switch, enrollment and agents round-trip", async () => {
+    const store = await openStore();
+    expect(await store.getControlState("global")).toBeNull();
+    await store.setControlState({ scope: "global", stopped: true, reason: "r", by: "cli", at: NOW });
+    expect(await store.getControlState("global")).toEqual({ scope: "global", stopped: true, reason: "r", by: "cli", at: NOW });
+    await store.setEnrollment({ repoId: "o/r", profile: "review", by: "cli", at: NOW });
+    expect((await store.getEnrollment("o/r"))?.profile).toBe("review");
+    const agent = { agentId: "pullup/cli", version: "abc123", status: "pending" as const, inputs: { a: "b" }, firstSeen: NOW, updatedAt: NOW, updatedBy: null, note: "" };
+    await store.upsertAgent(agent);
+    await store.upsertAgent({ ...agent, status: "approved", updatedBy: "cli" });
+    expect(await store.getAgent("pullup/cli", "abc123")).toMatchObject({ status: "approved", inputs: { a: "b" } });
+    expect(await store.listAgents()).toHaveLength(1);
+  });
+
+  it("permit nonces are single use", async () => {
+    const store = await openStore();
+    expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(true);
+    expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(false);
+  });
+
+  it("evidence is append-only and chained", async () => {
+    const { appendEvidence, verifyEvidenceChain } = await import("@pullup/core");
+    const client = createClient({ url: ":memory:" });
+    const store = new SqliteStore(client);
+    await store.migrate();
+    await appendEvidence(store, { repoId: "o/r", taskId: "t1", agentVersion: "v", kind: "planned", at: NOW, payload: { a: 1 } });
+    await appendEvidence(store, { repoId: "o/r", taskId: "t1", agentVersion: "v", kind: "logged", at: NOW, payload: {} });
+    const rows = await store.listEvidence({ taskId: "t1" });
+    expect(rows.map((r) => r.seq)).toEqual([1, 2]);
+    expect(verifyEvidenceChain(rows).ok).toBe(true);
+    expect(await store.listEvidence({ agentVersion: "other" })).toEqual([]);
+    await expect(client.execute("UPDATE evidence SET payload = '{}' WHERE seq = 1")).rejects.toThrow(/append-only/);
+    await expect(store.insertEvidence(rows[0]!)).rejects.toThrow();
+  });
+});

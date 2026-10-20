@@ -38,3 +38,4 @@ export * from "./signals/replay.js";
 export * from "./actions/review.js";
 export * from "./actions/authority.js";
 export * from "./actions/approval.js";
+export * from "./authority/index.js";

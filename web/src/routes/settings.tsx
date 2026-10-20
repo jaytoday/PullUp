@@ -5,6 +5,7 @@ import { Panel } from "@/components/shared/panel";
 import { PageHeader, PageSkeleton } from "@/components/layout/repo-layout";
 import { useApp } from "@/components/layout/app-context";
 import { humanize } from "@/lib/format";
+import { GlobalAuthorityPanel } from "@/components/authority/global-authority-panel";
 
 function Row(props: { k: string; v: JSX.Element; from?: boolean }) {
   return (
@@ -37,6 +38,7 @@ export default function Settings() {
                 </>
               }
             />
+            <GlobalAuthorityPanel />
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <Panel label="Signal model">
                 <div class="space-y-3">

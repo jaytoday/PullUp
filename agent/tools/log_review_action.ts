@@ -2,24 +2,30 @@
 // you wrote. The *action* (approve / request_changes / defer_to_human) is
 // decided by the engine, never by the caller. It is logged, or sent to GitHub
 // when the operator set PULLUP_GITHUB_DELIVERY=live; Approve · Act additionally
-// needs the repo's fast-path calibration gate. Logic lives in @pullup/core.
+// needs the repo's fast-path calibration gate. Every action is then authorized
+// separately (repo profile, agent version, stop switch, permit) — you see the
+// decision and its reasons, never the permit or the GitHub token. Logic lives
+// in @pullup/core.
 
 import {
   approvalGate,
   buildReport,
   calibrationPathFor,
   configReportOptions,
+  ensureAgent,
+  governPlan,
   loadCalibration,
+  resolvePermitKey,
   planReviewActions,
   resolveDelivery,
   withReviewBody,
 } from "@pullup/core";
-import { createReviewActuator } from "@pullup/github";
+import { createReviewActuator, credentialKind } from "@pullup/github";
 import { existsSync } from "node:fs";
 import { prepareJevRuntime } from "@pullup/jev";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { getRepoConfig, getStore } from "../lib/core.js";
+import { getAgentIdentity, getRepoConfig, getStore } from "../lib/core.js";
 
 export default defineTool({
   description:
@@ -58,8 +64,27 @@ export default defineTool({
       return { logged: false, reason: "No bot review action for this PR (e.g. keep-reviewing or already decided by a human)." };
     }
     const withBody = planned.map((a) => withReviewBody(a, rationale));
-    const actuator = await createReviewActuator(store, repoId, { delivery });
-    const [record] = await actuator.apply(withBody);
+    const agent = getAgentIdentity();
+    const permitKey = resolvePermitKey();
+    const now = new Date().toISOString();
+    await ensureAgent(store, agent, now);
+    const governed = await governPlan(store, withBody, {
+      repoId,
+      initiator: { kind: "agent", ref: null },
+      agent,
+      config: { version: cfg.version, hash: cfg.hash },
+      risk: { questionSet: report.risk?.questionSetVersion ?? null, modelId: report.risk?.modelId ?? null },
+      delivery,
+      credential: credentialKind(),
+      permitKey,
+      sign: true,
+      now,
+    });
+    const actuator = await createReviewActuator(store, repoId, {
+      delivery,
+      guard: { permitKey, agent, configHash: async (id) => (await getRepoConfig(id)).hash },
+    });
+    const [record] = await actuator.apply(governed);
     return {
       logged: true,
       delivery,
@@ -67,8 +92,14 @@ export default defineTool({
       action: record!.action,
       // Authority: act = the real review call · comment = one PullUp comment · off = suppressed.
       authority: record!.authority ?? "act",
-      // logged · suppressed · sent · skipped (stale head / closed / already sent) · failed
+      // logged · suppressed · sent · skipped (stale head / closed / already sent) · denied · failed
       status: record!.status,
+      taskId: record!.taskId ?? null,
+      // Whether PullUp was allowed to send it — decided separately from the decision. Never a permit or token.
+      authorization: record!.authorization
+        ? { decision: record!.authorization.decision, reasons: record!.authorization.reasons, profile: record!.authorization.profile }
+        : null,
+      denied: record!.delivery?.denied ?? [],
       clamped: record!.clamped ?? null,
       githubEvent: record!.call.createReview?.event ?? null,
       comment: record!.call.upsertComment ? "PullUp decision comment (edited in place)" : null,

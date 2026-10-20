@@ -1,33 +1,53 @@
-// The live review actuator: sends planned review actions to GitHub.
+// The live review actuator: sends governed review actions to GitHub.
 //
-// Per planned action, in order:
-//   1. guard   — skip if the PR is closed or its head moved past the planned
+// Per action, in order:
+//   1. authority — refuse anything the authorizer denied, then re-check the
+//                  permit *now* (signature, expiry, single use, bound to this
+//                  task, call, head, config hash and agent version; stop switch
+//                  and quarantine re-read) — `checkExecution` in @pullup/core;
+//   2. credential — mint a token for this one repo and the minimum
+//                  permissions (GitHub App), used only for this action;
+//   3. guard   — skip if the PR is closed or its head moved past the planned
 //                sha (the next webhook re-plans), or if this exact
 //                (pull, head, action) was already delivered;
-//   2. comment — upsert PullUp's single decision comment (edited in place);
-//   3. review  — pulls.createReview (APPROVE / REQUEST_CHANGES), pinned to the
+//   4. comment — upsert PullUp's single decision comment (edited in place);
+//   5. review  — pulls.createReview (APPROVE / REQUEST_CHANGES), pinned to the
 //                planned commit so an approval never covers newer code;
-//   4. reviewers — pulls.requestReviewers for an `act`-level deferral;
-//   5. dismiss — PullUp's own earlier REQUEST_CHANGES on an older head, once
-//                the current head no longer warrants one (so the bot never
-//                leaves a stale block behind).
+//   6. reviewers — pulls.requestReviewers for an `act`-level deferral;
+//   7. dismiss — PullUp's own earlier REQUEST_CHANGES on an older head, once
+//                the current head no longer warrants one (act level only);
+//   8. verify  — re-read GitHub: the review exists, with the planned event, on
+//                the planned commit; the comment carries this task's marker;
+//   9. revoke  — the token, whatever happened;
+//  10. evidence — every step above is appended to the hash-chained record.
 //
 // A partly failed action is recorded `failed` with what did succeed, so a
 // retry never repeats a review that already landed. It never plans anything:
-// what to send is decided by @pullup/core (planReviewActions + authority).
+// what to send is decided by @pullup/core (planReviewActions + governActions).
 
 import type { Octokit } from "@octokit/rest";
 import type {
   DeliveryMode,
+  ExecutionGuard,
   PlannedReviewAction,
   PullStore,
   ReviewActionRecord,
   ReviewActuator,
   ReviewDelivery,
 } from "@pullup/core";
-import { LoggingReviewActuator, deliveredRecord } from "@pullup/core";
+import {
+  LoggingReviewActuator,
+  appendEvidence,
+  checkExecution,
+  deliveredRecord,
+  outcomeEvidence,
+  planEvidence,
+  taskMarker,
+  withoutPermit,
+} from "@pullup/core";
 import type { GitHubEnv } from "./auth.js";
-import { createRepoOctokit } from "./auth.js";
+import type { CredentialBroker, ScopedCredential } from "./credentials.js";
+import { createCredentialBroker } from "./credentials.js";
 
 /** The GitHub calls the actuator needs — narrow so tests can fake it. */
 export interface ReviewClient {
@@ -46,6 +66,8 @@ export interface ReviewClient {
   createComment(p: { owner: string; repo: string; issue_number: number; body: string }): Promise<{ id: number }>;
   updateComment(p: { owner: string; repo: string; comment_id: number; body: string }): Promise<{ id: number }>;
   requestReviewers(p: { owner: string; repo: string; pull_number: number; reviewers: string[] }): Promise<void>;
+  /** Reviews on the PR (for post-send verification). */
+  listReviews(p: { owner: string; repo: string; pull_number: number }): Promise<Array<{ id: number; state: string; commitId: string | null }>>;
 }
 
 export function octokitReviewClient(octokit: Octokit): ReviewClient {
@@ -77,6 +99,10 @@ export function octokitReviewClient(octokit: Octokit): ReviewClient {
     async requestReviewers(p) {
       await octokit.rest.pulls.requestReviewers(p);
     },
+    async listReviews(p) {
+      const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, { ...p, per_page: 100 });
+      return reviews.map((r) => ({ id: r.id, state: r.state, commitId: r.commit_id ?? null }));
+    },
   };
 }
 
@@ -87,14 +113,34 @@ function errText(call: string, err: unknown): string {
   return `${call}: ${e.status ? `${e.status} ` : ""}${e.message ?? String(err)}`;
 }
 
+function landedIds(d: ReviewDelivery): Partial<ReviewDelivery> {
+  return {
+    ...(d.reviewId != null ? { reviewId: d.reviewId } : {}),
+    ...(d.commentId != null ? { commentId: d.commentId } : {}),
+    ...(d.reviewersRequested ? { reviewersRequested: d.reviewersRequested } : {}),
+    ...(d.dismissedReviewIds ? { dismissedReviewIds: d.dismissedReviewIds } : {}),
+  };
+}
+
+const REVIEW_STATE: Readonly<Record<string, string>> = { APPROVE: "APPROVED", REQUEST_CHANGES: "CHANGES_REQUESTED", COMMENT: "COMMENTED" };
+
+export interface GitHubActuatorOptions {
+  /** Re-checks each permit immediately before sending (required: no guard, no send). */
+  readonly guard: ExecutionGuard;
+  readonly now?: () => string;
+}
+
 export class GitHubReviewActuator implements ReviewActuator {
   readonly kind = "github" as const;
+  private readonly now: () => string;
 
   constructor(
-    private readonly client: ReviewClient,
+    private readonly broker: CredentialBroker,
     private readonly store: PullStore,
-    private readonly now: () => string = () => new Date().toISOString(),
-  ) {}
+    private readonly opts: GitHubActuatorOptions,
+  ) {
+    this.now = opts.now ?? (() => new Date().toISOString());
+  }
 
   async apply(actions: readonly PlannedReviewAction[]): Promise<ReviewActionRecord[]> {
     const records: ReviewActionRecord[] = [];
@@ -102,32 +148,85 @@ export class GitHubReviewActuator implements ReviewActuator {
     return records;
   }
 
+  private evidence(a: PlannedReviewAction, kind: "credential" | "verified" | "revoked", at: string, payload: Record<string, unknown>) {
+    if (!a.taskId || !a.task) return Promise.resolve();
+    return appendEvidence(this.store, { repoId: a.repoId, taskId: a.taskId, agentVersion: a.task.agent.version, kind, at, payload }).then(() => undefined);
+  }
+
   private async applyOne(a: PlannedReviewAction): Promise<ReviewActionRecord> {
     const at = this.now();
     const record = async (status: ReviewActionRecord["status"], delivery?: ReviewDelivery) => {
-      const rec: ReviewActionRecord = { ...a, status, loggedAt: at, ...(delivery ? { delivery } : {}) };
+      // Keep the ids of whatever already landed for this key, so a later retry never repeats it.
+      const prior = (await this.store.listReviewActions(a.repoId, a.pullNumber)).find((r) => r.headSha === a.headSha && r.action === a.action)?.delivery;
+      const landed = prior ? landedIds(prior) : {};
+      const merged = delivery ? { ...landed, ...delivery } : Object.keys(landed).length > 0 ? { at, ...landed } : undefined;
+      const rec: ReviewActionRecord = { ...withoutPermit(a), status, loggedAt: at, ...(merged ? { delivery: merged } : {}) };
       await this.store.recordReviewAction(rec);
+      const outcome = outcomeEvidence(rec);
+      if (outcome) await appendEvidence(this.store, outcome);
       return rec;
     };
-
-    if (a.authority === "off") return record("suppressed");
+    // Already delivered: nothing to send, and the delivered record must survive (no re-send after a resume).
     const delivered = await deliveredRecord(this.store, a);
     if (delivered) return delivered;
+    for (const e of planEvidence(a, at)) await appendEvidence(this.store, e);
+    if (a.authorization?.decision === "deny") return record("denied", { at, denied: a.authorization.reasons });
+    if (a.authority === "off") return record("suppressed");
+    if (!a.headSha) return record("skipped", { at, skipped: "No head sha for this PR; re-ingest it." });
 
+    // 1. Authority, re-checked now.
+    const denied = await checkExecution(this.store, a, this.opts.guard, at);
+    if (denied.length > 0) return record("denied", { at, denied });
+
+    // 2. A credential for this action only.
+    const permissions = a.permit!.claims.permissions;
+    let cred: ScopedCredential;
+    try {
+      cred = await this.broker.mint(a.repoId, permissions);
+    } catch (err) {
+      return record("failed", { at, errors: [errText("credential", err)] });
+    }
+    await this.evidence(a, "credential", at, { kind: cred.kind, repositories: cred.repositories, permissions: cred.permissions });
+    let delivery: ReviewDelivery;
+    let status: ReviewActionRecord["status"];
+    try {
+      ({ status, delivery } = await this.send(a, cred.client, at));
+    } finally {
+      const r = await cred.revoke();
+      await this.evidence(a, "revoked", this.now(), { ...r });
+      const credential = {
+        kind: cred.kind,
+        repositories: cred.repositories,
+        permissions: cred.permissions,
+        revoked: r.revoked,
+        ...(r.error ? { revokeError: r.error } : {}),
+      };
+      delivery = { ...delivery!, credential };
+    }
+    return record(status!, delivery);
+  }
+
+  private async send(
+    a: PlannedReviewAction,
+    client: ReviewClient,
+    at: string,
+  ): Promise<{ status: ReviewActionRecord["status"]; delivery: ReviewDelivery }> {
     const [owner, repo] = a.repoId.split("/") as [string, string];
     const pr = { owner, repo, pull_number: a.pullNumber };
-    if (!a.headSha) return record("skipped", { at, skipped: "No head sha for this PR; re-ingest it." });
     try {
-      const live = await this.client.getPull(pr);
-      if (live.state !== "open") return record("skipped", { at, skipped: `PR is ${live.state}.` });
+      const live = await client.getPull(pr);
+      if (live.state !== "open") return { status: "skipped", delivery: { at, skipped: `PR is ${live.state}.` } };
       if (live.headSha !== a.headSha) {
-        return record("skipped", {
-          at,
-          skipped: `Head moved to ${live.headSha.slice(0, 7)} (planned for ${a.headSha.slice(0, 7)}); the next event re-plans it.`,
-        });
+        return {
+          status: "skipped",
+          delivery: {
+            at,
+            skipped: `Head moved to ${live.headSha.slice(0, 7)} (planned for ${a.headSha.slice(0, 7)}); the next event re-plans it.`,
+          },
+        };
       }
     } catch (err) {
-      return record("failed", { at, errors: [errText("pulls.get", err)] });
+      return { status: "failed", delivery: { at, errors: [errText("pulls.get", err)] } };
     }
 
     const prior = await this.store.listReviewActions(a.repoId, a.pullNumber);
@@ -144,16 +243,18 @@ export class GitHubReviewActuator implements ReviewActuator {
       const newestFirst = [...prior].sort((x, y) => (y.delivery?.at ?? y.loggedAt).localeCompare(x.delivery?.at ?? x.loggedAt));
       const known = [retry?.commentId, ...newestFirst.map((r) => r.delivery?.commentId)].find((id) => id != null);
       try {
-        commentId = await this.upsertComment(upsert, known);
+        commentId = await this.upsertComment(client, upsert, known);
       } catch (err) {
         errors.push(errText("comment", err));
       }
     }
 
     const review = a.call.createReview;
+    let createdNow = false;
     if (review && reviewId == null) {
       try {
-        reviewId = (await this.client.createReview({ ...review })).id;
+        reviewId = (await client.createReview({ ...review })).id;
+        createdNow = true;
       } catch (err) {
         errors.push(errText(`pulls.createReview ${review.event}`, err));
       }
@@ -162,14 +263,15 @@ export class GitHubReviewActuator implements ReviewActuator {
     const req = a.call.requestReviewers;
     if (req && !reviewersRequested) {
       try {
-        await this.client.requestReviewers({ ...req, reviewers: [...req.reviewers] });
+        await client.requestReviewers({ ...req, reviewers: [...req.reviewers] });
         reviewersRequested = req.reviewers;
       } catch (err) {
         errors.push(errText("pulls.requestReviewers", err));
       }
     }
 
-    if (a.action !== "request_changes") {
+    // Dismissing a block unblocks a merge: only an act-level action may do it.
+    if (a.action !== "request_changes" && a.authority === "act") {
       const alreadyDismissed = new Set([...dismissed, ...prior.flatMap((r) => r.delivery?.dismissedReviewIds ?? [])]);
       const stale = prior
         .filter((r) => r.action === "request_changes" && r.headSha !== a.headSha && r.delivery?.reviewId != null)
@@ -177,12 +279,20 @@ export class GitHubReviewActuator implements ReviewActuator {
         .filter((id) => !alreadyDismissed.has(id));
       for (const id of stale) {
         try {
-          await this.client.dismissReview({ ...pr, review_id: id, message: DISMISS_MESSAGE });
+          await client.dismissReview({ ...pr, review_id: id, message: DISMISS_MESSAGE });
           dismissed.push(id);
         } catch (err) {
           errors.push(errText("pulls.dismissReview", err));
         }
       }
+    }
+
+    // VAL-04: confirm on GitHub that what we sent is what landed.
+    let verified: ReviewDelivery["verified"];
+    if (errors.length === 0 && (createdNow || commentId != null)) {
+      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId);
+      await this.evidence(a, "verified", this.now(), { ...verified });
+      if (!verified.ok) errors.push(`verification: ${verified.detail}`);
     }
 
     const delivery: ReviewDelivery = {
@@ -192,29 +302,64 @@ export class GitHubReviewActuator implements ReviewActuator {
       ...(reviewersRequested ? { reviewersRequested } : {}),
       ...(dismissed.length > 0 ? { dismissedReviewIds: dismissed } : {}),
       ...(errors.length > 0 ? { errors } : {}),
+      ...(verified ? { verified } : {}),
     };
-    return record(errors.length > 0 ? "failed" : "sent", delivery);
+    return { status: errors.length > 0 ? "failed" : "sent", delivery };
+  }
+
+  private async verify(
+    client: ReviewClient,
+    a: PlannedReviewAction,
+    pr: { owner: string; repo: string; pull_number: number },
+    reviewId: number | undefined,
+    commentId: number | undefined,
+  ): Promise<{ ok: boolean; detail: string }> {
+    const checks: string[] = [];
+    try {
+      if (reviewId != null && a.call.createReview) {
+        const r = (await client.listReviews(pr)).find((x) => x.id === reviewId);
+        const want = REVIEW_STATE[a.call.createReview.event];
+        if (!r) return { ok: false, detail: `review ${reviewId} is not on the PR` };
+        if (r.state !== want) return { ok: false, detail: `review ${reviewId} is ${r.state}, expected ${want}` };
+        if (r.commitId !== a.headSha) return { ok: false, detail: `review ${reviewId} is on ${String(r.commitId).slice(0, 7)}, expected ${a.headSha.slice(0, 7)}` };
+        checks.push(`review ${reviewId} ${want} on ${a.headSha.slice(0, 7)}`);
+      }
+      if (commentId != null && a.call.upsertComment && a.taskId) {
+        const found = await client.findComment({
+          owner: pr.owner,
+          repo: pr.repo,
+          issue_number: pr.pull_number,
+          marker: taskMarker(a.taskId),
+        });
+        if (found !== commentId) return { ok: false, detail: `comment ${commentId} does not carry this task's marker` };
+        checks.push(`comment ${commentId} carries task ${a.taskId}`);
+      }
+    } catch (err) {
+      return { ok: false, detail: errText("verify", err) };
+    }
+    return { ok: true, detail: checks.join("; ") };
   }
 
   /** Edits PullUp's comment (known id, else found by marker); creates it if neither works. */
   private async upsertComment(
+    client: ReviewClient,
     c: NonNullable<PlannedReviewAction["call"]["upsertComment"]>,
     knownId: number | undefined,
   ): Promise<number> {
     const { owner, repo, issue_number, marker, body } = c;
     const candidates = [knownId];
-    if (knownId == null) candidates.push((await this.client.findComment({ owner, repo, issue_number, marker })) ?? undefined);
+    if (knownId == null) candidates.push((await client.findComment({ owner, repo, issue_number, marker })) ?? undefined);
     for (const id of candidates) {
       if (id == null) continue;
       try {
-        return (await this.client.updateComment({ owner, repo, comment_id: id, body })).id;
+        return (await client.updateComment({ owner, repo, comment_id: id, body })).id;
       } catch (err) {
         // Deleted or not ours (403/404): fall through to a fresh comment.
         const status = (err as { status?: number }).status;
         if (status !== 404 && status !== 403) throw err;
       }
     }
-    return (await this.client.createComment({ owner, repo, issue_number, body })).id;
+    return (await client.createComment({ owner, repo, issue_number, body })).id;
   }
 }
 
@@ -225,10 +370,18 @@ export class GitHubReviewActuator implements ReviewActuator {
  */
 export async function createReviewActuator(
   store: PullStore,
-  repoId: string,
-  opts: { readonly delivery: DeliveryMode; readonly env?: GitHubEnv; readonly now?: () => string },
+  _repoId: string,
+  opts: {
+    readonly delivery: DeliveryMode;
+    readonly guard?: ExecutionGuard;
+    readonly env?: GitHubEnv;
+    readonly now?: () => string;
+    readonly broker?: CredentialBroker;
+  },
 ): Promise<ReviewActuator> {
   if (opts.delivery !== "live") return new LoggingReviewActuator(store, opts.now);
-  const octokit = await createRepoOctokit(repoId, opts.env);
-  return new GitHubReviewActuator(octokitReviewClient(octokit), store, opts.now);
+  const broker = opts.broker ?? createCredentialBroker(opts.env);
+  if (!broker) throw new Error("No GitHub credentials: set GITHUB_APP_ID + GITHUB_PRIVATE_KEY (GitHub App) or GITHUB_TOKEN.");
+  if (!opts.guard) throw new Error("Live delivery needs an execution guard (permit key, agent identity, config hash).");
+  return new GitHubReviewActuator(broker, store, { guard: opts.guard, ...(opts.now ? { now: opts.now } : {}) });
 }

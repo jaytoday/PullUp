@@ -21,8 +21,13 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   Evaluation / Block only / Full, size limits, always-human categories, tiers,
   review focus, custom raise-only questions) with a what-if preview and
   versioned, loosen-confirmed saves. See `docs/configuration.md`.
-- **Skeleton build** — PullUp *reports* on dynamic-CI economics. Enforcement
-  (auto-merge, gate changes, posting reviews) is explicitly deferred.
+- **Governed authority** (Agent Baseline) — what PullUp decides and what it
+  may *send* are separate: each action becomes a task with an explicit
+  allow / comment-only / deny, a signed 5-minute single-use permit, a GitHub
+  token scoped to one repo and revoked after use, verification after sending,
+  a stop switch and a hash-chained evidence record. See `docs/authority.md`.
+- **No auto-merge** — PullUp approves, requests changes or asks a human; it
+  never merges or touches branch protection.
 
 ## Quickstart (offline, no credentials)
 
@@ -75,8 +80,9 @@ node packages/cli/dist/index.js calibrate fixtures/calibration
 ```
 
 Live fetch and sending use a GitHub App (`GITHUB_APP_ID` + `GITHUB_PRIVATE_KEY`)
-or `GITHUB_TOKEN`. Setup, permissions and the approval gate are in
-[`docs/github.md`](docs/github.md).
+or `GITHUB_TOKEN` (comments only). Setup, permissions and the approval gate are in
+[`docs/github.md`](docs/github.md); enrolling repos, approving agent versions,
+the stop switch and evidence are in [`docs/authority.md`](docs/authority.md).
 
 ## Web dashboard
 
@@ -126,7 +132,7 @@ web/        dashboard (Vite + SolidJS + Tailwind v4, nikala-ui components)
 fixtures/   healthy · congested (+ synthetic hunks) · calibration (600 PRs) ·
             jev (scenario PRs #1001–#1005 covering every band)
 evals/      offline evals (recovery, congestion, smoke, jev/*) + live-tagged Jev
-docs/       architecture · cost-model · analytics · jev
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority
 scripts/    generate-fixtures.ts
 ```
 

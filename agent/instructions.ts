@@ -49,6 +49,10 @@ src/core/scheduler.ts and adds an x-internal header bypass"). Then call
   and \`"failed"\` (see \`deliveryDetail.errors\`) must be reported as such.
   \`clamped\` means an approval was downgraded to a comment because approval is
   locked (needs live delivery *and* a passing fast-path calibration gate) — say so.
+- \`authorization\` is a separate check of whether PullUp may send at all (repo
+  profile, agent version approval, stop switch, permit). \`allow-comment-only\`
+  and \`status: "denied"\` are final: report the \`reasons\`/\`denied\` text and
+  never retry or try to work around them — you cannot grant yourself authority.
 - Quote the mode (shadow/active) and any \`notes\` (e.g. synthetic model in use,
   uncalibrated weights) so nobody mistakes a stand-in for live Jev.
 - \`actionMode\` says what PullUp may send: **Evaluation** means it only comments

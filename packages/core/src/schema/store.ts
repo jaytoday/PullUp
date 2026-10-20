@@ -8,6 +8,13 @@ import type { ReviewActionRecord } from "../actions/review.js";
 import type { ConfigFile } from "../config/schema.js";
 import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
 import type {
+  AgentRecord,
+  ControlState,
+  EvidenceQuery,
+  EvidenceRecord,
+  RepoEnrollment,
+} from "../authority/records.js";
+import type {
   DefectEventRecord,
   HunkRecord,
   PullRecord,
@@ -56,6 +63,23 @@ export interface PullStore {
   listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]>;
   /** Appends a version, numbering it max+1. Throws if `expectedPrevious` isn't the latest. */
   appendConfigVersion(rec: NewConfigVersion, expectedPrevious: number | null): Promise<ConfigVersionRecord>;
+
+  /** Authority layer (authority/): stop switch, enrollment, agent registry, permits, evidence. */
+  getControlState(scope: string): Promise<ControlState | null>;
+  setControlState(state: ControlState): Promise<void>;
+  getEnrollment(repoId: string): Promise<RepoEnrollment | null>;
+  setEnrollment(e: RepoEnrollment): Promise<void>;
+  getAgent(agentId: string, version: string): Promise<AgentRecord | null>;
+  upsertAgent(rec: AgentRecord): Promise<void>;
+  listAgents(): Promise<AgentRecord[]>;
+  /** Records a permit nonce as used. False if it was already used (replay). */
+  consumePermitNonce(nonce: string, taskId: string, at: string): Promise<boolean>;
+  /** The newest evidence row of one repo's chain. */
+  lastEvidence(repoId: string): Promise<EvidenceRecord | null>;
+  /** Inserts one row; throws if (repoId, seq) already exists. Never updates. */
+  insertEvidence(rec: EvidenceRecord): Promise<void>;
+  /** Matching rows, ordered by repo then seq. */
+  listEvidence(q?: EvidenceQuery): Promise<EvidenceRecord[]>;
 }
 
 export interface ConfigVersionRecord {
@@ -98,6 +122,11 @@ export class InMemoryStore implements PullStore {
   private signalRuns: SignalRunRecord[] = [];
   private reviewActions = new Map<string, ReviewActionRecord>();
   private configVersions: ConfigVersionRecord[] = [];
+  private controlStates = new Map<string, ControlState>();
+  private enrollments = new Map<string, RepoEnrollment>();
+  private agents = new Map<string, AgentRecord>();
+  private nonces = new Set<string>();
+  private evidence: EvidenceRecord[] = [];
 
   private keyPull(repoId: string, number: number): string {
     return `${repoId}#${number}`;
@@ -214,6 +243,67 @@ export class InMemoryStore implements PullStore {
     const saved: ConfigVersionRecord = { ...rec, version: (latest ?? 0) + 1 };
     this.configVersions.push(saved);
     return saved;
+  }
+
+  async getControlState(scope: string): Promise<ControlState | null> {
+    return this.controlStates.get(scope) ?? null;
+  }
+
+  async setControlState(state: ControlState): Promise<void> {
+    this.controlStates.set(state.scope, state);
+  }
+
+  async getEnrollment(repoId: string): Promise<RepoEnrollment | null> {
+    return this.enrollments.get(repoId) ?? null;
+  }
+
+  async setEnrollment(e: RepoEnrollment): Promise<void> {
+    this.enrollments.set(e.repoId, e);
+  }
+
+  async getAgent(agentId: string, version: string): Promise<AgentRecord | null> {
+    return this.agents.get(`${agentId}@${version}`) ?? null;
+  }
+
+  async upsertAgent(rec: AgentRecord): Promise<void> {
+    this.agents.set(`${rec.agentId}@${rec.version}`, rec);
+  }
+
+  async listAgents(): Promise<AgentRecord[]> {
+    return [...this.agents.values()].sort((a, b) => a.firstSeen.localeCompare(b.firstSeen));
+  }
+
+  async consumePermitNonce(nonce: string): Promise<boolean> {
+    if (this.nonces.has(nonce)) return false;
+    this.nonces.add(nonce);
+    return true;
+  }
+
+  async lastEvidence(repoId: string): Promise<EvidenceRecord | null> {
+    return this.evidence.filter((e) => e.repoId === repoId).at(-1) ?? null;
+  }
+
+  async insertEvidence(rec: EvidenceRecord): Promise<void> {
+    if (this.evidence.some((e) => e.repoId === rec.repoId && e.seq === rec.seq)) {
+      throw new Error(`Evidence row ${rec.repoId}#${rec.seq} already exists.`);
+    }
+    this.evidence.push(rec);
+  }
+
+  async listEvidence(q: EvidenceQuery = {}): Promise<EvidenceRecord[]> {
+    return this.evidence
+      .filter(
+        (e) =>
+          (q.repoId === undefined || e.repoId === q.repoId) &&
+          (q.taskId === undefined || e.taskId === q.taskId) &&
+          (q.agentVersion === undefined || e.agentVersion === q.agentVersion),
+      )
+      .sort((a, b) => a.repoId.localeCompare(b.repoId) || a.seq - b.seq);
+  }
+
+  /** Test hook: tamper with stored evidence (the chain check must catch it). */
+  tamperEvidence(fn: (rows: EvidenceRecord[]) => EvidenceRecord[]): void {
+    this.evidence = fn(this.evidence);
   }
 }
 
