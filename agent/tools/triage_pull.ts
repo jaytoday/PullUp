@@ -3,7 +3,16 @@
 // review action and the flagged code the rationale must be grounded in.
 // Logic lives in @pullup/core + @pullup/jev.
 
-import { MODE_LABEL, buildReport, configReportOptions, namedModeOf, planReviewActions } from "@pullup/core";
+import {
+  MODE_LABEL,
+  buildReport,
+  computeLearnings,
+  configReportOptions,
+  deriveOutcomes,
+  namedModeOf,
+  planReviewActions,
+  repoHistoryBlock,
+} from "@pullup/core";
 import { prepareJevRuntime } from "@pullup/jev";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
@@ -42,6 +51,10 @@ export default defineTool({
       questionSet: report.risk?.questionSetVersion ?? null,
     });
     const hunks = await store.listHunks(repoId, pullNumber);
+    // Learnings from what humans did after earlier decisions: numbers and ids only, for emphasis.
+    const now = new Date().toISOString();
+    const learnings = computeLearnings(repoId, await deriveOutcomes(store, repoId, cfg.outcomes, now), await store.listLearningDismissals(repoId), now);
+    const filesOf = new Map(pulls.map((p) => [p.number, p.files]));
     const open = report.decisions.filter(
       (d) => d.state === "open" && (pullNumber === undefined || d.pullNumber === pullNumber),
     );
@@ -75,6 +88,7 @@ export default defineTool({
           findings: d.findings ?? [],
           appliedRules: d.scope?.appliedRules.map((r) => r.name) ?? [],
           plannedAction: planned.find((a) => a.pullNumber === d.pullNumber) ?? null,
+          repoHistory: repoHistoryBlock(learnings, filesOf.get(d.pullNumber) ?? []),
           // The code behind the flags — the only basis for a rationale.
           flaggedHunks: needsCode
             ? hunks

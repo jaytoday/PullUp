@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show, createEffect, on } from "solid-js";
 import { TriangleAlert } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { Callout, CalloutDescription, CalloutTitle } from "@/components/ui/callout";
@@ -22,6 +22,7 @@ export function SaveDialog() {
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [conflict, setConflict] = createSignal(false);
+  createEffect(on(s.saveOpen, (open) => open && note() === "" && setNote(s.suggestedNote()), { defer: true }));
 
   const needsConfirm = () => s.loosened().length > 0;
   const questionsChanged = () => s.changes().some((c) => c.path.startsWith("jev.customQuestions") || c.path.startsWith("jev.disabledQuestions"));

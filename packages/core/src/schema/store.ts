@@ -8,6 +8,7 @@ import type { ReviewActionRecord } from "../actions/review.js";
 import type { ConfigFile } from "../config/schema.js";
 import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
 import type { VerdictRecord, VerifyRunRecord } from "../verify/types.js";
+import type { LearningDismissal } from "../outcomes/learn.js";
 import type {
   AgentRecord,
   ControlState,
@@ -71,6 +72,10 @@ export interface PullStore {
   listVerdicts(repoId: string, pullNumber?: number): Promise<VerdictRecord[]>;
   recordVerifyRun(run: VerifyRunRecord): Promise<void>;
   listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]>;
+
+  /** Learnings an operator dismissed (append-only). */
+  appendLearningDismissal(d: LearningDismissal): Promise<void>;
+  listLearningDismissals(repoId: string): Promise<LearningDismissal[]>;
 
   /** Append-only per-repo config versions (the "repo" config layer), oldest first. */
   listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]>;
@@ -137,6 +142,7 @@ export class InMemoryStore implements PullStore {
   private findingComments = new Map<string, FindingCommentRecord>();
   private verdicts = new Map<string, VerdictRecord>();
   private verifyRuns: VerifyRunRecord[] = [];
+  private dismissals: LearningDismissal[] = [];
   private configVersions: ConfigVersionRecord[] = [];
   private controlStates = new Map<string, ControlState>();
   private enrollments = new Map<string, RepoEnrollment>();
@@ -277,6 +283,14 @@ export class InMemoryStore implements PullStore {
 
   async listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]> {
     return this.verifyRuns.filter((r) => r.repoId === repoId);
+  }
+
+  async appendLearningDismissal(d: LearningDismissal): Promise<void> {
+    this.dismissals.push(d);
+  }
+
+  async listLearningDismissals(repoId: string): Promise<LearningDismissal[]> {
+    return this.dismissals.filter((d) => d.repoId === repoId);
   }
 
   async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {

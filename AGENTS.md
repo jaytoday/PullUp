@@ -27,7 +27,7 @@ evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
 packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/verify · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes
 ```
 
 ## Working in `agent/`
@@ -113,6 +113,14 @@ docs/       architecture · cost-model · analytics · jev · configuration · g
   Never let a verdict remove or re-level a finding (tests in `verify/verify.test.ts`).
 - Every quote is re-checked in `acceptVerdict`; never show unaccepted evidence.
 - Bump `VERIFIER_PROMPT_VERSION` on any prompt, tool or schema change (cache key).
+
+## Outcomes and learnings (`docs/outcomes.md`, core `outcomes/`)
+
+- Derived on read from stored data; no table. Keep it pure and deterministic.
+- Learnings are suggestions only: nothing under `outcomes/` may write config
+  (test in `outcomes/outcomes.test.ts`). Accepting one goes through the
+  settings save flow. Thresholds change → bump `LEARNING_POLICY_VERSION`.
+- The `<repo_history>` block is numbers and identifiers only.
 
 ## Configuration (`docs/configuration.md`)
 

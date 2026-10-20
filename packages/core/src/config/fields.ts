@@ -48,7 +48,8 @@ export type FieldGroup =
   | "rules"
   | "checks"
   | "inline"
-  | "verify";
+  | "verify"
+  | "outcomes";
 
 export interface FieldSpec {
   /** Dot path into the config file; `*` matches one record key. */
@@ -134,6 +135,8 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "verify.maxPerPull", label: "Findings checked per pull request", help: "Most severe first.", group: "verify", widget: "number", loosens: "neutral", min: 1, max: 10, step: 1 },
   { path: "verify.inObserve", label: "Check while signals are only observed", help: "Verdicts are shown, never used.", group: "verify", widget: "switch", loosens: "neutral" },
   { path: "verify.budgetUsdPerDay", label: "Verifier budget per day", help: "Hard stop on live verifier spend per repo per UTC day.", group: "verify", widget: "number", loosens: "neutral", min: 0, max: 500, step: 1, unit: "USD" },
+  { path: "outcomes.quickApproveMinutes", label: "Quick approval", help: "A human approving the same commit within this many minutes counts as “the ask wasn't needed”. Affects the Outcomes page only.", group: "outcomes", widget: "number", loosens: "neutral", min: 1, max: 1440, step: 5, unit: "minutes" },
+  { path: "outcomes.defectWindowDays", label: "Revert window", help: "A revert or hotfix within this many days of merging counts against an approval. Affects the Outcomes page only.", group: "outcomes", widget: "number", loosens: "neutral", min: 1, max: 90, step: 1, unit: "days" },
   { path: "rules", label: "Special cases (rules)", help: "Scoped policy for folders, authors or labels.", group: "rules", widget: "text", loosens: "neutral" },
 
   // Basic: limits

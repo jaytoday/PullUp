@@ -70,6 +70,8 @@ export interface ReviewRecord {
   readonly submittedAt: string;
   readonly state: ReviewState;
   readonly body: string | null;
+  /** The commit the review was submitted on (live ingest); absent in older data and fixtures. */
+  readonly commitId?: string | null;
 }
 
 export interface ReviewCommentRecord {

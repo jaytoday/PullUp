@@ -6,6 +6,7 @@ import {
   GitPullRequest,
   History,
   LayoutGrid,
+  Lightbulb,
   Settings,
   Search,
   SlidersHorizontal,
@@ -26,6 +27,7 @@ const NAV = [
   { path: "/actions", label: "Review actions", icon: History },
   { path: "/calibration", label: "Calibration", icon: FlaskConical },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
+  { path: "/outcomes", label: "Outcomes", icon: Lightbulb },
   { path: "/settings", label: "Settings", icon: SlidersHorizontal },
 ] as const;
 

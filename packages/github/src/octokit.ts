@@ -54,6 +54,7 @@ interface GHReview {
   updated_at?: string;
   state: string;
   body?: string | null;
+  commit_id?: string | null;
 }
 
 interface GHComment {
@@ -160,6 +161,7 @@ export class OctokitPullSource implements PullSource {
           ? "CHANGES_REQUESTED"
           : "COMMENTED") as SourceReview["state"],
       body: r.body ?? null,
+      ...(r.commit_id ? { commitId: r.commit_id } : {}),
     }));
   }
 

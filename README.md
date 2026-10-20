@@ -38,6 +38,10 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   re-checks every quote against the diff. Raise-only: a confirmed finding may
   request changes (`signalsCanRequestChanges: "verified"`), nothing it says can
   remove a finding or enable an approval. `pullup verify`, `@pullup/verify`.
+- **Decision outcomes** — what humans did after each PullUp decision (asks
+  approved unchanged, approvals overridden, change requests addressed) and
+  learnings that suggest settings changes; never applied automatically. See
+  `docs/outcomes.md`.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 
@@ -75,6 +79,7 @@ node packages/cli/dist/index.js analyze fixtures/congested \
 | `report <repoId> [--jev-mode]` | print the markdown report |
 | `signals <repoId> [--model] [--record] [--pr] [--open-only]` | evaluate Jev risk signals (cached by content) |
 | `verify <repoId> [--verifier claude\|synthetic] [--pr]` | check strong risk-signal findings against the code (cached by content) |
+| `outcomes <repoId> [--since] [--json]` | what humans did after PullUp's decisions, plus suggested learnings |
 | `calibrate <repoId> [--model] [--out]` | fit + validate the risk model on labelled history; write the artifact |
 | `actions <repoId> [--jev-mode] [--send]` | plan bot review actions; **log** them, or send to GitHub with `--send` / `PULLUP_GITHUB_DELIVERY=live` |
 | `config [--config <path>]` | show resolved priors + provenance |
@@ -145,7 +150,7 @@ web/        dashboard (Vite + SolidJS + Tailwind v4, nikala-ui components)
 fixtures/   healthy · congested (+ synthetic hunks) · calibration (600 PRs) ·
             jev (scenario PRs #1001–#1005 covering every band)
 evals/      offline evals (recovery, congestion, smoke, jev/*) + live-tagged Jev
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes
 scripts/    generate-fixtures.ts
 ```
 

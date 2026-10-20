@@ -59,6 +59,9 @@ import {
   resolveQuestionSet,
   runSignals,
   runVerification,
+  computeLearnings,
+  deriveOutcomes,
+  summarizeOutcomes,
   screenCustomQuestion,
   withRepoLayer,
 } from "@pullup/core";
@@ -494,6 +497,34 @@ export function createApp(deps: AppDeps) {
           now: now(),
         });
         return { run, note };
+      },
+    ],
+    [
+      // Decision outcomes and learnings: derived from stored data on every read (no writes).
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/outcomes$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const cfg = await configFor(repoId);
+        const outcomes = await deriveOutcomes(deps.store, repoId, cfg.outcomes, now());
+        const learnings = computeLearnings(repoId, outcomes, await deps.store.listLearningDismissals(repoId), now());
+        return { outcomes: [...outcomes].reverse().slice(0, 300), summary: summarizeOutcomes(outcomes), learnings, config: cfg.outcomes };
+      },
+    ],
+    [
+      // Dismissing a learning is the only write here (append-only). Accepting one goes through the settings save flow.
+      "POST",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/learnings\/([0-9a-f]{12})\/dismiss$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const cfg = await configFor(repoId);
+        const outcomes = await deriveOutcomes(deps.store, repoId, cfg.outcomes, now());
+        const learning = computeLearnings(repoId, outcomes, await deps.store.listLearningDismissals(repoId), now()).find((l) => l.id === m[3]);
+        if (!learning) throw new HttpError(404, `No learning ${m[3]} for ${repoId}.`);
+        await deps.store.appendLearningDismissal({ repoId, learningId: learning.id, support: learning.evidence.support, at: now(), by: "dashboard" });
+        return { dismissed: learning.id };
       },
     ],
     [

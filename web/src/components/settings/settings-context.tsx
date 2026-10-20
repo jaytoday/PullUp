@@ -82,6 +82,9 @@ interface SettingsContextValue {
   setPreviewOpen: (o: boolean) => void;
   saveOpen: Accessor<boolean>;
   setSaveOpen: (o: boolean) => void;
+  /** Pre-filled change note (e.g. when a draft was opened from a learning). */
+  suggestedNote: Accessor<string>;
+  setSuggestedNote: (n: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue>();
@@ -115,6 +118,7 @@ export const SettingsProvider: ParentComponent = (props) => {
   const repo = useRepo();
   const [server, { refetch }] = createResource(() => repo.repoId(), (id) => api.repoConfig(id));
   const [draft, setDraft] = createSignal<ConfigFile>({});
+  const [suggestedNote, setSuggestedNote] = createSignal("");
   const [preview, setPreview] = createSignal<ConfigPreview | null>(null);
   const [previewLoading, setPreviewLoading] = createSignal(false);
   const [previewError, setPreviewError] = createSignal<string | null>(null);
@@ -254,6 +258,8 @@ export const SettingsProvider: ParentComponent = (props) => {
     setPreviewOpen,
     saveOpen,
     setSaveOpen,
+    suggestedNote,
+    setSuggestedNote,
   };
 
   return <SettingsContext.Provider value={value}>{props.children}</SettingsContext.Provider>;

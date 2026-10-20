@@ -57,6 +57,7 @@ export const reviews = sqliteTable(
     submittedAt: text("submitted_at").notNull(),
     state: text("state").notNull(),
     body: text("body"),
+    commitId: text("commit_id"),
   },
   (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.id] })],
 );
@@ -171,6 +172,18 @@ export const verifyRuns = sqliteTable(
     record: text("record").notNull(),
   },
   (t) => [primaryKey({ columns: [t.repoId, t.runAt, t.verifierId] })],
+);
+
+/** Learnings an operator dismissed (append-only). */
+export const learningDismissals = sqliteTable(
+  "learning_dismissals",
+  {
+    repoId: text("repo_id").notNull(),
+    learningId: text("learning_id").notNull(),
+    at: text("at").notNull(),
+    record: text("record").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.learningId, t.at] })],
 );
 
 /** Append-only per-repo config versions (the "repo" layer over pullup.config.json). */

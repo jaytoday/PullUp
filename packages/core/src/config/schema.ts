@@ -31,6 +31,8 @@ import type { InlineConfig } from "./inline.js";
 import { DEFAULT_INLINE, inlineSchema, resolveInline } from "./inline.js";
 import type { VerifyConfig } from "./verify.js";
 import { DEFAULT_VERIFY, resolveVerify, verifySchema } from "./verify.js";
+import type { OutcomesConfig } from "./outcomes.js";
+import { DEFAULT_OUTCOMES, outcomesSchema, resolveOutcomes } from "./outcomes.js";
 
 export const PRESET_IDS = ["conservative", "balanced", "fast-lane"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
@@ -179,6 +181,8 @@ export const configFileSchema = z
     inline: inlineSchema.optional(),
     /** Evidence verifier for strong risk-signal findings (see config/verify.ts). */
     verify: verifySchema.optional(),
+    /** Windows for judging what humans did after a decision (see config/outcomes.ts). */
+    outcomes: outcomesSchema.optional(),
     /** Owner's review focus: context for the rationale writer only, never for decisions. */
     review: z
       .object({
@@ -212,6 +216,7 @@ export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
     checks: _checks,
     inline: _inline,
     verify: _verify,
+    outcomes: _outcomes,
     review: _review,
     preset: _preset,
     ...file
@@ -269,6 +274,7 @@ export interface ResolvedLayers {
   readonly checks: ChecksConfig;
   readonly inline: InlineConfig;
   readonly verify: VerifyConfig;
+  readonly outcomes: OutcomesConfig;
   /** Normalised review focus, or null. */
   readonly reviewFocus: string | null;
 }
@@ -287,6 +293,7 @@ export function resolveConfigFile(file: ConfigFile = {}): ResolvedLayers {
     checks: resolveChecks(file.checks),
     inline: resolveInline(file.inline),
     verify: resolveVerify(file.verify),
+    outcomes: resolveOutcomes(file.outcomes),
     reviewFocus: focus === "" ? null : focus,
   };
 }
@@ -360,6 +367,7 @@ export function defaultConfigFile(): ConfigFile {
     checks: { ...DEFAULT_CHECKS },
     inline: { ...DEFAULT_INLINE },
     verify: { ...DEFAULT_VERIFY },
+    outcomes: { ...DEFAULT_OUTCOMES },
     review: { focus: "" },
     preset: null,
   };

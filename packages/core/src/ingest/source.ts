@@ -48,6 +48,7 @@ export interface SourceReview {
   readonly submittedAt: string;
   readonly state: ReviewState;
   readonly body: string | null;
+  readonly commitId?: string | null;
 }
 
 export interface SourceReviewComment {

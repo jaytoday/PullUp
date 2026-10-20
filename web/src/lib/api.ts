@@ -35,9 +35,15 @@ import type {
   ChainBreak,
   FindingCommentRecord,
   VerifyRunRecord,
+  DecisionOutcome,
+  OutcomeSummary,
+  Learning,
+  OutcomesConfig,
 } from "@pullup/core";
 
 export type {
+  DecisionOutcome,
+  Learning,
   ActionAuthority,
   CalibrationArtifact,
   ConfigChange,
@@ -267,6 +273,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(pullNumber ? { pullNumber } : {}),
     }),
+  outcomes: (repoId: string) =>
+    request<{ outcomes: DecisionOutcome[]; summary: OutcomeSummary; learnings: Learning[]; config: OutcomesConfig }>(`${repoPath(repoId)}/outcomes`),
+  dismissLearning: (repoId: string, id: string) =>
+    request<{ dismissed: string }>(`${repoPath(repoId)}/learnings/${id}/dismiss`, { method: "POST" }),
   logActions: (repoId: string, mode: JevMode) =>
     request<{ logged: ReviewActionRecord[]; delivery?: "log" | "live"; sent: number; failed?: number; denied?: number }>(`${repoPath(repoId)}/actions${q(mode)}`, { method: "POST" }),
   calibrate: (repoId: string) =>

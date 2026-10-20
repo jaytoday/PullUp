@@ -235,6 +235,34 @@ program
   });
 
 program
+  .command("outcomes")
+  .description("What humans did after PullUp's decisions, and the learnings PullUp suggests (never applied automatically)")
+  .argument("<repoId>", "owner/repo as ingested")
+  .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
+  .option("--since <days>", "only decisions from the last N days", "90")
+  .option("--json", "print JSON")
+  .action(async (repoId: string, opts: { config: string; since: string; json?: boolean }) => {
+    const { computeLearnings, deriveOutcomes, summarizeOutcomes } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
+      const now = new Date().toISOString();
+      const cutoff = new Date(Date.parse(now) - Number(opts.since) * 86_400_000).toISOString();
+      const outcomes = (await deriveOutcomes(s, repoId, cfg.outcomes, now)).filter((o) => o.decidedAt >= cutoff);
+      const summary = summarizeOutcomes(outcomes);
+      const learnings = computeLearnings(repoId, outcomes, await s.listLearningDismissals(repoId), now);
+      if (opts.json) {
+        console.log(JSON.stringify({ summary, learnings, outcomes }, null, 2));
+        return;
+      }
+      console.log(`Outcomes for ${repoId} (last ${opts.since} days): ${outcomes.length} decision(s)`);
+      for (const [k, n] of Object.entries(summary.byOutcome)) if (n > 0) console.log(`  ${k.padEnd(24)} ${n}`);
+      if (summary.askUnneededRate !== null) console.log(`  sent asks approved unchanged within ${cfg.outcomes.quickApproveMinutes} min: ${Math.round(summary.askUnneededRate * 100)}%`);
+      console.log(learnings.length ? "\nLearnings (suggestions only; accept them in the dashboard's Settings):" : "\nNo learnings yet.");
+      for (const l of learnings) console.log(`  [${l.id}] ${l.kind}${l.status === "dismissed" ? " (dismissed)" : ""}: ${l.summary}\n      → ${l.suggestion.text}`);
+    });
+  });
+
+program
   .command("calibrate")
   .description("Fit + validate the Jev risk model on the repo's labelled history; write a calibration artifact")
   .argument("<repoId>", "owner/repo as ingested")

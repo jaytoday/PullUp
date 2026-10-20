@@ -1,5 +1,8 @@
 import { useBeforeLeave, useSearchParams } from "@solidjs/router";
-import { onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createResource, onCleanup, onMount, Show } from "solid-js";
+import { Callout, CalloutDescription, CalloutTitle } from "@/components/ui/callout";
+import { useRepo } from "@/components/layout/repo-context";
+import { api } from "@/lib/api";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadError, PageHeader, PageSkeleton } from "@/components/layout/repo-layout";
@@ -107,9 +110,43 @@ function AdvancedTab() {
   );
 }
 
+/**
+ * "Open as draft" from the Outcomes page: applies a learning's config edits to
+ * the draft (never saves), shows what it came from, and pre-fills the note.
+ */
+function LearningDraft(props: { id: string }) {
+  const s = useSettings();
+  const repo = useRepo();
+  const [data] = createResource(() => repo.repoId(), (id) => api.outcomes(id));
+  const learning = () => safeLatest(data)?.learnings.find((l) => l.id === props.id);
+  let applied = false;
+  createEffect(() => {
+    const l = learning();
+    if (!l || applied || !safeLatest(s.server)) return;
+    applied = true;
+    for (const op of l.suggestion.ops) {
+      if (op.op === "set") s.set(op.path, op.value);
+      else s.set("rules", [...(s.get<unknown[]>("rules") ?? []), op.rule]);
+    }
+    s.setSuggestedNote(`From learning ${l.id}: ${l.suggestion.text}`.slice(0, 200));
+  });
+  return (
+    <Show when={learning()}>
+      {(l) => (
+        <Callout variant="info" data-testid="learning-draft">
+          <CalloutTitle>Draft from a learning</CalloutTitle>
+          <CalloutDescription>
+            {l().summary} {l().suggestion.text} Review the highlighted changes, preview them, then save; nothing is applied until you do.
+          </CalloutDescription>
+        </Callout>
+      )}
+    </Show>
+  );
+}
+
 function SettingsPage() {
   const s = useSettings();
-  const [params, setParams] = useSearchParams<{ tab?: string }>();
+  const [params, setParams] = useSearchParams<{ tab?: string; learning?: string }>();
   const tab = () => (TABS.includes(params.tab as (typeof TABS)[number]) ? params.tab! : "basic");
 
   // Don't lose a draft by navigating away (it also survives a reload).
@@ -132,6 +169,7 @@ function SettingsPage() {
             title="Settings"
             description="How PullUp's CI gate works for this repo: what it may do on GitHub, how big a change it may approve, and what always needs a person."
           />
+          <Show when={params.learning}>{(id) => <LearningDraft id={id()} />}</Show>
           <UnsavedBar />
           <SettingsHeader />
           <Tabs value={tab()} onChange={(t) => setParams({ tab: t === "basic" ? undefined : t })}>

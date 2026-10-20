@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, Show, type Component } from "solid-js";
-import { BarChart3, Database, FlaskConical, GitPullRequest, History, LayoutGrid, Settings, SlidersHorizontal } from "lucide-solid";
+import { BarChart3, Database, FlaskConical, GitPullRequest, History, LayoutGrid, Settings, SlidersHorizontal, Lightbulb } from "lucide-solid";
 import {
   CommandDialog,
   CommandFooter,
@@ -36,6 +36,7 @@ const PAGES = [
   { path: "/actions", title: "Review actions", icon: History },
   { path: "/calibration", title: "Calibration", icon: FlaskConical },
   { path: "/analytics", title: "Analytics", icon: BarChart3 },
+  { path: "/outcomes", title: "Outcomes", icon: Lightbulb },
   { path: "/settings", title: "Settings", icon: SlidersHorizontal },
 ] as const;
 

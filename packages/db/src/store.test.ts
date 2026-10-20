@@ -214,6 +214,16 @@ describe("SqliteStore authority layer", () => {
     expect(await store.listVerifyRuns("acme/api")).toEqual([run]);
   });
 
+  it("learning dismissals append and list per repo; reviews keep their commit", async () => {
+    const store = await openStore();
+    await store.appendLearningDismissal({ repoId: "acme/api", learningId: "abcdef012345", support: 9, at: "2026-10-19T00:00:00.000Z", by: "dashboard" });
+    await store.appendLearningDismissal({ repoId: "acme/api", learningId: "abcdef012345", support: 20, at: "2026-10-20T00:00:00.000Z", by: "dashboard" });
+    expect((await store.listLearningDismissals("acme/api")).map((d) => d.support)).toEqual([9, 20]);
+    await store.upsertReview({ repoId: "acme/api", pullNumber: 7, id: 1, author: "lead", submittedAt: "2026-10-19T00:00:00.000Z", state: "APPROVED", body: null, commitId: "sha1" });
+    await store.upsertReview({ repoId: "acme/api", pullNumber: 7, id: 2, author: "lead", submittedAt: "2026-10-19T00:00:00.000Z", state: "APPROVED", body: null });
+    expect((await store.listReviews("acme/api", 7)).map((r) => r.commitId ?? null)).toEqual(["sha1", null]);
+  });
+
   it("permit nonces are single use", async () => {
     const store = await openStore();
     expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(true);

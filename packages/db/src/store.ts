@@ -14,6 +14,7 @@ import type {
   FindingCommentRecord,
   VerdictRecord,
   VerifyRunRecord,
+  LearningDismissal,
   SignalRecord,
   SignalRunRecord,
   RepositoryRecord,
@@ -37,6 +38,7 @@ import {
   findingComments,
   verdicts,
   verifyRuns,
+  learningDismissals,
   repoConfigVersions,
   reviewComments,
   reviews,
@@ -126,8 +128,13 @@ export class SqliteStore implements PullStore {
       `CREATE TABLE IF NOT EXISTS reviews (
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, id INTEGER NOT NULL,
         author TEXT NOT NULL, submitted_at TEXT NOT NULL, state TEXT NOT NULL, body TEXT,
-        PRIMARY KEY (repo_id, pull_number, id))`,
+        commit_id TEXT, PRIMARY KEY (repo_id, pull_number, id))`,
     );
+    // Databases created before reviews kept their commit: add the column in place.
+    const cols = await this.client.execute("PRAGMA table_info(reviews)");
+    if (!cols.rows.some((c) => c.name === "commit_id")) {
+      await this.client.execute("ALTER TABLE reviews ADD COLUMN commit_id TEXT");
+    }
     await this.client.execute(
       `CREATE TABLE IF NOT EXISTS review_comments (
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, id INTEGER NOT NULL,
@@ -179,6 +186,11 @@ export class SqliteStore implements PullStore {
       `CREATE TABLE IF NOT EXISTS verify_runs (
         repo_id TEXT NOT NULL, run_at TEXT NOT NULL, verifier_id TEXT NOT NULL,
         record TEXT NOT NULL, PRIMARY KEY (repo_id, run_at, verifier_id))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS learning_dismissals (
+        repo_id TEXT NOT NULL, learning_id TEXT NOT NULL, at TEXT NOT NULL,
+        record TEXT NOT NULL, PRIMARY KEY (repo_id, learning_id, at))`,
     );
     await this.client.execute(
       `CREATE TABLE IF NOT EXISTS repo_config_versions (
@@ -336,10 +348,11 @@ export class SqliteStore implements PullStore {
         submittedAt: review.submittedAt,
         state: review.state,
         body: review.body,
+        commitId: review.commitId ?? null,
       })
       .onConflictDoUpdate({
         target: [reviews.repoId, reviews.pullNumber, reviews.id],
-        set: { state: review.state, body: review.body },
+        set: { state: review.state, body: review.body, commitId: review.commitId ?? null },
       });
   }
 
@@ -404,6 +417,7 @@ export class SqliteStore implements PullStore {
       submittedAt: r.submittedAt,
       state: r.state as ReviewRecord["state"],
       body: r.body,
+      ...(r.commitId ? { commitId: r.commitId } : {}),
     }));
   }
 
@@ -616,6 +630,15 @@ export class SqliteStore implements PullStore {
   async listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]> {
     const rows = await this.db.select().from(verifyRuns).where(eq(verifyRuns.repoId, repoId)).orderBy(asc(verifyRuns.runAt));
     return rows.map((r) => JSON.parse(r.record) as VerifyRunRecord);
+  }
+
+  async appendLearningDismissal(d: LearningDismissal): Promise<void> {
+    await this.db.insert(learningDismissals).values({ repoId: d.repoId, learningId: d.learningId, at: d.at, record: JSON.stringify(d) });
+  }
+
+  async listLearningDismissals(repoId: string): Promise<LearningDismissal[]> {
+    const rows = await this.db.select().from(learningDismissals).where(eq(learningDismissals.repoId, repoId)).orderBy(asc(learningDismissals.at));
+    return rows.map((r) => JSON.parse(r.record) as LearningDismissal);
   }
 
   async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {

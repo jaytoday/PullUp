@@ -10,6 +10,7 @@ const Pulls = lazy(() => import("@/routes/pulls"));
 const Actions = lazy(() => import("@/routes/actions"));
 const Calibration = lazy(() => import("@/routes/calibration"));
 const Analytics = lazy(() => import("@/routes/analytics"));
+const Outcomes = lazy(() => import("@/routes/outcomes"));
 const Settings = lazy(() => import("@/routes/settings"));
 const RepoSettings = lazy(() => import("@/routes/repo-settings"));
 
@@ -30,6 +31,7 @@ export function App() {
         <Route path="/actions" component={Actions} />
         <Route path="/calibration" component={Calibration} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/outcomes" component={Outcomes} />
         <Route path="/settings" component={RepoSettings} />
       </Route>
       <Route path="*" component={Home} />
