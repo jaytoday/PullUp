@@ -99,7 +99,7 @@ function body(f: Finding, first: FindingLocation, rest: readonly FindingLocation
   return [
     `**${c.title}** · ${LEVEL_WORD[f.level]}${observe}${v ? " · confirmed" : ""}`,
     "",
-    `${c.why}${p ? ` (\`${q}\`, ${p})` : ""} A human should confirm the change is intended and safe.${evidence}${also}`,
+    `${c.why.replace(/\.$/, "")}${p ? ` (\`${q}\`, ${p})` : ""}. A human should confirm the change is intended and safe.${evidence}${also}`,
     "",
     `<sub>PullUp${questionSet ? ` \`${questionSet}\`` : ""} · \`${f.id}\` · head \`${headSha.slice(0, 7)}\` · \`${first.path}:${first.startLine}\`</sub>`,
     findingMarker(key),

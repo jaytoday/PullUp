@@ -84,13 +84,15 @@ describe("check run delivery", () => {
     expect(f.fns().some((x) => x.includes("CheckRun"))).toBe(false);
   });
 
-  it("a standing token may only comment, so its check is neutral", async () => {
+  it("a personal token can't post check runs: the check is skipped with a reason, and the comment still sends", async () => {
     const store = await trustedStore();
     const f = fakeClient();
     const governed = await govern(store, plan(decision({})), { credential: "standing-token" });
     expect(governed[0]!.authorization!.effective).toBe("comment");
-    expect(governed[0]!.call.checkRun!.conclusion).toBe("neutral");
-    await actuator(f.client, store, { kind: "standing-token" }).apply(governed);
-    expect(f.calls.find((c) => c.fn === "createCheckRun")!.args).toMatchObject({ conclusion: "neutral" });
+    expect(governed[0]!.call.checkRun).toBeNull();
+    expect(governed[0]!.authorization!.reasons.join(" ")).toMatch(/Check runs need a GitHub App/);
+    const [rec] = await actuator(f.client, store, { kind: "standing-token" }).apply(governed);
+    expect(rec!.status).toBe("sent");
+    expect(f.fns().some((x) => x.includes("CheckRun"))).toBe(false);
   });
 });

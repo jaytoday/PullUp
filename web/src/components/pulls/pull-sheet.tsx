@@ -127,7 +127,7 @@ function Detail(props: { d: PullDetail }) {
         </Callout>
       </Show>
 
-      <Show when={dec().findings}>
+      <Show when={dec().findings || (props.d.findingComments ?? []).length > 0}>
         <Section
           title="Findings"
           aside={

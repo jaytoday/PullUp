@@ -206,7 +206,7 @@ export function governActions(planned: readonly PlannedReviewAction[], input: Go
       createdAt: input.now,
     };
     const requested = p.authority ?? "act";
-    const authorization = authorize(task, requested, {
+    let authorization = authorize(task, requested, {
       ...input.snapshot,
       delivery: input.delivery,
       credential: input.credential,
@@ -216,6 +216,11 @@ export function governActions(planned: readonly PlannedReviewAction[], input: Go
     const upsert = governed.call.upsertComment;
     if (upsert) {
       governed = { ...governed, call: { ...governed.call, upsertComment: { ...upsert, body: `${upsert.body}\n${taskMarker(taskId)}` } } };
+    }
+    // GitHub only accepts check runs from a GitHub App: a personal token would fail the whole action.
+    if (governed.call.checkRun && input.delivery === "live" && input.credential === "standing-token") {
+      governed = { ...governed, call: { ...governed.call, checkRun: null } };
+      authorization = { ...authorization, reasons: [...authorization.reasons, "Check runs need a GitHub App credential; the PullUp check was skipped for this personal token."] };
     }
     // The Observe profile promises only the decision comment: no inline finding comments.
     if (authorization.profile === "observe" && (governed.call.inlineReview || governed.call.resolveThreads?.length)) {

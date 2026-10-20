@@ -109,6 +109,7 @@ export async function runPreview(input: PreviewInput): Promise<{ result: Preview
     model: runtime?.modelId ?? null,
     questionSet: runtime?.qs.version ?? null,
     mergedPulls: (await input.store.listMergedPulls(input.repoId)).length,
+    ingested: existing !== null,
     notes,
   });
   return { result, store: overlay };

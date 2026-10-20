@@ -76,6 +76,8 @@ export function previewResult(input: {
   readonly model: string | null;
   readonly questionSet: string | null;
   readonly mergedPulls: number;
+  /** Whether the repo has been ingested at all (it may still have no merged pull requests). */
+  readonly ingested: boolean;
   readonly notes: readonly string[];
 }): PreviewResult {
   const d = input.decision;
@@ -117,7 +119,7 @@ export function previewResult(input: {
       paths: [...new Set((f.units ?? []).map((u) => u.slice(0, u.lastIndexOf("#"))))],
     })),
     signals: { model: input.model, band: d.risk?.band ?? null, questionSet: input.questionSet },
-    history: { ingested: input.mergedPulls > 0, mergedPulls: input.mergedPulls },
+    history: { ingested: input.ingested, mergedPulls: input.mergedPulls },
     notes: input.notes,
     sent: false,
   };
@@ -140,6 +142,8 @@ export function renderPreview(r: PreviewResult): string {
   lines.push(`Max wait:  ${r.would.maxWaitHours.toFixed(1)} h (w*)`);
   lines.push("", `Signals:   ${r.signals.model ?? "off"}${r.signals.band ? ` · band ${r.signals.band}` : ""}${r.signals.questionSet ? ` · ${r.signals.questionSet}` : ""}`);
   if (!r.history.ingested) lines.push("History:   none ingested — wait times use default priors. Run `pullup fetch <repo>` first.");
+  else if (r.history.mergedPulls === 0) lines.push("History:   no merged pull requests yet — wait times use default priors.");
+  else lines.push(`History:   ${r.history.mergedPulls} merged pull requests`);
   for (const n of r.notes) lines.push(`Note:      ${n}`);
   lines.push("A preview, not a promise: the real pull request's author, labels and timing can differ. Nothing was sent to GitHub.");
   return lines.join("\n");

@@ -224,6 +224,18 @@ describe("SqliteStore authority layer", () => {
     expect((await store.listReviews("acme/api", 7)).map((r) => r.commitId ?? null)).toEqual(["sha1", null]);
   });
 
+  it("re-ingesting a pull after a push updates its head, size and draft state", async () => {
+    const store = await openStore();
+    const memory = new InMemoryStore();
+    const source = new FixtureSource(generateRepo({ seed: 3, n: 2 }));
+    await ingestRepo(source, store);
+    const [p] = await store.listPulls(source.repoId);
+    const pushed = { ...p!, headSha: "pushed-sha", additions: p!.additions + 5, changedFiles: p!.changedFiles + 1, draft: !p!.draft };
+    await store.upsertPull(pushed);
+    await memory.upsertPull(pushed);
+    expect(await store.getPull(source.repoId, p!.number)).toEqual(await memory.getPull(source.repoId, p!.number));
+  });
+
   it("permit nonces are single use", async () => {
     const store = await openStore();
     expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(true);

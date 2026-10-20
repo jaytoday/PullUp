@@ -78,6 +78,8 @@ function VerdictView(props: { verdict: NonNullable<Finding["verdict"]> }) {
 export function FindingsList(props: { decision: PullDecision; inline?: PlannedReviewAction["inline"]; comments?: Comments }) {
   const findings = () => props.decision.findings ?? [];
   const rules = () => props.decision.scope?.appliedRules ?? [];
+  // PullUp's inline comments whose finding is gone (fixed or the file left the PR) still deserve a line.
+  const earlier = () => (props.comments ?? []).filter((c) => !findings().some((f) => f.id === c.findingId));
   return (
     <div class="space-y-3" data-testid="findings">
       <Show when={rules().length > 0}>
@@ -91,6 +93,22 @@ export function FindingsList(props: { decision: PullDecision; inline?: PlannedRe
               </span>
             )}
           </For>
+        </div>
+      </Show>
+      <Show when={earlier().length > 0}>
+        <div class="space-y-1" data-testid="earlier-comments">
+          <span class="text-[11px] font-medium text-muted-foreground">Earlier PullUp comments (finding no longer present)</span>
+          <ul class="space-y-0.5 text-xs text-muted-foreground">
+            <For each={earlier()}>
+              {(c) => (
+                <li data-inline-status={c.status}>
+                  <span class="num">{c.findingId}</span> on <span class="num">{c.path}</span>: {STATUS_LABEL[c.status]}
+                  {c.resolvedHeadSha ? ` at ${shortSha(c.resolvedHeadSha)}` : ""}
+                  {(props.inline?.resolve ?? []).some((r) => r.findingKey === c.findingKey) ? " · would resolve" : ""}
+                </li>
+              )}
+            </For>
+          </ul>
         </div>
       </Show>
       <Show when={findings().length > 0} fallback={<p class="text-sm text-muted-foreground">No findings.</p>}>

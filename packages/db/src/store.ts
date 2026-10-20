@@ -308,6 +308,13 @@ export class SqliteStore implements PullStore {
         set: {
           title: pull.title,
           state: pull.state,
+          // A push moves the head and changes the size: re-ingest must see it, or every live action goes stale.
+          headSha: pull.headSha,
+          baseBranch: pull.baseBranch,
+          additions: pull.additions,
+          deletions: pull.deletions,
+          changedFiles: pull.changedFiles,
+          draft: toInt(pull.draft),
           closedAt: pull.closedAt,
           mergedAt: pull.mergedAt,
           labels: JSON.stringify(pull.labels),
