@@ -42,6 +42,10 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   approved unchanged, approvals overridden, change requests addressed) and
   learnings that suggest settings changes; never applied automatically. See
   `docs/outcomes.md`.
+- **Preview before opening a pull request** — `pullup preview` runs the same
+  decision on a local branch (nothing sent, nothing written to history) and
+  says what keeps it off the fast path; `skills/pullup-preview` teaches coding
+  agents to use it. See `docs/preview.md`.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 
@@ -79,6 +83,7 @@ node packages/cli/dist/index.js analyze fixtures/congested \
 | `report <repoId> [--jev-mode]` | print the markdown report |
 | `signals <repoId> [--model] [--record] [--pr] [--open-only]` | evaluate Jev risk signals (cached by content) |
 | `verify <repoId> [--verifier claude\|synthetic] [--pr]` | check strong risk-signal findings against the code (cached by content) |
+| `preview [--base] [--staged] [--ai] [--json] [--fail-on]` | what PullUp would do with the current branch (local git; sends nothing) |
 | `outcomes <repoId> [--since] [--json]` | what humans did after PullUp's decisions, plus suggested learnings |
 | `calibrate <repoId> [--model] [--out]` | fit + validate the risk model on labelled history; write the artifact |
 | `actions <repoId> [--jev-mode] [--send]` | plan bot review actions; **log** them, or send to GitHub with `--send` / `PULLUP_GITHUB_DELIVERY=live` |
@@ -150,7 +155,8 @@ web/        dashboard (Vite + SolidJS + Tailwind v4, nikala-ui components)
 fixtures/   healthy · congested (+ synthetic hunks) · calibration (600 PRs) ·
             jev (scenario PRs #1001–#1005 covering every band)
 evals/      offline evals (recovery, congestion, smoke, jev/*) + live-tagged Jev
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes · preview
+skills/     pullup-preview (agent skill: run a preview before opening a pull request)
 scripts/    generate-fixtures.ts
 ```
 
@@ -159,7 +165,7 @@ scripts/    generate-fixtures.ts
 ```bash
 pnpm typecheck
 pnpm -r build
-pnpm -r test      # 84 tests across core/db/github/jev/server
+pnpm -r test      # 303 tests across core/db/github/jev/verify/cli/server
 pnpm eve:info     # 0 errors, 5 authored tools, github channel at /eve/v1/github
 ```
 

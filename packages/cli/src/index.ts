@@ -235,6 +235,88 @@ program
   });
 
 program
+  .command("preview")
+  .description("What PullUp would do with the current branch, before you open a pull request (reads git; sends nothing)")
+  .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
+  .option("--repo <owner/repo>", "repo id (default: from the origin remote)")
+  .option("--base <ref>", "base branch (default: origin's default branch, else main)")
+  .option("--head <ref>", "head ref", "HEAD")
+  .option("--staged", "preview the staged changes instead of base...head")
+  .option("--author <login>", "GitHub login of the author (default: PULLUP_PREVIEW_AUTHOR, else unknown)")
+  .option("--label <label...>", "labels the pull request will have")
+  .option("--ai", "the change is AI-authored (adds the ai-generated label)")
+  .option("--jev-mode <mode>", "off | shadow | active (default: config)")
+  .option("--model <kind>", "signal model: jev | synthetic | replay")
+  .option("--json", "print the versioned JSON result (for coding agents)")
+  .option("-v, --verbose", "also print raw signal probabilities")
+  .option("--fail-on <what>", "exit 1 when PullUp would: human (ask a human or request changes) | changes (request changes)")
+  .action(
+    async (opts: {
+      config: string;
+      repo?: string;
+      base?: string;
+      head: string;
+      staged?: boolean;
+      author?: string;
+      label?: string[];
+      ai?: boolean;
+      jevMode?: JevMode;
+      model?: SignalModelKind;
+      json?: boolean;
+      verbose?: boolean;
+      failOn?: "human" | "changes";
+    }) => {
+      const { approvalGate, calibrationPathFor, loadCalibration, renderPreview, resolveDelivery, runPreview } = await import("@pullup/core");
+      const { prepareJevRuntime } = await import("@pullup/jev");
+      const git = await import("./git.js");
+      const cwd = process.cwd();
+      const repoId = opts.repo ?? (await git.originRepoId(cwd));
+      if (!repoId) throw new Error("Couldn't tell the repo from the origin remote; pass --repo owner/repo.");
+      const base = opts.base ?? (await git.defaultBase(cwd));
+      const diff = await git.branchDiff(cwd, { base, head: opts.head, staged: opts.staged });
+      if (!diff.trim()) {
+        console.error(`[preview] no changes between ${base} and ${opts.head}${opts.staged ? " (staged)" : ""}.`);
+        return;
+      }
+      const headSha = await git.revParse(cwd, opts.head);
+      const head = opts.head === "HEAD" ? await git.currentBranch(cwd) : opts.head;
+      await withStore(program.opts<GlobalOpts>(), async (s) => {
+        const cfg = await loadRepoConfig(s, repoId, opts.config);
+        const calPath = calibrationPathFor(cfg.jev, repoId);
+        const calibration = existsSync(calPath) ? loadCalibration(calPath) : null;
+        const { result } = await runPreview({
+          store: s,
+          repoId,
+          cfg,
+          diff,
+          base,
+          head,
+          headSha,
+          author: opts.author ?? process.env.PULLUP_PREVIEW_AUTHOR ?? null,
+          labels: opts.label ?? [],
+          ai: opts.ai,
+          approval: approvalGate({ repoId, delivery: resolveDelivery(), calibration }),
+          prepareJev: async (store, pullNumbers) => {
+            const mode = opts.jevMode ?? cfg.jev.mode;
+            if (mode === "off") return { runtime: null, notes: [] };
+            const prepared = await prepareJevRuntime(store, repoId, cfg, { mode, kind: opts.model, pullNumbers: [...pullNumbers] });
+            return { runtime: prepared.runtime, notes: prepared.runtime?.notes ?? [] };
+          },
+        });
+        if (opts.json) console.log(JSON.stringify(result, null, 2));
+        else {
+          console.log(renderPreview(result));
+          if (opts.verbose) for (const f of result.findings) console.log(`  ${f.id} ${f.level} ${f.source} ${f.paths.join(", ")}`);
+        }
+        const action = result.would.action;
+        if ((opts.failOn === "human" && (action === "defer_to_human" || action === "request_changes")) || (opts.failOn === "changes" && action === "request_changes")) {
+          process.exitCode = 1;
+        }
+      });
+    },
+  );
+
+program
   .command("outcomes")
   .description("What humans did after PullUp's decisions, and the learnings PullUp suggests (never applied automatically)")
   .argument("<repoId>", "owner/repo as ingested")

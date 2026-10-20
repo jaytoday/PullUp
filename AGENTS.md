@@ -9,9 +9,9 @@ surface are thin adapters over it.
 | Command | Description |
 |---------|-------------|
 | `pnpm install` | Install dependencies |
-| `pnpm build` | Build the six `@pullup/*` packages (web builds via `pnpm web:build`) |
+| `pnpm build` | Build the seven `@pullup/*` packages (web builds via `pnpm web:build`) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 156 · db 8 · github 37 · jev 4 · server 22) |
+| `pnpm -r test` | Package tests (core 212 · db 11 · github 46 · jev 4 · verify 4 · cli 1 · server 25) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |
@@ -27,7 +27,8 @@ evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
 packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/verify · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes
+docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes · preview
+skills/     pullup-preview — agent skill for coding agents
 ```
 
 ## Working in `agent/`
@@ -121,6 +122,15 @@ docs/       architecture · cost-model · analytics · jev · configuration · g
   (test in `outcomes/outcomes.test.ts`). Accepting one goes through the
   settings save flow. Thresholds change → bump `LEARNING_POLICY_VERSION`.
 - The `<repo_history>` block is numbers and identifiers only.
+
+## Preview (`docs/preview.md`, core `preview/`)
+
+- Same core calls as a real pull request, on the overlay store; never write
+  through it except signal answers. Synthetic pull number is 0.
+- Hints come from the table in `preview/result.ts`, never a model.
+- Git access stays in `packages/cli/src/git.ts` (execFile, no shell).
+- Parity test: `preview/preview.test.ts` checks findings and guardrails match
+  the real path for every fixture pull request.
 
 ## Configuration (`docs/configuration.md`)
 
