@@ -18,6 +18,10 @@
 //                the current head no longer warrants one (act level only);
 //   7b. check  — PullUp's check run on this head (created, or updated in place
 //                when one with the same name exists), when checks are on;
+//   7c. inline — new finding comments as one COMMENT review (skipping any whose
+//                marker is already on the PR), then PullUp's own threads whose
+//                finding is gone: reply, resolve. Only threads PullUp recorded
+//                posting (finding_comments) are ever resolved;
 //   8. verify  — re-read GitHub: the review exists, with the planned event, on
 //                the planned commit; the comment carries this task's marker;
 //                the check has the planned conclusion on the planned head;
@@ -32,6 +36,8 @@ import type { Octokit } from "@octokit/rest";
 import type {
   CheckRunCall,
   DeliveryMode,
+  FindingCommentRecord,
+  GitHubReviewCall,
   ExecutionGuard,
   PlannedReviewAction,
   PullStore,
@@ -40,6 +46,7 @@ import type {
   ReviewDelivery,
 } from "@pullup/core";
 import {
+  FINDING_MARKER_PREFIX,
   LoggingReviewActuator,
   appendEvidence,
   checkExecution,
@@ -77,6 +84,46 @@ export interface ReviewClient {
   createCheckRun(p: CheckRunCall): Promise<{ id: number }>;
   updateCheckRun(p: CheckRunCall & { check_run_id: number }): Promise<{ id: number }>;
   getCheckRun(p: { owner: string; repo: string; check_run_id: number }): Promise<{ id: number; name: string; headSha: string; conclusion: string | null }>;
+  /** pulls.createReview with inline comments (event COMMENT). */
+  createInlineReview(p: InlineReviewCall): Promise<{ id: number }>;
+  /** Review comments on the PR (for the marker duplicate guard and to learn new comment ids). */
+  listReviewComments(p: { owner: string; repo: string; pull_number: number }): Promise<Array<{ id: number; body: string; reviewId: number | null }>>;
+  /** Review threads (GraphQL): id, resolved state, and the id of the thread's first comment. */
+  listReviewThreads(p: { owner: string; repo: string; pull_number: number }): Promise<Array<{ id: string; isResolved: boolean; firstCommentId: number | null }>>;
+  replyToReviewComment(p: { owner: string; repo: string; pull_number: number; comment_id: number; body: string }): Promise<void>;
+  resolveReviewThread(p: { threadId: string }): Promise<void>;
+}
+
+type InlineReviewCall = NonNullable<GitHubReviewCall["inlineReview"]>;
+
+const THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id isResolved comments(first: 1) { nodes { databaseId } } }
+      }
+    }
+  }
+}`;
+
+type ThreadsPage = {
+  repository: {
+    pullRequest: {
+      reviewThreads: {
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        nodes: Array<{ id: string; isResolved: boolean; comments: { nodes: Array<{ databaseId: number | null }> } }>;
+      };
+    } | null;
+  } | null;
+};
+
+/** The finding key in one of PullUp's inline comment bodies, if any. */
+export function findingKeyIn(body: string): string | null {
+  const at = body.indexOf(FINDING_MARKER_PREFIX);
+  if (at < 0) return null;
+  const m = /^([0-9a-f]{16}) -->/.exec(body.slice(at + FINDING_MARKER_PREFIX.length));
+  return m ? m[1]! : null;
 }
 
 const checkPayload = (c: CheckRunCall) => ({
@@ -138,6 +185,47 @@ export function octokitReviewClient(octokit: Octokit): ReviewClient {
     async getCheckRun(p) {
       const { data } = await octokit.rest.checks.get(p);
       return { id: data.id, name: data.name, headSha: data.head_sha, conclusion: data.conclusion ?? null };
+    },
+    async createInlineReview(p) {
+      const { data } = await octokit.rest.pulls.createReview({
+        owner: p.owner,
+        repo: p.repo,
+        pull_number: p.pull_number,
+        commit_id: p.commit_id,
+        event: p.event,
+        body: p.body,
+        comments: p.comments.map((c) => ({
+          path: c.path,
+          body: c.body,
+          line: c.line,
+          side: c.side,
+          ...(c.start_line !== undefined ? { start_line: c.start_line, start_side: c.start_side } : {}),
+        })),
+      });
+      return { id: data.id };
+    },
+    async listReviewComments(p) {
+      const rows = await octokit.paginate(octokit.rest.pulls.listReviewComments, { ...p, per_page: 100 });
+      return rows.map((c) => ({ id: c.id, body: c.body ?? "", reviewId: c.pull_request_review_id ?? null }));
+    },
+    async listReviewThreads({ owner, repo, pull_number }) {
+      const out: Array<{ id: string; isResolved: boolean; firstCommentId: number | null }> = [];
+      let after: string | null = null;
+      for (let page = 0; page < 20; page++) {
+        const data: ThreadsPage = await octokit.graphql<ThreadsPage>(THREADS_QUERY, { owner, repo, number: pull_number, after });
+        const threads = data.repository?.pullRequest?.reviewThreads;
+        if (!threads) break;
+        for (const t of threads.nodes) out.push({ id: t.id, isResolved: t.isResolved, firstCommentId: t.comments.nodes[0]?.databaseId ?? null });
+        if (!threads.pageInfo.hasNextPage) break;
+        after = threads.pageInfo.endCursor;
+      }
+      return out;
+    },
+    async replyToReviewComment(p) {
+      await octokit.rest.pulls.createReplyForReviewComment(p);
+    },
+    async resolveReviewThread({ threadId }) {
+      await octokit.graphql(`mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id isResolved } } }`, { id: threadId });
     },
   };
 }
@@ -339,10 +427,16 @@ export class GitHubReviewActuator implements ReviewActuator {
       }
     }
 
+    // Inline finding comments: post new ones, resolve PullUp's own fixed ones.
+    let inline: ReviewDelivery["inline"];
+    if (a.call.inlineReview || a.call.resolveThreads?.length || a.inline?.keep.length) {
+      inline = await this.sendInline(a, client, at, errors);
+    }
+
     // VAL-04: confirm on GitHub that what we sent is what landed.
     let verified: ReviewDelivery["verified"];
-    if (errors.length === 0 && (createdNow || commentId != null || checkRunId != null)) {
-      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId, checkRunId);
+    if (errors.length === 0 && (createdNow || commentId != null || checkRunId != null || inline)) {
+      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId, checkRunId, inline);
       await this.evidence(a, "verified", this.now(), { ...verified });
       if (!verified.ok) errors.push(`verification: ${verified.detail}`);
     }
@@ -352,6 +446,7 @@ export class GitHubReviewActuator implements ReviewActuator {
       ...(reviewId != null ? { reviewId } : {}),
       ...(commentId != null ? { commentId } : {}),
       ...(checkRunId != null ? { checkRunId } : {}),
+      ...(inline ? { inline } : {}),
       ...(reviewersRequested ? { reviewersRequested } : {}),
       ...(dismissed.length > 0 ? { dismissedReviewIds: dismissed } : {}),
       ...(errors.length > 0 ? { errors } : {}),
@@ -367,6 +462,7 @@ export class GitHubReviewActuator implements ReviewActuator {
     reviewId: number | undefined,
     commentId: number | undefined,
     checkRunId?: number,
+    inline?: ReviewDelivery["inline"],
   ): Promise<{ ok: boolean; detail: string }> {
     const checks: string[] = [];
     try {
@@ -395,10 +491,113 @@ export class GitHubReviewActuator implements ReviewActuator {
         if (c.conclusion !== plannedCheck.conclusion) return { ok: false, detail: `check ${checkRunId} is ${String(c.conclusion)}, expected ${plannedCheck.conclusion}` };
         checks.push(`check ${checkRunId} ${plannedCheck.conclusion} on ${plannedCheck.head_sha.slice(0, 7)}`);
       }
+      if (inline && (inline.posted.length > 0 || inline.resolved.length > 0)) {
+        const byId = new Map((await client.listReviewComments(pr)).map((c) => [c.id, c.body]));
+        for (const p of inline.posted) {
+          if (findingKeyIn(byId.get(p.commentId) ?? "") !== p.findingKey) return { ok: false, detail: `inline comment ${p.commentId} does not carry finding ${p.findingKey}` };
+        }
+        if (inline.resolved.length > 0) {
+          const stored = new Map((await this.store.listFindingComments(a.repoId, a.pullNumber)).map((r) => [r.findingKey, r.commentId]));
+          const threads = await client.listReviewThreads(pr);
+          for (const key of inline.resolved) {
+            const t = threads.find((x) => x.firstCommentId === stored.get(key));
+            if (!t?.isResolved) return { ok: false, detail: `finding thread ${key} is not resolved` };
+          }
+        }
+        checks.push(`${inline.posted.length} inline comment(s), ${inline.resolved.length} resolved`);
+      }
     } catch (err) {
       return { ok: false, detail: errText("verify", err) };
     }
     return { ok: true, detail: checks.join("; ") };
+  }
+
+  /**
+   * Posts new inline finding comments (skipping any whose marker is already on
+   * the PR) and resolves PullUp's own threads whose finding is gone. Records
+   * every comment PullUp authored in finding_comments — the only threads it may
+   * ever resolve.
+   */
+  private async sendInline(a: PlannedReviewAction, client: ReviewClient, at: string, errors: string[]): Promise<NonNullable<ReviewDelivery["inline"]>> {
+    const [owner, repo] = a.repoId.split("/") as [string, string];
+    const pr = { owner, repo, pull_number: a.pullNumber };
+    const stored = new Map((await this.store.listFindingComments(a.repoId, a.pullNumber)).map((r) => [r.findingKey, r]));
+    const save = (r: FindingCommentRecord) => this.store.upsertFindingComment(r);
+    const posted: Array<{ findingKey: string; commentId: number }> = [];
+    const resolved: string[] = [];
+    const alreadyResolved: string[] = [];
+    const missing: string[] = [];
+    let reviewId: number | undefined;
+
+    const review = a.call.inlineReview;
+    if (review) {
+      try {
+        const onPr = new Set((await client.listReviewComments(pr)).map((c) => findingKeyIn(c.body)).filter((k): k is string => k !== null));
+        const fresh = review.comments.filter((c) => !onPr.has(c.findingKey));
+        if (fresh.length > 0) {
+          reviewId = (await client.createInlineReview({ ...review, comments: fresh })).id;
+          const mine = (await client.listReviewComments(pr)).filter((c) => c.reviewId === reviewId);
+          for (const c of fresh) {
+            const landed = mine.find((m) => findingKeyIn(m.body) === c.findingKey);
+            if (!landed) {
+              errors.push(`inline: comment for ${c.findingKey} did not land`);
+              continue;
+            }
+            posted.push({ findingKey: c.findingKey, commentId: landed.id });
+            await save({
+              repoId: a.repoId,
+              pullNumber: a.pullNumber,
+              findingKey: c.findingKey,
+              findingId: c.findingId,
+              path: c.path,
+              commentId: landed.id,
+              firstHeadSha: a.headSha,
+              lastSeenHeadSha: a.headSha,
+              status: "open",
+              resolvedHeadSha: null,
+              updatedAt: at,
+            });
+          }
+        }
+      } catch (err) {
+        errors.push(errText("inline review", err));
+      }
+    }
+
+    for (const key of a.inline?.keep ?? []) {
+      const row = stored.get(key);
+      if (row && row.status === "open" && row.lastSeenHeadSha !== a.headSha) await save({ ...row, lastSeenHeadSha: a.headSha, updatedAt: at });
+    }
+
+    const toResolve = (a.call.resolveThreads ?? []).filter((r) => stored.get(r.findingKey)?.commentId === r.commentId);
+    if (toResolve.length > 0) {
+      try {
+        const threads = await client.listReviewThreads(pr);
+        for (const r of toResolve) {
+          const row = stored.get(r.findingKey)!;
+          const t = threads.find((x) => x.firstCommentId === r.commentId);
+          if (!t) {
+            missing.push(r.findingKey);
+            await save({ ...row, status: "deleted", updatedAt: at });
+          } else if (t.isResolved) {
+            alreadyResolved.push(r.findingKey);
+            await save({ ...row, status: "resolved-by-human", updatedAt: at });
+          } else {
+            try {
+              await client.replyToReviewComment({ ...pr, comment_id: r.commentId, body: r.reply });
+              await client.resolveReviewThread({ threadId: t.id });
+              resolved.push(r.findingKey);
+              await save({ ...row, status: "resolved-by-pullup", resolvedHeadSha: a.headSha, updatedAt: at });
+            } catch (err) {
+              errors.push(errText(`resolve ${r.findingKey}`, err));
+            }
+          }
+        }
+      } catch (err) {
+        errors.push(errText("review threads", err));
+      }
+    }
+    return { ...(reviewId != null ? { reviewId } : {}), posted, resolved, alreadyResolved, missing };
   }
 
   /** Edits PullUp's comment (known id, else found by marker); creates it if neither works. */

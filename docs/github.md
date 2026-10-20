@@ -55,6 +55,7 @@ agent approval, credential). The actuator only carries out the result:
 | `act` | approve | `pulls.createReview APPROVE` pinned to `commit_id` = planned head |
 | `act` | request changes | `pulls.createReview REQUEST_CHANGES` pinned to the planned head |
 | `act` | ask a human | decision comment + `pulls.requestReviewers` |
+| any but `off` | any, with `inline.enabled` | also new inline finding comments (one `COMMENT` review) and resolution of PullUp's own fixed threads — see below |
 | any but `off` | any, with `checks.enabled` | also one PullUp check run on the head (`checks.create`, or `checks.update` when one with the same name exists) |
 
 ### The PullUp check
@@ -89,6 +90,34 @@ calibration artifact (`.pullup/calibration.<owner>__<repo>.json`, or
 `packages/core/src/actions/approval.ts`). Until both hold, the plan clamps it to
 a comment and records the reason in `clamped`. Request changes and ask-a-human
 need only live delivery, because they add friction and never remove it.
+
+### Inline finding comments
+
+With `inline.enabled`, located risk-signal findings (P0–P1 by default) are
+posted as inline review comments: one `COMMENT` review per head carrying the
+new comments, each ending in a hidden `<!-- pullup:finding:v1:<key> -->`
+marker. The key is a hash of the finding id and file path, so the same concern
+on the same file keeps its comment across pushes.
+
+- **No duplicates:** a finding whose comment is still open is kept, not
+  re-posted. Before posting, the actuator also skips any comment whose marker
+  is already on the pull request.
+- **Resolving:** when a later head no longer has the finding (and the file
+  was fully evaluated, and signals ran), or the file left the pull request,
+  PullUp replies "No longer flagged at `<sha>`" and resolves the thread
+  (GraphQL `resolveReviewThread`), at most `inline.maxResolutions` per run.
+- **Only its own:** PullUp resolves only threads it recorded posting in
+  `finding_comments` (written only after GitHub accepted the review). A human's
+  comment, even one that pastes PullUp's marker, is never resolved; it only
+  stops PullUp from posting a duplicate.
+- **Human resolutions stick:** a thread a human resolved is recorded as
+  `resolved-by-human`, and that finding is not posted again on that file.
+- **Not posted** on a pull request where the injection tripwire fired, for
+  repos enrolled in the Observe profile (which promises only the decision
+  comment), or at `off`. They are information only and never change the action.
+- The token for these calls carries `pull_requests: write`. If branch
+  protection requires conversation resolution, PullUp's open threads count
+  toward it; resolving only ever undoes threads PullUp itself opened.
 
 ## Safety properties of the actuator
 

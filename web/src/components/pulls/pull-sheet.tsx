@@ -125,7 +125,7 @@ function Detail(props: { d: PullDetail }) {
 
       <Show when={dec().findings}>
         <Section title="Findings">
-          <FindingsList decision={dec()} />
+          <FindingsList decision={dec()} inline={props.d.plannedAction?.inline} comments={props.d.findingComments ?? []} />
         </Section>
       </Show>
 

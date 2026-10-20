@@ -66,6 +66,21 @@ change decisions, not what is sent.
 - `name` is what branch protection requires; renaming it breaks those rules.
 - `annotations` pins located findings to diff lines.
 
+## Inline finding comments (`inline`)
+
+```json
+"inline": { "enabled": false, "reportOn": "p1", "includeObserve": false,
+            "maxComments": 10, "resolveFixed": true, "maxResolutions": 20 }
+```
+
+Located risk-signal findings at `reportOn` or more severe become inline review
+comments, and PullUp resolves its own thread when a later push makes the
+finding go away (`docs/github.md`). Information only: every field is neutral
+for loosening because none of them changes a decision or an action.
+`includeObserve` also posts findings while signals are only observed. The
+comments ride on PullUp's action for the pull request; a pull request with no
+action (for example still inside its wait window with nothing to flag) gets none.
+
 ## Guardrails (the approval envelope)
 
 `guardrails` runs in every Jev mode. Two outcomes:

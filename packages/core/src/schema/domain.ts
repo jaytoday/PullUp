@@ -105,6 +105,27 @@ export interface HunkRecord {
   readonly contentHash: string;
 }
 
+/**
+ * One inline comment PullUp posted for a finding (findings/inline.ts). Written
+ * only by the live actuator after GitHub accepted the call, so every row is a
+ * comment PullUp itself authored — the only ones it may ever resolve.
+ */
+export interface FindingCommentRecord {
+  readonly repoId: string;
+  readonly pullNumber: number;
+  /** sha256(findingId ∥ path), 16 hex chars — stable across pushes. */
+  readonly findingKey: string;
+  readonly findingId: string;
+  readonly path: string;
+  /** GitHub review-comment id (the thread's first comment). */
+  readonly commentId: number;
+  readonly firstHeadSha: string;
+  readonly lastSeenHeadSha: string;
+  readonly status: "open" | "resolved-by-pullup" | "resolved-by-human" | "deleted";
+  readonly resolvedHeadSha: string | null;
+  readonly updatedAt: string;
+}
+
 /** Whole hours between two ISO timestamps (b - a), ≥ 0. */
 export function hoursBetween(a: string, b: string): number {
   const ms = Date.parse(b) - Date.parse(a);

@@ -11,6 +11,7 @@ import type {
   HunkRecord,
   PullRecord,
   ReviewActionRecord,
+  FindingCommentRecord,
   SignalRecord,
   SignalRunRecord,
   RepositoryRecord,
@@ -31,6 +32,7 @@ import {
   pulls,
   repositories,
   reviewActions,
+  findingComments,
   repoConfigVersions,
   reviewComments,
   reviews,
@@ -157,6 +159,12 @@ export class SqliteStore implements PullStore {
         repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, head_sha TEXT NOT NULL,
         action TEXT NOT NULL, record TEXT NOT NULL, logged_at TEXT NOT NULL,
         PRIMARY KEY (repo_id, pull_number, head_sha, action))`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS finding_comments (
+        repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL, finding_key TEXT NOT NULL,
+        record TEXT NOT NULL, updated_at TEXT NOT NULL,
+        PRIMARY KEY (repo_id, pull_number, finding_key))`,
     );
     await this.client.execute(
       `CREATE TABLE IF NOT EXISTS repo_config_versions (
@@ -543,6 +551,26 @@ export class SqliteStore implements PullStore {
           .from(reviewActions)
           .where(and(eq(reviewActions.repoId, repoId), eq(reviewActions.pullNumber, pullNumber)));
     return rows.map((r) => JSON.parse(r.record) as ReviewActionRecord);
+  }
+
+  async upsertFindingComment(rec: FindingCommentRecord): Promise<void> {
+    await this.db
+      .insert(findingComments)
+      .values({ repoId: rec.repoId, pullNumber: rec.pullNumber, findingKey: rec.findingKey, record: JSON.stringify(rec), updatedAt: rec.updatedAt })
+      .onConflictDoUpdate({
+        target: [findingComments.repoId, findingComments.pullNumber, findingComments.findingKey],
+        set: { record: JSON.stringify(rec), updatedAt: rec.updatedAt },
+      });
+  }
+
+  async listFindingComments(repoId: string, pullNumber?: number): Promise<FindingCommentRecord[]> {
+    const rows = pullNumber === undefined
+      ? await this.db.select().from(findingComments).where(eq(findingComments.repoId, repoId))
+      : await this.db
+          .select()
+          .from(findingComments)
+          .where(and(eq(findingComments.repoId, repoId), eq(findingComments.pullNumber, pullNumber)));
+    return rows.map((r) => JSON.parse(r.record) as FindingCommentRecord);
   }
 
   async listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]> {

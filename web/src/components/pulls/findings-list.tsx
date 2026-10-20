@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
-import type { PullDecision } from "@/lib/api";
+import type { PlannedReviewAction, PullDecision, PullDetail } from "@/lib/api";
+import { shortSha } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 type Finding = NonNullable<PullDecision["findings"]>[number];
@@ -10,8 +11,40 @@ const LEVEL: Record<Finding["level"], { label: string; cls: string }> = {
   p2: { label: "P2 · minor", cls: "border-border text-muted-foreground" },
 };
 
+type Comments = NonNullable<PullDetail["findingComments"]>;
+
+const STATUS_LABEL: Record<Comments[number]["status"], string> = {
+  open: "open",
+  "resolved-by-pullup": "resolved by PullUp",
+  "resolved-by-human": "resolved by a human",
+  deleted: "deleted",
+};
+
+/** Per finding: PullUp's inline comments (posted, kept, would post, not posted, would resolve). */
+function InlineStatus(props: { findingId: string; inline?: PlannedReviewAction["inline"]; comments: Comments }) {
+  const rows = () => props.comments.filter((c) => c.findingId === props.findingId);
+  const posting = () => (props.inline?.post ?? []).filter((c) => c.findingId === props.findingId);
+  const skipped = () => (props.inline?.notPosted ?? []).filter((c) => c.findingId === props.findingId);
+  const resolving = () => new Set((props.inline?.resolve ?? []).map((r) => r.findingKey));
+  return (
+    <span class="flex w-full flex-wrap gap-x-3 pl-0.5 text-[11px] text-muted-foreground" data-testid="inline-status">
+      <For each={rows()}>
+        {(c) => (
+          <span data-inline-status={c.status}>
+            Inline comment on <span class="num">{c.path}</span>: {STATUS_LABEL[c.status]}
+            {c.resolvedHeadSha ? ` at ${shortSha(c.resolvedHeadSha)}` : ""}
+            {resolving().has(c.findingKey) ? " · would resolve" : ""}
+          </span>
+        )}
+      </For>
+      <For each={posting()}>{(c) => <span data-inline-status="would-post">Would comment on <span class="num">{c.path}:{c.line}</span></span>}</For>
+      <For each={skipped()}>{(c) => <span data-inline-status="not-posted">Not commented on <span class="num">{c.path}</span>: {c.reason}</span>}</For>
+    </span>
+  );
+}
+
 /** Findings grouped P0 / P1 / P2, with source and whether they count toward the action. */
-export function FindingsList(props: { decision: PullDecision }) {
+export function FindingsList(props: { decision: PullDecision; inline?: PlannedReviewAction["inline"]; comments?: Comments }) {
   const findings = () => props.decision.findings ?? [];
   const rules = () => props.decision.scope?.appliedRules ?? [];
   return (
@@ -45,6 +78,9 @@ export function FindingsList(props: { decision: PullDecision }) {
                           {f.source === "rule" ? "rule" : "model signal"}
                           {f.active ? "" : " · observe only"}
                         </span>
+                        <Show when={f.source === "signal" && (props.inline || (props.comments ?? []).length > 0)}>
+                          <InlineStatus findingId={f.id} inline={props.inline} comments={props.comments ?? []} />
+                        </Show>
                       </li>
                     )}
                   </For>

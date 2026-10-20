@@ -16,6 +16,7 @@ import type {
 } from "../authority/records.js";
 import type {
   DefectEventRecord,
+  FindingCommentRecord,
   HunkRecord,
   PullRecord,
   RepositoryRecord,
@@ -58,6 +59,10 @@ export interface PullStore {
   /** Bot review actions (logged, not sent — see actions/review.ts). */
   recordReviewAction(action: ReviewActionRecord): Promise<void>;
   listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]>;
+
+  /** PullUp's own inline finding comments, keyed by (repo, pull, finding key). */
+  upsertFindingComment(rec: FindingCommentRecord): Promise<void>;
+  listFindingComments(repoId: string, pullNumber?: number): Promise<FindingCommentRecord[]>;
 
   /** Append-only per-repo config versions (the "repo" config layer), oldest first. */
   listConfigVersions(repoId: string): Promise<ConfigVersionRecord[]>;
@@ -121,6 +126,7 @@ export class InMemoryStore implements PullStore {
   private signals = new Map<string, SignalRecord>();
   private signalRuns: SignalRunRecord[] = [];
   private reviewActions = new Map<string, ReviewActionRecord>();
+  private findingComments = new Map<string, FindingCommentRecord>();
   private configVersions: ConfigVersionRecord[] = [];
   private controlStates = new Map<string, ControlState>();
   private enrollments = new Map<string, RepoEnrollment>();
@@ -230,6 +236,16 @@ export class InMemoryStore implements PullStore {
   async listReviewActions(repoId: string, pullNumber?: number): Promise<ReviewActionRecord[]> {
     return [...this.reviewActions.values()].filter(
       (a) => a.repoId === repoId && (pullNumber === undefined || a.pullNumber === pullNumber),
+    );
+  }
+
+  async upsertFindingComment(rec: FindingCommentRecord): Promise<void> {
+    this.findingComments.set(`${rec.repoId}#${rec.pullNumber}#${rec.findingKey}`, rec);
+  }
+
+  async listFindingComments(repoId: string, pullNumber?: number): Promise<FindingCommentRecord[]> {
+    return [...this.findingComments.values()].filter(
+      (c) => c.repoId === repoId && (pullNumber === undefined || c.pullNumber === pullNumber),
     );
   }
 

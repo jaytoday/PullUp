@@ -47,12 +47,20 @@ const post = async (path: string, body: unknown = {}) => {
   return { status: res.status, body: (await res.json()) as any };
 };
 
-/** Check-run methods for fakes in tests where checks are off (never called). */
-const noCheckRuns: Pick<ReviewClient, "findCheckRun" | "createCheckRun" | "updateCheckRun" | "getCheckRun"> = {
+/** Check-run and inline-comment methods for fakes in tests where those features are off (never called). */
+const noCheckRuns: Pick<
+  ReviewClient,
+  "findCheckRun" | "createCheckRun" | "updateCheckRun" | "getCheckRun" | "createInlineReview" | "listReviewComments" | "listReviewThreads" | "replyToReviewComment" | "resolveReviewThread"
+> = {
   findCheckRun: async () => null,
   createCheckRun: async () => ({ id: 1 }),
   updateCheckRun: async (p) => ({ id: p.check_run_id }),
   getCheckRun: async (p) => ({ id: p.check_run_id, name: "PullUp", headSha: "", conclusion: null }),
+  createInlineReview: async () => ({ id: 1 }),
+  listReviewComments: async () => [],
+  listReviewThreads: async () => [],
+  replyToReviewComment: async () => {},
+  resolveReviewThread: async () => {},
 };
 
 describe("PullUp API", () => {

@@ -33,6 +33,8 @@ export function fakeClient(opts: { state?: string; head?: string; fail?: Partial
   const comments = new Map<number, string>(opts.existingComment ? [[opts.existingComment, DECISION_COMMENT_MARKER]] : []);
   const reviews: Array<{ id: number; state: string; commitId: string | null }> = [];
   const checkRuns = new Map<number, { name: string; headSha: string; conclusion: string | null }>();
+  const reviewComments: Array<{ id: number; body: string; reviewId: number | null; path: string }> = [];
+  const threads: Array<{ id: string; isResolved: boolean; firstCommentId: number | null }> = [];
   const maybeFail = (fn: string) => {
     const status = opts.fail?.[fn];
     if (status) throw Object.assign(new Error(`${fn} failed`), { status });
@@ -104,8 +106,44 @@ export function fakeClient(opts: { state?: string; head?: string; fail?: Partial
       const c = checkRuns.get(args.check_run_id)!;
       return { id: args.check_run_id, ...c };
     },
+    async createInlineReview(args) {
+      calls.push({ fn: "createInlineReview", args: { ...args } });
+      maybeFail("createInlineReview");
+      const id = nextId++;
+      for (const c of args.comments) {
+        const cid = nextId++;
+        reviewComments.push({ id: cid, body: c.body, reviewId: id, path: c.path });
+        threads.push({ id: `T_${cid}`, isResolved: false, firstCommentId: cid });
+      }
+      return { id };
+    },
+    async listReviewComments(args) {
+      calls.push({ fn: "listReviewComments", args });
+      return reviewComments.map(({ id, body, reviewId }) => ({ id, body, reviewId }));
+    },
+    async listReviewThreads(args) {
+      calls.push({ fn: "listReviewThreads", args });
+      return threads.map((t) => ({ ...t }));
+    },
+    async replyToReviewComment(args) {
+      calls.push({ fn: "replyToReviewComment", args });
+      maybeFail("replyToReviewComment");
+    },
+    async resolveReviewThread(args) {
+      calls.push({ fn: "resolveReviewThread", args });
+      maybeFail("resolveReviewThread");
+      const t = threads.find((x) => x.id === args.threadId);
+      if (t) t.isResolved = true;
+    },
   };
-  return { client, calls, reviews, checkRuns, fns: () => calls.map((c) => c.fn) };
+  /** A comment someone else wrote (e.g. a human pasting PullUp's marker), with its own thread. */
+  const addForeignComment = (body: string, path = "src/a.ts") => {
+    const cid = nextId++;
+    reviewComments.push({ id: cid, body, reviewId: null, path });
+    threads.push({ id: `T_${cid}`, isResolved: false, firstCommentId: cid });
+    return cid;
+  };
+  return { client, calls, reviews, checkRuns, reviewComments, threads, addForeignComment, fns: () => calls.map((c) => c.fn) };
 }
 
 /** A store with the repo enrolled in `review` and the test agent approved. */

@@ -36,7 +36,10 @@ export default defineTool({
       authority: cfg.authority,
       configVersion: cfg.version,
       checks: cfg.checks,
+      inline: cfg.inline,
       hunks: await store.listHunks(repoId, pullNumber),
+      findingComments: await store.listFindingComments(repoId, pullNumber),
+      questionSet: report.risk?.questionSetVersion ?? null,
     });
     const hunks = await store.listHunks(repoId, pullNumber);
     const open = report.decisions.filter(

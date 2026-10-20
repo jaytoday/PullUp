@@ -13,6 +13,8 @@ export interface FindingLocation {
   readonly endLine: number;
   /** The hunk's content hash, so a location can be matched across runs. */
   readonly hunkHash: string;
+  /** False for a deletion-only hunk anchored to the line before it (not a diff line, so not commentable). */
+  readonly inDiff: boolean;
 }
 
 const HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
@@ -54,7 +56,7 @@ export function locateFinding(finding: Pick<Finding, "units">, hunks: readonly H
     if (!h || h.noPatch) continue;
     const range = hunkNewRange(h.header);
     if (!range) continue;
-    out.push({ path: h.path, startLine: range.start, endLine: range.end, hunkHash: h.contentHash });
+    out.push({ path: h.path, startLine: range.start, endLine: range.end, hunkHash: h.contentHash, inDiff: !/^@@ -\d+(?:,\d+)? \+\d+,0 @@/.test(h.header) });
   }
   return out.sort((a, b) => (a.path === b.path ? a.startLine - b.startLine : a.path.localeCompare(b.path)));
 }

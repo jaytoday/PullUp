@@ -139,6 +139,19 @@ export const reviewActions = sqliteTable(
   (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.headSha, t.action] })],
 );
 
+/** PullUp's own inline finding comments (one row per repo, pull and finding key). */
+export const findingComments = sqliteTable(
+  "finding_comments",
+  {
+    repoId: text("repo_id").notNull(),
+    pullNumber: integer("pull_number").notNull(),
+    findingKey: text("finding_key").notNull(),
+    record: text("record").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.repoId, t.pullNumber, t.findingKey] })],
+);
+
 /** Append-only per-repo config versions (the "repo" layer over pullup.config.json). */
 export const repoConfigVersions = sqliteTable(
   "repo_config_versions",

@@ -11,6 +11,7 @@ import { ReviewFocusCard } from "@/components/settings/basic/review-focus-card";
 import { SeverityCard } from "@/components/settings/basic/severity-card";
 import { RulesCard } from "@/components/settings/basic/rules-card";
 import { ChecksCard } from "@/components/settings/basic/checks-card";
+import { InlineCard } from "@/components/settings/basic/inline-card";
 import { PathsSection } from "@/components/settings/advanced/paths-section";
 import { DependenciesSection } from "@/components/settings/advanced/dependencies-section";
 import { AuthorsSection, TestsSection } from "@/components/settings/advanced/tests-authors-section";
@@ -146,6 +147,7 @@ function SettingsPage() {
               <ReviewersCard />
               <ReviewFocusCard />
               <ChecksCard />
+              <InlineCard />
             </TabsContent>
             <TabsContent value="advanced" class="mt-4">
               <AdvancedTab />

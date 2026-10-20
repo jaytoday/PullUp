@@ -33,6 +33,7 @@ import type {
   CredentialKind,
   EvidenceSheet,
   ChainBreak,
+  FindingCommentRecord,
 } from "@pullup/core";
 
 export type {
@@ -153,6 +154,8 @@ export interface PullDetail {
   readonly curve: readonly CostCurvePoint[];
   readonly plannedAction: PlannedReviewAction | null;
   readonly loggedActions: readonly ReviewActionRecord[];
+  /** PullUp's own inline finding comments on this PR (live sends only). */
+  readonly findingComments?: readonly FindingCommentRecord[];
 }
 
 export interface RepoConfigResponse {

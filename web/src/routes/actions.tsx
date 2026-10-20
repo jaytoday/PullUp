@@ -147,6 +147,11 @@ export default function Actions() {
                           </span>
                         )}
                       </Show>
+                      <Show when={a.call.inlineReview || (a.call.resolveThreads ?? []).length > 0 || a.delivery?.inline}>
+                        <span data-testid="inline-summary">
+                          inline {a.delivery?.inline ? `${a.delivery.inline.posted.length} posted · ${a.delivery.inline.resolved.length} resolved` : `${a.call.inlineReview?.comments.length ?? 0} to post · ${(a.call.resolveThreads ?? []).length} to resolve`}
+                        </span>
+                      </Show>
                       <DeliveryStatus record={a} />
                     </div>
                     <Show when={a.delivery?.errors?.length || a.delivery?.skipped || a.delivery?.denied?.length}>

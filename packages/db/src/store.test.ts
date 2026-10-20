@@ -171,6 +171,28 @@ describe("SqliteStore authority layer", () => {
     expect(await store.listAgents()).toHaveLength(1);
   });
 
+  it("finding comments upsert by (repo, pull, key) and filter by pull", async () => {
+    const store = await openStore();
+    const row = {
+      repoId: "acme/api",
+      pullNumber: 7,
+      findingKey: "0123456789abcdef",
+      findingId: "signal:touchesAuthz",
+      path: "src/auth.ts",
+      commentId: 500,
+      firstHeadSha: "sha1",
+      lastSeenHeadSha: "sha1",
+      status: "open" as const,
+      resolvedHeadSha: null,
+      updatedAt: "2026-10-01T00:00:00.000Z",
+    };
+    await store.upsertFindingComment(row);
+    await store.upsertFindingComment({ ...row, status: "resolved-by-pullup", resolvedHeadSha: "sha2" });
+    await store.upsertFindingComment({ ...row, pullNumber: 8 });
+    expect(await store.listFindingComments("acme/api", 7)).toEqual([{ ...row, status: "resolved-by-pullup", resolvedHeadSha: "sha2" }]);
+    expect(await store.listFindingComments("acme/api")).toHaveLength(2);
+  });
+
   it("permit nonces are single use", async () => {
     const store = await openStore();
     expect(await store.consumePermitNonce("n1", "t1", NOW)).toBe(true);

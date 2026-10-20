@@ -13,6 +13,7 @@ export * from "./actions/authority.js";
 export * from "./config/severity.js";
 export * from "./config/rules.js";
 export * from "./config/checks.js";
+export * from "./config/inline.js";
 export * from "./findings/findings.js";
 export { globToRegExp, matchesAny } from "./policy/policy.js";
 export { tierOfPath } from "./policy/guardrails.js";

@@ -290,7 +290,10 @@ addJevOptions(program
         authority: cfg.authority,
         configVersion: cfg.version,
         checks: cfg.checks,
-        hunks: cfg.checks.enabled ? await s.listHunks(repoId) : [],
+        inline: cfg.inline,
+        hunks: cfg.checks.enabled || cfg.inline.enabled ? await s.listHunks(repoId) : [],
+        findingComments: cfg.inline.enabled ? await s.listFindingComments(repoId) : [],
+        questionSet: report.risk?.questionSetVersion ?? null,
         approvalUnlocked: gate.unlocked,
         ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
       });

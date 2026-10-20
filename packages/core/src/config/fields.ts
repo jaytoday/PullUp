@@ -46,7 +46,8 @@ export type FieldGroup =
   | "model"
   | "severity"
   | "rules"
-  | "checks";
+  | "checks"
+  | "inline";
 
 export interface FieldSpec {
   /** Dot path into the config file; `*` matches one record key. */
@@ -121,6 +122,12 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "checks.name", label: "Check name", help: "The name branch protection requires. Renaming it breaks any rule that requires the old name.", group: "checks", widget: "text", loosens: "neutral" },
   { path: "checks.blockOn", label: "Fail the check when", help: "Never: the check reports, it never blocks. Request changes: the check fails when PullUp requests changes at Act.", group: "checks", widget: "select", loosens: "rank", order: ["request-changes", "never"], options: ["never", "request-changes"] },
   { path: "checks.annotations", label: "Pin findings to lines", help: "Annotate the diff lines behind each located finding.", group: "checks", widget: "switch", loosens: "neutral" },
+  { path: "inline.enabled", label: "Comment on the lines behind findings", help: "Post located findings as inline review comments and resolve them when a push makes them go away. Information only: never changes the action.", group: "inline", widget: "switch", loosens: "neutral" },
+  { path: "inline.reportOn", label: "Comment on findings at", help: "P0 only, P0–P1, or every level.", group: "inline", widget: "select", loosens: "neutral", options: ["p0", "p1", "p2"] },
+  { path: "inline.includeObserve", label: "Comment while signals are only observed", help: "Post signal findings marked “Observe only” even though they don't count toward actions.", group: "inline", widget: "switch", loosens: "neutral" },
+  { path: "inline.maxComments", label: "New comments per commit", help: "Most severe first.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 30, step: 1 },
+  { path: "inline.resolveFixed", label: "Resolve fixed findings", help: "Resolve PullUp's own threads when a later push makes the finding go away. Never touches anyone else's comments.", group: "inline", widget: "switch", loosens: "neutral" },
+  { path: "inline.maxResolutions", label: "Resolutions per run", help: "A cap so a bad run can't resolve everything.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 50, step: 1 },
   { path: "rules", label: "Special cases (rules)", help: "Scoped policy for folders, authors or labels.", group: "rules", widget: "text", loosens: "neutral" },
 
   // Basic: limits

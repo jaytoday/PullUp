@@ -15,7 +15,7 @@ import type { AuthorityLevel } from "../actions/authority.js";
 import { AUTHORITY_RANK } from "../actions/authority.js";
 import type { DeliveryMode } from "../actions/approval.js";
 import type { BotReviewAction, PlannedReviewAction } from "../actions/review.js";
-import { AUTHORITY_KEY, DECISION_COMMENT_MARKER, decisionCommentBody, plannedCheckRun } from "../actions/review.js";
+import { AUTHORITY_KEY, DECISION_COMMENT_MARKER, decisionCommentBody, plannedCheckRun, plannedInline } from "../actions/review.js";
 import { callHash, issuePermit } from "./permit.js";
 import type { CapabilityProfile, CredentialKind, GitHubPermissions } from "./profiles.js";
 import { PROFILE_CEILING, PROFILE_LABEL, requiredPermissions } from "./profiles.js";
@@ -147,7 +147,7 @@ export function lowerAction(planned: PlannedReviewAction, level: AuthorityLevel)
   // A lowered level also lowers the check: off → none, comment → neutral "would …".
   const check = (lvl: AuthorityLevel) => {
     const checkRun = plannedCheckRun(planned, lvl, planned.clamped ?? null);
-    return checkRun === undefined ? {} : { checkRun };
+    return { ...(checkRun === undefined ? {} : { checkRun }), ...(plannedInline(planned, lvl) ?? {}) };
   };
   if (level === "off") {
     return { ...planned, call: { createReview: null, upsertComment: null, requestReviewers: null, ...check("off") } };
@@ -217,10 +217,17 @@ export function governActions(planned: readonly PlannedReviewAction[], input: Go
     if (upsert) {
       governed = { ...governed, call: { ...governed.call, upsertComment: { ...upsert, body: `${upsert.body}\n${taskMarker(taskId)}` } } };
     }
-    // A check run needs checks: write on the action's token.
-    const permissions = governed.call.checkRun
-      ? { ...authorization.permissions, checks: "write" as const }
-      : authorization.permissions;
+    // The Observe profile promises only the decision comment: no inline finding comments.
+    if (authorization.profile === "observe" && (governed.call.inlineReview || governed.call.resolveThreads?.length)) {
+      governed = { ...governed, call: { ...governed.call, inlineReview: null, resolveThreads: [] } };
+    }
+    // A check run needs checks: write; inline review comments and thread resolution need pull-request write.
+    const inlineCalls = Boolean(governed.call.inlineReview || governed.call.resolveThreads?.length);
+    const permissions = {
+      ...authorization.permissions,
+      ...(governed.call.checkRun ? { checks: "write" as const } : {}),
+      ...(inlineCalls ? { pull_requests: "write" as const } : {}),
+    };
     governed = { ...governed, taskId, task, authorization: { ...authorization, permissions } };
     if (
       input.sign &&

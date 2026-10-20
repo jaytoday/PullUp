@@ -27,7 +27,10 @@ import type { Authorization, PullUpTask } from "../authority/authorize.js";
 import type { Permit } from "../authority/permit.js";
 import { appendEvidence, outcomeEvidence, planEvidence, withoutPermit } from "../authority/evidence.js";
 import type { ChecksConfig } from "../config/checks.js";
-import type { HunkRecord } from "../schema/domain.js";
+import type { FindingCommentRecord, HunkRecord } from "../schema/domain.js";
+import type { InlineConfig } from "../config/inline.js";
+import type { InlineComment, InlinePlan, InlineResolve } from "../findings/inline.js";
+import { planInline } from "../findings/inline.js";
 import type { CheckRunCall, CheckSpec } from "./check.js";
 import { buildCheckSpec, checkRunCall } from "./check.js";
 
@@ -68,6 +71,18 @@ export interface GitHubReviewCall {
   } | null;
   /** PullUp's check run on this head (checks.create, or checks.update when one exists). Absent when checks are off. */
   readonly checkRun?: CheckRunCall | null;
+  /** New inline finding comments, as one COMMENT review on the head (pulls.createReview with comments). */
+  readonly inlineReview?: {
+    readonly owner: string;
+    readonly repo: string;
+    readonly pull_number: number;
+    readonly commit_id: string;
+    readonly event: "COMMENT";
+    readonly body: string;
+    readonly comments: readonly InlineComment[];
+  } | null;
+  /** PullUp's own finding threads to reply to and resolve (their finding is gone). */
+  readonly resolveThreads?: readonly InlineResolve[];
 }
 
 export interface PlannedReviewAction {
@@ -100,6 +115,8 @@ export interface PlannedReviewAction {
   readonly permit?: Permit;
   /** Inputs for the check run (present when checks are enabled); `call.checkRun` is rebuilt from it. */
   readonly check?: CheckSpec;
+  /** Inline finding comments to post / resolve (present when inline comments are enabled). */
+  readonly inline?: InlinePlan;
 }
 
 /**
@@ -121,6 +138,14 @@ export interface ReviewDelivery {
   readonly commentId?: number;
   /** PullUp's check run on this head. */
   readonly checkRunId?: number;
+  /** Inline finding comments: what was posted, resolved, or found already resolved/deleted. */
+  readonly inline?: {
+    readonly reviewId?: number;
+    readonly posted: readonly { readonly findingKey: string; readonly commentId: number }[];
+    readonly resolved: readonly string[];
+    readonly alreadyResolved: readonly string[];
+    readonly missing: readonly string[];
+  };
   readonly reviewersRequested?: readonly string[];
   /** The bot's own earlier REQUEST_CHANGES reviews dismissed by this delivery. */
   readonly dismissedReviewIds?: readonly number[];
@@ -170,8 +195,14 @@ export interface PlanOptions {
   readonly configVersion?: number | null;
   /** Check run settings; only used with an authority (no checks in the legacy plan). */
   readonly checks?: ChecksConfig;
-  /** This repo's stored hunks, to pin findings to diff lines in the check. */
+  /** This repo's stored hunks, to pin findings to diff lines in the check and inline comments. */
   readonly hunks?: readonly HunkRecord[];
+  /** Inline finding comment settings; only used with an authority. */
+  readonly inline?: InlineConfig;
+  /** PullUp's stored inline comments for this repo (written by the live actuator). */
+  readonly findingComments?: readonly FindingCommentRecord[];
+  /** The question-set version, quoted in inline comments. */
+  readonly questionSet?: string | null;
 }
 
 const BOT_FOOTER = "\n\n_— PullUp_";
@@ -286,6 +317,19 @@ export function planReviewActions(
               waitHours: d.waitHours,
               maxWaitHours: d.maxWaitHours,
               configVersion: opts.configVersion ?? null,
+            }),
+          }
+        : {}),
+      ...(opts.authority && opts.inline?.enabled
+        ? {
+            inline: planInline({
+              config: opts.inline,
+              findings: d.findings ?? [],
+              hunks: (opts.hunks ?? []).filter((h) => h.pullNumber === d.pullNumber),
+              existing: (opts.findingComments ?? []).filter((c) => c.pullNumber === d.pullNumber),
+              headSha,
+              signalsRan: d.risk !== undefined,
+              questionSet: opts.questionSet ?? null,
             }),
           }
         : {}),
@@ -406,6 +450,32 @@ export function decisionCommentBody(
  * The check run for a planned action at `level` (undefined when the action has
  * no check). The body is the decision comment's text without its marker.
  */
+/** The inline-comment calls for a planned action at `level` (empty at `off`; undefined without inline comments). */
+export function plannedInline(
+  planned: Pick<PlannedReviewAction, "repoId" | "pullNumber" | "headSha" | "inline">,
+  level: AuthorityLevel,
+): Pick<GitHubReviewCall, "inlineReview" | "resolveThreads"> | undefined {
+  if (!planned.inline) return undefined;
+  if (level === "off") return { inlineReview: null, resolveThreads: [] };
+  const [owner, repo] = planned.repoId.split("/") as [string, string];
+  const post = planned.inline.post;
+  return {
+    inlineReview:
+      post.length > 0
+        ? {
+            owner,
+            repo,
+            pull_number: planned.pullNumber,
+            commit_id: planned.headSha,
+            event: "COMMENT",
+            body: `PullUp flagged ${post.length} place${post.length === 1 ? "" : "s"} at \`${planned.headSha.slice(0, 7)}\` for a closer look. These comments are information only; PullUp's decision is in its own comment.`,
+            comments: post,
+          }
+        : null,
+    resolveThreads: planned.inline.resolve,
+  };
+}
+
 export function plannedCheckRun(
   planned: Pick<PlannedReviewAction, "repoId" | "headSha" | "action" | "reason" | "rationale" | "findings" | "check">,
   level: AuthorityLevel,
@@ -460,6 +530,8 @@ export function applyAuthority(
   }
   const checkRun = plannedCheckRun(planned, level, clamped);
   if (checkRun !== undefined) call = { ...call, checkRun };
+  const inline = plannedInline(planned, level);
+  if (inline) call = { ...call, ...inline };
   return { ...planned, call, authority: level, clamped, configVersion: opts.configVersion ?? null };
 }
 

@@ -241,7 +241,10 @@ export function createApp(deps: AppDeps) {
       authority: cfg.authority,
       configVersion: cfg.version,
       checks: cfg.checks,
-      hunks: cfg.checks.enabled ? await deps.store.listHunks(repoId) : [],
+      inline: cfg.inline,
+      hunks: cfg.checks.enabled || cfg.inline.enabled ? await deps.store.listHunks(repoId) : [],
+      findingComments: cfg.inline.enabled ? await deps.store.listFindingComments(repoId) : [],
+      questionSet: r.risk?.questionSetVersion ?? null,
       approvalUnlocked: gate.unlocked,
       ...(gate.reason ? { approvalLockedReason: gate.reason } : {}),
     });
@@ -437,6 +440,7 @@ export function createApp(deps: AppDeps) {
           curve: costCurve(r.params, pull.changeType, horizon, { pDefect }),
           plannedAction: planned,
           loggedActions: logged,
+          findingComments: await deps.store.listFindingComments(repoId, n),
         };
       },
     ],

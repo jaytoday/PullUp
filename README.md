@@ -30,6 +30,9 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   decision and line annotations for findings. Neutral in Evaluation; it can
   fail only when PullUp requests changes at Act and the owner opted in. See
   `docs/github.md`.
+- **Inline finding comments** (optional) — located findings posted on the
+  diff lines, never duplicated across pushes, and resolved by PullUp when a
+  later push fixes them (only PullUp's own threads). Information only.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 
