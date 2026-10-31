@@ -9,6 +9,7 @@ import { decideOne, decideForRepo, summarizeDecisions } from "./decision.js";
 import type { CostParams } from "./params.js";
 import type { PullRecord, ReviewRecord } from "../schema/domain.js";
 import { addHours } from "../schema/domain.js";
+import type { ReviewActionRecord } from "../actions/review.js";
 
 const NOW = "2026-08-15T00:00:00.000Z";
 
@@ -128,5 +129,33 @@ describe("decideForRepo", () => {
     expect(counts.reviewComplete + counts.autoApprove + counts.keepReviewing + counts.requestChanges)
       .toBe(50);
     expect(open).toBeGreaterThan(0);
+  });
+});
+
+describe("decideForRepo ignores PullUp's own reviews", () => {
+  it("PullUp's own REQUEST_CHANGES doesn't count as a human deciding; a human's still does", async () => {
+    const params = await paramsFor();
+    const store = new InMemoryStore();
+    await store.upsertPull(makePull({ number: 4, headSha: "fixed" }));
+    await store.upsertReview(makeReview({ pullNumber: 4, id: 77, author: "pullup-ci[bot]", state: "CHANGES_REQUESTED", submittedAt: addHours(NOW, -2) }));
+    const sent = {
+      repoId: "fixtures/healthy",
+      pullNumber: 4,
+      headSha: "blocked",
+      action: "request_changes",
+      status: "sent",
+      loggedAt: addHours(NOW, -2),
+      delivery: { at: addHours(NOW, -2), reviewId: 77 },
+    } as unknown as ReviewActionRecord;
+    await store.recordReviewAction(sent);
+
+    const [own] = await decideForRepo(store, "fixtures/healthy", params, NOW);
+    expect(own!.lastReviewState).toBeNull();
+    expect(own!.recommendation).not.toBe("request-changes");
+
+    await store.upsertReview(makeReview({ pullNumber: 4, id: 78, author: "frank", state: "CHANGES_REQUESTED", submittedAt: addHours(NOW, -1) }));
+    const [human] = await decideForRepo(store, "fixtures/healthy", params, NOW);
+    expect(human!.lastReviewState).toBe("CHANGES_REQUESTED");
+    expect(human!.recommendation).toBe("request-changes");
   });
 });

@@ -72,7 +72,11 @@ export interface ReviewClient {
     body: string;
   }): Promise<{ id: number }>;
   dismissReview(p: { owner: string; repo: string; pull_number: number; review_id: number; message: string }): Promise<void>;
-  /** Newest issue comment containing `marker`, or null. */
+  /**
+   * Newest issue comment containing `marker` that this credential wrote, or
+   * null. Anyone can paste the marker, and an App may edit any comment, so a
+   * comment by someone else must never be picked up and overwritten.
+   */
   findComment(p: { owner: string; repo: string; issue_number: number; marker: string }): Promise<number | null>;
   createComment(p: { owner: string; repo: string; issue_number: number; body: string }): Promise<{ id: number }>;
   updateComment(p: { owner: string; repo: string; comment_id: number; body: string }): Promise<{ id: number }>;
@@ -137,6 +141,10 @@ const checkPayload = (c: CheckRunCall) => ({
 });
 
 export function octokitReviewClient(octokit: Octokit): ReviewClient {
+  // The login this credential acts as ("<app-slug>[bot]" for an App, the user for a token).
+  let viewer: Promise<string> | undefined;
+  const viewerLogin = () =>
+    (viewer ??= octokit.graphql<{ viewer: { login: string } }>("query { viewer { login } }").then((d) => d.viewer.login));
   return {
     async getPull(p) {
       const { data } = await octokit.rest.pulls.get(p);
@@ -151,7 +159,8 @@ export function octokitReviewClient(octokit: Octokit): ReviewClient {
     },
     async findComment({ owner, repo, issue_number, marker }) {
       const comments = await octokit.paginate(octokit.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
-      const mine = comments.filter((c) => (c.body ?? "").includes(marker));
+      const self = await viewerLogin();
+      const mine = comments.filter((c) => (c.body ?? "").includes(marker) && c.user?.login === self);
       return mine.at(-1)?.id ?? null;
     },
     async createComment(p) {

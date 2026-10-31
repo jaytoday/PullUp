@@ -27,16 +27,15 @@ export interface AgentIdentity {
 
 export const UNKNOWN_VERSION = "unknown";
 
-function readCoreVersion(): string {
-  try {
-    const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version?: string };
-    return pkg.version ?? UNKNOWN_VERSION;
-  } catch {
-    return UNKNOWN_VERSION;
-  }
-}
-
-export const CORE_VERSION = readCoreVersion();
+/**
+ * The @pullup/core version, as a constant rather than read from package.json
+ * at run time: inside eve's bundle the module no longer sits next to
+ * package.json, the read failed, and the Eve agent hashed as a different
+ * version ("unknown" core) than `pullup agents` showed for this checkout, so
+ * approving the listed hash never let the running agent act. A test keeps
+ * this equal to package.json.
+ */
+export const CORE_VERSION = "0.1.0";
 
 /**
  * The composition hash for one agent. `files` maps a path to its source text

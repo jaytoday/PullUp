@@ -3,7 +3,8 @@ import type { AuthorityLevel } from "../actions/authority.js";
 import type { BotReviewAction } from "../actions/review.js";
 import { InMemoryStore } from "../schema/store.js";
 import { authorize, type AuthorizationContext } from "./authorize.js";
-import { agentIdentity } from "./composition.js";
+import { readFileSync } from "node:fs";
+import { CORE_VERSION, agentIdentity } from "./composition.js";
 import { appendEvidence, verifyEvidenceChain } from "./evidence.js";
 import { issuePermit, resolvePermitKey, verifyPermit } from "./permit.js";
 import { CAPABILITY_PROFILES, PROFILE_CEILING } from "./profiles.js";
@@ -50,8 +51,8 @@ describe("authorize", () => {
 
   it("asks for the minimum GitHub permissions", () => {
     expect(authorize({ action: "approve" }, "act", ctx()).permissions).toEqual({ pull_requests: "write" });
-    expect(authorize({ action: "approve" }, "comment", ctx()).permissions).toEqual({ pull_requests: "read", issues: "write" });
-    expect(authorize({ action: "defer_to_human" }, "act", ctx()).permissions).toEqual({ pull_requests: "write", issues: "write" });
+    expect(authorize({ action: "approve" }, "comment", ctx()).permissions).toEqual({ pull_requests: "write" });
+    expect(authorize({ action: "defer_to_human" }, "act", ctx()).permissions).toEqual({ pull_requests: "write" });
     expect(authorize({ action: "approve" }, "off", ctx()).permissions).toEqual({});
   });
 });
@@ -98,6 +99,11 @@ describe("composition hash", () => {
     expect(agentIdentity({ ...base, modelId: "m2" }).version).not.toBe(v);
     expect(agentIdentity({ ...base, questionSetVersion: "q-v2" }).version).not.toBe(v);
     expect(agentIdentity({ ...base, id: "pullup/cli" }).version).not.toBe(v);
+  });
+
+  it("the core version constant matches package.json (it is not read at run time, so bundling can't change the hash)", () => {
+    const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string };
+    expect(CORE_VERSION).toBe(pkg.version);
   });
 });
 

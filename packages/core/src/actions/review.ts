@@ -227,11 +227,12 @@ const WOULD: Readonly<Record<BotReviewAction, string>> = {
  */
 export function planReviewActions(
   decisions: readonly PullDecision[],
-  pulls: readonly Pick<PullRecord, "number" | "headSha">[],
+  pulls: readonly (Pick<PullRecord, "number" | "headSha"> & Partial<Pick<PullRecord, "author">>)[],
   opts: PlanOptions,
 ): PlannedReviewAction[] {
   const [owner, repo] = opts.repoId.split("/") as [string, string];
   const shaByPull = new Map(pulls.map((p) => [p.number, p.headSha]));
+  const authorByPull = new Map(pulls.map((p) => [p.number, p.author?.toLowerCase()]));
   const reviewers = opts.humanReviewers ?? [];
   const out: PlannedReviewAction[] = [];
 
@@ -279,7 +280,9 @@ export function planReviewActions(
     }
 
     // Scoped rules can add reviewers for this PR.
-    const prReviewers = [...new Set([...reviewers, ...(d.scope?.extraReviewers ?? [])])];
+    // GitHub refuses (422) to request a review from the pull request's own author.
+    const author = authorByPull.get(d.pullNumber);
+    const prReviewers = [...new Set([...reviewers, ...(d.scope?.extraReviewers ?? [])])].filter((r) => r.toLowerCase() !== author);
     const event: GitHubReviewEvent =
       action === "approve" ? "APPROVE" : action === "request_changes" ? "REQUEST_CHANGES" : "COMMENT";
     const legacyCall: GitHubReviewCall = {

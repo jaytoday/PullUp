@@ -17,8 +17,10 @@ stop switch, a signed per-action permit and a per-action token. See
 ## Setup
 
 1. Create a GitHub App.
-   - **Repository permissions:** Pull requests *read & write*, Issues *read &
-     write* (the decision comment is an issue comment), Checks *read & write*
+   - **Repository permissions:** Pull requests *read & write* (this also
+     covers the decision comment: on a pull request GitHub only lets an App
+     comment with pull-request write, even through the issue-comment API),
+     Issues *read*, Checks *read & write*
      (only needed when the PullUp check is on), Contents *read*, Metadata *read*.
    - **Webhook events:** Pull request, Issue comment, Pull request review
      comment.
@@ -28,7 +30,7 @@ stop switch, a signed per-action permit and a per-action token. See
 
 | var | meaning |
 |---|---|
-| `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY` | App credentials. The key may use escaped `\n`. |
+| `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY` | App credentials. The key may use escaped `\n`. The agent's GitHub channel (eve) reads `GITHUB_APP_PRIVATE_KEY`; when that is unset it is filled from `GITHUB_PRIVATE_KEY`. |
 | `GITHUB_WEBHOOK_SECRET` | Verifies inbound webhooks (eve channel) |
 | `GITHUB_APP_SLUG` | The bot's `@mention` name |
 | `GITHUB_INSTALLATION_ID` | Optional: skips the per-repo installation lookup |
@@ -163,8 +165,12 @@ on the same file keeps its comment across pushes.
 
 ## Not covered
 
-- The App auth path (including per-action token minting and revocation) is tested with fakes only. Token auth was verified with a
-  read-only live fetch.
+- The App path was tested live on a private sandbox repo (2026-10-30): per-action
+  tokens minted for one repo and revoked, the check run (neutral, failure,
+  annotations, update in place), a REQUEST_CHANGES review and its dismissal
+  after a fix push, the approval lock, and a webhook-driven agent turn. A
+  successful reviewer request was not tested: the sandbox had no collaborator
+  other than the pull request's author.
 - The check reports the decision at planning time. It doesn't count down the
   wait window (`w*`); nothing re-plans a pull request when `w*` passes except
   the next webhook or an explicit run.

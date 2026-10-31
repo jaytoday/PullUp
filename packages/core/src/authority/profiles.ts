@@ -55,13 +55,13 @@ export function isCapabilityProfile(x: unknown): x is CapabilityProfile {
 /**
  * The minimum GitHub permissions one action needs at its effective level.
  * Every send reads the pull request first (guard) and after (verification);
- * the decision comment is an issue comment; reviews, reviewer requests and
- * dismissing PullUp's own stale block need pull-request write.
+ * reviews, reviewer requests and dismissing PullUp's own stale block need
+ * pull-request write. So does the decision comment: it goes through the
+ * issue-comment API, but on a pull request GitHub refuses an App token with
+ * only `issues: write` (403 "Resource not accessible by integration",
+ * checked live), so commenting needs `pull_requests: write` too.
  */
 export function requiredPermissions(level: AuthorityLevel, hasComment: boolean): GitHubPermissions {
   if (level === "off") return {};
-  return {
-    pull_requests: level === "act" ? "write" : "read",
-    ...(hasComment ? { issues: "write" as const } : {}),
-  };
+  return { pull_requests: level === "act" || hasComment ? "write" : "read" };
 }

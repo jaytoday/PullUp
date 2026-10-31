@@ -113,6 +113,26 @@ describe("action authority (fixtures/jev, active signals)", () => {
     }
   });
 
+  it("never asks the pull request's own author to review it (GitHub refuses with 422)", async () => {
+    const cfg = resolveConfig({ file: { jev: { mode: "active" }, actions: MODE_AUTHORITY["block-only"] } });
+    const { decisions } = await decide(store, repo, { jev: { mode: "active" }, actions: MODE_AUTHORITY["block-only"] });
+    const pulls = await store.listPulls(repo);
+    const deferred = planReviewActions(decisions, pulls, { repoId: repo, humanReviewers: ["security-team"], authority: cfg.authority }).find(
+      (p) => p.action === "defer_to_human",
+    )!;
+    const author = pulls.find((p) => p.number === deferred.pullNumber)!.author;
+    const planned = planReviewActions(decisions, pulls, {
+      repoId: repo,
+      humanReviewers: [author.toUpperCase(), "security-team"],
+      authority: cfg.authority,
+    });
+    expect(planned.find((p) => p.pullNumber === deferred.pullNumber)!.call.requestReviewers!.reviewers).toEqual(["security-team"]);
+    const onlyAuthor = planReviewActions(decisions, pulls, { repoId: repo, humanReviewers: [author], authority: cfg.authority });
+    const alone = onlyAuthor.find((p) => p.pullNumber === deferred.pullNumber)!;
+    expect(alone.call.requestReviewers).toBeNull();
+    expect(alone.call.upsertComment!.body).toMatch(/asking for a human review/);
+  });
+
   it("approve · act is clamped to comment while approval is stubbed", async () => {
     const cfg = resolveConfig({ file: { jev: { mode: "active" }, actions: MODE_AUTHORITY.full } });
     const decisions = (await decide(store, repo, { jev: { mode: "active" } })).decisions;

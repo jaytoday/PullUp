@@ -89,7 +89,7 @@ describe("Agent Baseline conformance", () => {
     const [rec] = await actuator(f.client, store, { onMint: (_r, p) => minted.push(p) }).apply(governed);
     expect(rec!.status).toBe("sent");
     expect(f.fns()).not.toContain("createReview");
-    expect(minted).toEqual([{ pull_requests: "read", issues: "write" }]);
+    expect(minted).toEqual([{ pull_requests: "write" }]);
   });
 
   it("CON-04 — a repo that was never enrolled is observe-only", async () => {
