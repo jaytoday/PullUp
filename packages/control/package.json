@@ -1,0 +1,23 @@
+{
+  "name": "@pullup/control",
+  "version": "0.1.0",
+  "description": "A domain-neutral control layer for AI that acts on cases (claims, submissions, orders, pull requests): calibration and fairness gates, a two-cost act-or-refer rule, raise-only risk signals, an authorizer with amount limits, signed single-use permits, plain-language reasons and a hash-chained evidence record. No dependencies besides Node.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

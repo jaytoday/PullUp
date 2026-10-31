@@ -23,6 +23,9 @@ importers:
       '@octokit/rest':
         specifier: ^21.0.2
         version: 21.1.1
+      '@pullup/control':
+        specifier: workspace:*
+        version: link:packages/control
       '@pullup/core':
         specifier: workspace:*
         version: link:packages/core
@@ -98,8 +101,23 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@24.13.3)(lightningcss@1.32.0)
 
+  packages/control:
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.13.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.13.3)(lightningcss@1.32.0)
+
   packages/core:
     dependencies:
+      '@pullup/control':
+        specifier: workspace:*
+        version: link:../control
       zod:
         specifier: ^4.4.3
         version: 4.4.3

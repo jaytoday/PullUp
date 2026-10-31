@@ -33,6 +33,10 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
 - **Inline finding comments** (optional) — located findings posted on the
   diff lines, never duplicated across pushes, and resolved by PullUp when a
   later push fixes them (only PullUp's own threads). Information only.
+- **Control layer** (`@pullup/control`) — the reusable core with neutral words (case,
+  program, amount): calibration and fairness gates, a two-cost act-or-refer rule, raise-only
+  signals, amount limits, permits, reasons and a hash-chained evidence record, with an insurance
+  claims example (`pnpm control:demo`). See `docs/control-layer.md`.
 - **Evidence check** (optional) — a read-only Claude pass on strong
   risk-signal findings that quotes the changed lines behind them; PullUp
   re-checks every quote against the diff. Raise-only: a confirmed finding may
