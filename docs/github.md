@@ -91,6 +91,27 @@ calibration artifact (`.pullup/calibration.<owner>__<repo>.json`, or
 a comment and records the reason in `clamped`. Request changes and ask-a-human
 need only live delivery, because they add friction and never remove it.
 
+### Walkthrough links
+
+When a pull request changes a file matching `walkthroughs.paths` (default
+`specs/**/*.md`, where the diffmap agent skill keeps its specs), the decision
+comment, the review body at `act` and the check run text get one line per
+file (at most `walkthroughs.maxLinks`):
+
+```
+**Walkthrough:** `specs/retry.md` — [open in diffmap](https://diffmap.dev/<owner>/<repo>/commit/<head>/specs/retry.md) · [view on GitHub](https://github.com/<owner>/<repo>/blob/<head>/specs/retry.md)
+```
+
+- Both links are pinned to the head commit PullUp decided on.
+- diffmap's hosted viewer reads GitHub without signing in, so it only opens
+  specs in public repositories; the GitHub link works for private ones.
+- File names come from the pull request author, so only plain names are
+  linked: every folder and file name made of letters, digits, `.`, `-`, `_`,
+  ending in `.md` or `.mdx`. Anything else is skipped, so a name can't add
+  Markdown to PullUp's comment.
+- No new GitHub call or permission: it is text in a comment PullUp already
+  sends. It never changes the action.
+
 ### Inline finding comments
 
 With `inline.enabled`, located risk-signal findings (P0–P1 by default) are

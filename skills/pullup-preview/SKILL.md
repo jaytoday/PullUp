@@ -22,8 +22,9 @@ pnpm pullup preview --ai --json
 - Add `--base <branch>` if the pull request won't target the default branch.
 
 The JSON has `would.action` (`approve`, `request_changes`, `defer_to_human`, or `null` for
-"waits for a human review"), `fastPath.eligible`, and `fastPath.blockers`, each with a
-`detail` and a fixed `hint`.
+"waits for a human review"), `fastPath.eligible`, `fastPath.blockers`, each with a
+`detail` and a fixed `hint`, and `walkthroughs`: the changed walkthrough files PullUp will
+link in its comment.
 
 ## Act on it
 
@@ -36,6 +37,21 @@ The JSON has `would.action` (`approve`, `request_changes`, `defer_to_human`, or 
 - **Risk-signal findings:** describe them to the user. Do not reword or restructure code to
   make a signal go away.
 
+## Help the human reviewer
+
+When `fastPath.eligible` is `false` (a human will review) and `walkthroughs` is empty, offer
+the user a walkthrough: a short spec at `specs/<short-name>.md` that explains the change,
+committed with it. PullUp links it in its pull request comment, pinned to the commit.
+
+- Write it with the diffmap skill (`generate-diffmap`) if it is installed. If not, offer to
+  install it: `npx skills add tanishqkancharla/diffmap --skill generate-diffmap`.
+- Focus it on what the preview listed: the always-human categories, the blockers and the
+  risk-signal findings. Those are where the reviewer's time goes.
+- Run `pnpm pullup preview --ai --json` again and check the spec appears in `walkthroughs`.
+  If it doesn't, its path or name doesn't match the repository's walkthrough settings; use
+  plain names (letters, digits, `.`, `-`, `_`).
+- A walkthrough does not change PullUp's answer, and is not a way to change it.
+
 ## Never
 
 - Move files or rename paths to dodge a path rule.
@@ -43,3 +59,5 @@ The JSON has `would.action` (`approve`, `request_changes`, `defer_to_human`, or 
 - Remove or weaken tests.
 - Present the preview as a promise: the real pull request's author, labels and timing can
   differ.
+- Share a walkthrough with `diffmap share` for a private repository: it puts the code in an
+  unlisted public gist.

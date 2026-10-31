@@ -46,6 +46,7 @@ export default defineTool({
       configVersion: cfg.version,
       checks: cfg.checks,
       inline: cfg.inline,
+      walkthroughs: cfg.walkthroughs,
       hunks: await store.listHunks(repoId, pullNumber),
       findingComments: await store.listFindingComments(repoId, pullNumber),
       questionSet: report.risk?.questionSetVersion ?? null,

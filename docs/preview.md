@@ -28,12 +28,22 @@ pnpm pullup preview --fail-on human    # exit 1 if a human would be asked (pre-p
 - **Hints** for each blocker come from a fixed table in code, never a model.
 - Exit code 0 on success (`--fail-on human|changes` to gate a hook).
 
+## Walkthroughs
+
+The output lists changed walkthrough files (JSON `walkthroughs`, paths only;
+see `walkthroughs` in `docs/configuration.md`) that PullUp would link in its
+comment once the branch is pushed. When the fast path is blocked and there is
+none, the text output suggests adding one. A walkthrough never changes the
+preview's answer.
+
 ## Agent skill
 
 `skills/pullup-preview/SKILL.md` tells coding agents to run
 `pullup preview --ai --json` before opening a pull request, to split
 oversized changes and add missing tests, and never to dodge path rules, edit
-review config or reword code to avoid a signal.
+review config or reword code to avoid a signal. When a human will review, it
+also asks the agent to offer a walkthrough of the parts that need a human,
+written with the diffmap skill.
 
 ## Limits
 

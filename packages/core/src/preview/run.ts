@@ -6,6 +6,7 @@
 
 import type { ActionAuthority } from "../actions/authority.js";
 import { planReviewActions } from "../actions/review.js";
+import { walkthroughLinks } from "../actions/walkthroughs.js";
 import { configReportOptions } from "../config/config.js";
 import type { ResolvedConfig } from "../config/schema.js";
 import { ingestRepo } from "../ingest/pipeline.js";
@@ -87,11 +88,12 @@ export async function runPreview(input: PreviewInput): Promise<{ result: Preview
   const report = await buildReport(overlay, input.repoId, cfg.priors, { now, jev: runtime ?? undefined, ...configReportOptions(cfg) });
   const decision = report.decisions.find((d) => d.pullNumber === PREVIEW_PULL_NUMBER);
   if (!decision) throw new Error("The preview produced no decision.");
-  const [planned] = planReviewActions([decision], [{ number: PREVIEW_PULL_NUMBER, headSha: input.headSha }], {
+  const [planned] = planReviewActions([decision], [{ number: PREVIEW_PULL_NUMBER, headSha: input.headSha, files: sp.files }], {
     repoId: input.repoId,
     humanReviewers: cfg.jev.humanReviewers,
     authority: cfg.authority as ActionAuthority,
     configVersion: cfg.version,
+    walkthroughs: cfg.walkthroughs,
     approvalUnlocked: input.approval.unlocked,
     ...(input.approval.reason ? { approvalLockedReason: input.approval.reason } : {}),
   });
@@ -110,6 +112,7 @@ export async function runPreview(input: PreviewInput): Promise<{ result: Preview
     questionSet: runtime?.qs.version ?? null,
     mergedPulls: (await input.store.listMergedPulls(input.repoId)).length,
     ingested: existing !== null,
+    walkthroughs: walkthroughLinks(input.repoId, input.headSha, sp.files, cfg.walkthroughs).map((w) => w.path),
     notes,
   });
   return { result, store: overlay };

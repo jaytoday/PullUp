@@ -36,6 +36,8 @@ export interface PreviewResult {
   readonly findings: readonly { readonly id: string; readonly level: string; readonly source: string; readonly title: string; readonly paths: readonly string[] }[];
   readonly signals: { readonly model: string | null; readonly band: string | null; readonly questionSet: string | null };
   readonly history: { readonly ingested: boolean; readonly mergedPulls: number };
+  /** Changed walkthrough files (such as diffmap specs) PullUp would link in its comment. */
+  readonly walkthroughs: readonly string[];
   readonly notes: readonly string[];
   readonly sent: false;
 }
@@ -78,6 +80,7 @@ export function previewResult(input: {
   readonly mergedPulls: number;
   /** Whether the repo has been ingested at all (it may still have no merged pull requests). */
   readonly ingested: boolean;
+  readonly walkthroughs: readonly string[];
   readonly notes: readonly string[];
 }): PreviewResult {
   const d = input.decision;
@@ -120,6 +123,7 @@ export function previewResult(input: {
     })),
     signals: { model: input.model, band: d.risk?.band ?? null, questionSet: input.questionSet },
     history: { ingested: input.ingested, mergedPulls: input.mergedPulls },
+    walkthroughs: input.walkthroughs,
     notes: input.notes,
     sent: false,
   };
@@ -144,6 +148,8 @@ export function renderPreview(r: PreviewResult): string {
   if (!r.history.ingested) lines.push("History:   none ingested — wait times use default priors. Run `pullup fetch <repo>` first.");
   else if (r.history.mergedPulls === 0) lines.push("History:   no merged pull requests yet — wait times use default priors.");
   else lines.push(`History:   ${r.history.mergedPulls} merged pull requests`);
+  for (const w of r.walkthroughs) lines.push(`Walkthrough: ${w} (linked in PullUp's comment once pushed)`);
+  if (r.walkthroughs.length === 0 && !r.fastPath.eligible) lines.push("Walkthrough: none — a human will review; a spec in specs/ (for example from the diffmap skill) would help them.");
   for (const n of r.notes) lines.push(`Note:      ${n}`);
   lines.push("A preview, not a promise: the real pull request's author, labels and timing can differ. Nothing was sent to GitHub.");
   return lines.join("\n");

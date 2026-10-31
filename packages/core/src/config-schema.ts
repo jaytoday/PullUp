@@ -14,6 +14,7 @@ export * from "./config/severity.js";
 export * from "./config/rules.js";
 export * from "./config/checks.js";
 export * from "./config/inline.js";
+export * from "./config/walkthroughs.js";
 export * from "./config/verify.js";
 export * from "./config/outcomes.js";
 export * from "./findings/findings.js";

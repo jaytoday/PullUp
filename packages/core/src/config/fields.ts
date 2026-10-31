@@ -48,6 +48,7 @@ export type FieldGroup =
   | "rules"
   | "checks"
   | "inline"
+  | "walkthroughs"
   | "verify"
   | "outcomes";
 
@@ -130,6 +131,9 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "inline.maxComments", label: "New comments per commit", help: "Most severe first.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 30, step: 1 },
   { path: "inline.resolveFixed", label: "Resolve fixed findings", help: "Resolve PullUp's own threads when a later push makes the finding go away. Never touches anyone else's comments.", group: "inline", widget: "switch", loosens: "neutral" },
   { path: "inline.maxResolutions", label: "Resolutions per run", help: "A cap so a bad run can't resolve everything.", group: "inline", widget: "number", loosens: "neutral", min: 1, max: 50, step: 1 },
+  { path: "walkthroughs.enabled", label: "Link walkthroughs in the decision comment", help: "When a pull request changes a walkthrough file (such as a diffmap spec), link it for the reviewer. Information only: never changes the action.", group: "walkthroughs", widget: "switch", loosens: "neutral" },
+  { path: "walkthroughs.paths", label: "Walkthrough files", help: "Markdown files that count as walkthroughs. Only plain file names (letters, numbers, dot, dash, underscore) are linked.", group: "walkthroughs", widget: "globs", loosens: "neutral" },
+  { path: "walkthroughs.maxLinks", label: "Links per comment", help: "In path order.", group: "walkthroughs", widget: "number", loosens: "neutral", min: 1, max: 10, step: 1 },
   { path: "verify.enabled", label: "Check strong findings against the code", help: "A second, read-only model pass on P0/P1 risk-signal findings that returns quotes from the diff. It can only add friction: a confirmed finding may request changes (with “Verified” above); it never removes a finding or enables an approval.", group: "verify", widget: "switch", loosens: "neutral" },
   { path: "verify.model", label: "Verifier model", help: "The model the live verifier uses.", group: "verify", widget: "text", loosens: "neutral" },
   { path: "verify.maxPerPull", label: "Findings checked per pull request", help: "Most severe first.", group: "verify", widget: "number", loosens: "neutral", min: 1, max: 10, step: 1 },
