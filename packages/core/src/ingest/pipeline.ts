@@ -26,6 +26,11 @@ export interface IngestOptions {
   readonly repoId?: string;
   /** ISO timestamp stamped on the repository row (defaults to now). */
   readonly now?: string;
+  /**
+   * Also read the repo's lint rules from this folder on the default branch
+   * (when the source can). Absent or null: stored rules are left as they are.
+   */
+  readonly lintRulesDir?: string | null;
 }
 
 export async function ingestRepo(
@@ -44,6 +49,24 @@ export async function ingestRepo(
     defaultBranch: repoMeta.defaultBranch,
     ingestedAt: now,
   });
+
+  if (opts.lintRulesDir && source.readLintRules) {
+    try {
+      const read = await source.readLintRules(opts.lintRulesDir, repoMeta.defaultBranch);
+      // A missing folder stores an empty set, so rules deleted on the default branch stop applying.
+      await store.setLintRules({
+        repoId,
+        source: "default-branch",
+        ref: repoMeta.defaultBranch,
+        commitSha: read?.commitSha ?? null,
+        dir: opts.lintRulesDir,
+        files: read?.files ?? [],
+        fetchedAt: now,
+      });
+    } catch {
+      // The source couldn't tell: keep the rules read last time.
+    }
+  }
 
   const pulls = await source.listPulls();
   let reviews = 0;

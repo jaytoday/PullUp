@@ -49,6 +49,7 @@ export type FieldGroup =
   | "checks"
   | "inline"
   | "verify"
+  | "lint"
   | "outcomes";
 
 export interface FieldSpec {
@@ -135,6 +136,10 @@ export const FIELDS: readonly FieldSpec[] = [
   { path: "verify.maxPerPull", label: "Findings checked per pull request", help: "Most severe first.", group: "verify", widget: "number", loosens: "neutral", min: 1, max: 10, step: 1 },
   { path: "verify.inObserve", label: "Check while signals are only observed", help: "Verdicts are shown, never used.", group: "verify", widget: "switch", loosens: "neutral" },
   { path: "verify.budgetUsdPerDay", label: "Verifier budget per day", help: "Hard stop on live verifier spend per repo per UTC day.", group: "verify", widget: "number", loosens: "neutral", min: 0, max: 500, step: 1, unit: "USD" },
+  { path: "lint.mode", label: "Lint rules", help: "The repo's own rule files (Gallant's format). Off · Observe (shown, no effect) · On (findings count like other risk-signal findings).", group: "lint", widget: "select", loosens: "neutral", options: ["off", "observe", "on"] },
+  { path: "lint.dir", label: "Rules folder", help: "Read from the default branch, never from the pull request. Gallant's default is .agents/gallant.", group: "lint", widget: "text", loosens: "neutral" },
+  { path: "lint.level", label: "Level of a failing rule", help: "For rules that don't set pullupLevel themselves. Lint rules are capped at P1.", group: "lint", widget: "select", loosens: "neutral", options: ["p1", "p2"] },
+  { path: "lint.budgetUsdPerRun", label: "Lint budget per run", help: "Hard stop on one run's lint spend; files left over are not checked.", group: "lint", widget: "number", loosens: "neutral", min: 0, max: 100, step: 0.1, unit: "USD" },
   { path: "outcomes.quickApproveMinutes", label: "Quick approval", help: "A human approving the same commit within this many minutes counts as “the ask wasn't needed”. Affects the Outcomes page only.", group: "outcomes", widget: "number", loosens: "neutral", min: 1, max: 1440, step: 5, unit: "minutes" },
   { path: "outcomes.defectWindowDays", label: "Revert window", help: "A revert or hotfix within this many days of merging counts against an approval. Affects the Outcomes page only.", group: "outcomes", widget: "number", loosens: "neutral", min: 1, max: 90, step: 1, unit: "days" },
   { path: "rules", label: "Special cases (rules)", help: "Scoped policy for folders, authors or labels.", group: "rules", widget: "text", loosens: "neutral" },

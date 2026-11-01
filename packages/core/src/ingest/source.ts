@@ -2,6 +2,7 @@
 // `@pullup/github`: a synthetic-fixture source (offline default) and a live
 // GitHub App adapter. Ingest never talks to GitHub directly.
 
+import type { LintRuleFile } from "../lint/load.js";
 import type {
   DefectProxyKind,
   PullState,
@@ -72,11 +73,20 @@ export interface PullSource {
   listReviews(pullNumber: number): Promise<SourceReview[]>;
   listReviewComments(pullNumber: number): Promise<SourceReviewComment[]>;
   listDefectEvents(pullNumber: number): Promise<SourceDefectEvent[]>;
+  /**
+   * The lint rule files under `dir` at `ref` (the default branch), with paths
+   * relative to `dir`. Null when the folder doesn't exist there. Throws when
+   * the source can't tell (the stored rules are then kept). Optional: sources
+   * without it leave stored rules untouched.
+   */
+  readLintRules?(dir: string, ref: string): Promise<{ readonly commitSha: string | null; readonly files: readonly LintRuleFile[] } | null>;
 }
 
 /** Validates that a fixture JSON payload conforms to the source contract. */
 export interface FixtureFile {
   readonly repo: SourceRepo;
+  /** Lint rule files on the default branch, keyed by folder (such as `.agents/gallant`). */
+  readonly lintRules?: Readonly<Record<string, readonly LintRuleFile[]>>;
   readonly pulls: ReadonlyArray<
     SourcePull & {
       readonly reviews?: readonly SourceReview[];

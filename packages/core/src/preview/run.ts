@@ -95,7 +95,7 @@ export async function runPreview(input: PreviewInput): Promise<{ result: Preview
     approvalUnlocked: input.approval.unlocked,
     ...(input.approval.reason ? { approvalLockedReason: input.approval.reason } : {}),
   });
-  if (!report.risk && cfg.jev.mode === "off") notes.push("Risk signals are off for this repo.");
+  if (!report.risk && (runtime?.config.mode ?? cfg.jev.mode) === "off") notes.push("Risk signals are off for this repo.");
   const result = previewResult({
     repoId: input.repoId,
     base: input.base,
@@ -106,8 +106,10 @@ export async function runPreview(input: PreviewInput): Promise<{ result: Preview
     deletions: sp.deletions,
     decision,
     planned: planned ?? null,
-    model: runtime?.modelId ?? null,
-    questionSet: runtime?.qs.version ?? null,
+    // With only lint on, the runtime exists but the risk lane is off.
+    model: runtime && runtime.config.mode !== "off" ? runtime.modelId : null,
+    questionSet: runtime && runtime.config.mode !== "off" ? runtime.qs.version : null,
+    lint: runtime?.lint && runtime.lint.config.mode !== "off" ? { rules: runtime.lint.ruleSet.rules.length, ref: runtime.lint.ruleSet.ref } : null,
     mergedPulls: (await input.store.listMergedPulls(input.repoId)).length,
     ingested: existing !== null,
     notes,

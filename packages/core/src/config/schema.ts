@@ -29,6 +29,8 @@ import type { ChecksConfig } from "./checks.js";
 import { DEFAULT_CHECKS, checksSchema, resolveChecks } from "./checks.js";
 import type { InlineConfig } from "./inline.js";
 import { DEFAULT_INLINE, inlineSchema, resolveInline } from "./inline.js";
+import type { LintConfig } from "./lint.js";
+import { DEFAULT_LINT, lintSchema, resolveLint } from "./lint.js";
 import type { VerifyConfig } from "./verify.js";
 import { DEFAULT_VERIFY, resolveVerify, verifySchema } from "./verify.js";
 import type { OutcomesConfig } from "./outcomes.js";
@@ -181,6 +183,8 @@ export const configFileSchema = z
     inline: inlineSchema.optional(),
     /** Evidence verifier for strong risk-signal findings (see config/verify.ts). */
     verify: verifySchema.optional(),
+    /** The repo's own lint rules in Gallant's format (see config/lint.ts). */
+    lint: lintSchema.optional(),
     /** Windows for judging what humans did after a decision (see config/outcomes.ts). */
     outcomes: outcomesSchema.optional(),
     /** Owner's review focus: context for the rationale writer only, never for decisions. */
@@ -216,6 +220,7 @@ export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
     checks: _checks,
     inline: _inline,
     verify: _verify,
+    lint: _lint,
     outcomes: _outcomes,
     review: _review,
     preset: _preset,
@@ -274,6 +279,7 @@ export interface ResolvedLayers {
   readonly checks: ChecksConfig;
   readonly inline: InlineConfig;
   readonly verify: VerifyConfig;
+  readonly lint: LintConfig;
   readonly outcomes: OutcomesConfig;
   /** Normalised review focus, or null. */
   readonly reviewFocus: string | null;
@@ -293,6 +299,7 @@ export function resolveConfigFile(file: ConfigFile = {}): ResolvedLayers {
     checks: resolveChecks(file.checks),
     inline: resolveInline(file.inline),
     verify: resolveVerify(file.verify),
+    lint: resolveLint(file.lint),
     outcomes: resolveOutcomes(file.outcomes),
     reviewFocus: focus === "" ? null : focus,
   };
@@ -367,6 +374,7 @@ export function defaultConfigFile(): ConfigFile {
     checks: { ...DEFAULT_CHECKS },
     inline: { ...DEFAULT_INLINE },
     verify: { ...DEFAULT_VERIFY },
+    lint: { ...DEFAULT_LINT },
     outcomes: { ...DEFAULT_OUTCOMES },
     review: { focus: "" },
     preset: null,

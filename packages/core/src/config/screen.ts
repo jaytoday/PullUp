@@ -64,6 +64,20 @@ export function normalizeFreeText(raw: string): string {
     .trim();
 }
 
+/**
+ * Character-level problems only: invisible or bidi-control characters (which
+ * can hide text from a human reader) and control characters. Used for text
+ * that comes from merged repository files, such as lint rules, where the
+ * phrase screen below would reject ordinary rule wording.
+ */
+export function characterProblems(raw: string): string[] {
+  const problems: string[] = [];
+  if (INVISIBLE.test(raw)) problems.push("contains invisible or bidi-control characters");
+  // Tab, newline and carriage return are ordinary in files.
+  if (CONTROL.test(raw.replace(/\r/g, ""))) problems.push("contains control characters");
+  return problems;
+}
+
 export function screenFreeText(raw: string, opts: ScreenOptions): ScreenResult {
   const problems: string[] = [];
   if (INVISIBLE.test(raw)) problems.push("contains invisible or bidi-control characters");

@@ -256,4 +256,14 @@ describe("SqliteStore authority layer", () => {
     await expect(client.execute("UPDATE evidence SET payload = '{}' WHERE seq = 1")).rejects.toThrow(/append-only/);
     await expect(store.insertEvidence(rows[0]!)).rejects.toThrow();
   });
+  it("keeps one lint rule snapshot per repo, replaced on each read", async () => {
+    const store = await openStore();
+    expect(await store.getLintRules("o/r")).toBeNull();
+    const snap = { repoId: "o/r", source: "default-branch" as const, ref: "main", commitSha: "abc", dir: ".agents/gallant", files: [{ path: "a.md", content: "---\ntype: noul\n---\nx\n" }], fetchedAt: "2026-09-01T00:00:00.000Z" };
+    await store.setLintRules(snap);
+    expect(await store.getLintRules("o/r")).toEqual(snap);
+    await store.setLintRules({ ...snap, files: [], fetchedAt: "2026-09-02T00:00:00.000Z" });
+    expect((await store.getLintRules("o/r"))!.files).toEqual([]);
+    expect(await store.getLintRules("o/other")).toBeNull();
+  });
 });

@@ -11,7 +11,7 @@ surface are thin adapters over it.
 | `pnpm install` | Install dependencies |
 | `pnpm build` | Build the seven `@pullup/*` packages (web builds via `pnpm web:build`) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 212 · db 11 · github 46 · jev 4 · verify 4 · cli 1 · server 25) |
+| `pnpm -r test` | Package tests (core 228 · db 13 · github 48 · jev 8 · verify 4 · cli 1 · server 26) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |
@@ -27,7 +27,7 @@ evals/      Eve evals (recovery, congestion-comparison, smoke, jev/*)
 fixtures/   deterministic fixtures (healthy, congested, calibration, jev)
 packages/   @pullup/core · @pullup/db · @pullup/github · @pullup/jev · @pullup/verify · @pullup/server · @pullup/cli
 web/        dashboard SPA (SolidJS + Tailwind v4, nikala-ui design system)
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes · preview
+docs/       architecture · cost-model · analytics · jev · lint · configuration · github · authority · outcomes · preview
 skills/     pullup-preview — agent skill for coding agents
 ```
 
@@ -78,6 +78,22 @@ skills/     pullup-preview — agent skill for coding agents
   passing fast-path gate) for every plan; never pass `approvalUnlocked: true`
   from anywhere else. Actuator tests use a fake `ReviewClient`, never the network.
 - Question-set wording is a versioned contract: edit → bump `version`.
+
+## Lint lane (`docs/lint.md`)
+
+- The repo's Gallant-format rule files (`packages/core/src/lint/`) run in their
+  own lane: one unit per changed file, `QuestionSet.lane = "lint"`, versions
+  `lint-<hash>`. Never add lint answers to the risk features, the risk
+  question set or the calibration.
+- Rules come from the default branch (`PullSource.readLintRules`, stored with
+  `setLintRules`), never from the pull request head. Preview reads them at `--base`.
+- Lint findings are `source: "signal"`, `kind: "lint"`, P1 at most. Their
+  comments carry the rule's file name and result, never the rule text.
+- `JevRuntime.lint` carries the lane; with only lint on, `prepareJevRuntime`
+  returns a runtime whose `config.mode` is `"off"`. Check `config.mode`, not
+  whether a runtime exists, before treating risk signals as on.
+- `PULLUP_SYSTEMONE_URL` (env only) sends units to any System One server; the
+  model id becomes `model@host`.
 - Regenerate fixtures with `pnpm exec tsx scripts/generate-fixtures.ts`. It
   augments healthy/congested in place, so existing timestamps and reports stay
   stable. Use `--regenerate` to rebuild them.

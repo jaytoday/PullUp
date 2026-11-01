@@ -1,18 +1,21 @@
 // Findings: every reason PullUp might act on a PR, with a severity (P0/P1/P2)
 // and a source. `rule` findings are deterministic and reproducible; `signal`
-// findings come from Jev or custom questions and are probabilistic.
+// findings come from Jev, custom questions or the repo's lint rules and are
+// probabilistic.
 //
 // Levels come only from code and typed outputs (config level map + thresholds),
 // never from free text. The severity policy then maps each finding to an
 // action (see actions/review.ts).
 
 import type { SeverityConfig, SeverityLevel } from "../config/severity.js";
+import type { LintLevel } from "../config/lint.js";
+import type { LintHit } from "../lint/run.js";
 import type { SignalHit } from "../signals/aggregate.js";
 import type { FindingVerdict } from "../verify/types.js";
 
 export type FindingSource = "rule" | "signal";
 
-export type FindingKind = "signal" | "custom" | "injection" | "unevaluated" | "tests-missing" | "net-negative";
+export type FindingKind = "signal" | "custom" | "injection" | "unevaluated" | "lint" | "tests-missing" | "net-negative";
 
 export interface Finding {
   readonly id: string;
@@ -66,6 +69,21 @@ export interface CollectInput {
   readonly sensitiveHigh: number;
   readonly severity: SeverityConfig;
   readonly rules: readonly RuleFindingInput[];
+  /** Failing lint rules (lint lane), when it ran for this pull. */
+  readonly lint?: {
+    readonly hits: readonly LintHit[];
+    /** "on": counts like other signal findings · "observe": informational. */
+    readonly active: boolean;
+    /** Level for rules that don't set their own. */
+    readonly level: LintLevel;
+  };
+}
+
+/** `lint:go/leftover-debugging.md` → "Lint: leftover debugging" (from the file name: no rule text reaches comments). */
+export function lintTitle(ruleId: string): string {
+  const file = ruleId.replace(/^lint:/, "");
+  const name = file.slice(file.lastIndexOf("/") + 1).replace(/\.(md|markdown)$/i, "");
+  return `Lint: ${humanize(name)}`;
 }
 
 export function collectFindings(input: CollectInput): Finding[] {
@@ -99,6 +117,20 @@ export function collectFindings(input: CollectInput): Finding[] {
             : humanize(h.question),
       detail: h.kind === "unevaluated" ? units : `p=${h.p.toFixed(2)} · ${units}`,
       active: input.signalsActive,
+      units: [...h.units],
+    });
+  }
+  for (const h of input.lint?.hits ?? []) {
+    const units = h.units.slice(0, 3).join(", ") + (h.units.length > 3 ? ` +${h.units.length - 3}` : "");
+    out.push({
+      id: h.ruleId,
+      // Raise-only: a lint rule is P1 at most.
+      level: h.level ?? input.lint!.level,
+      source: "signal",
+      kind: "lint",
+      title: lintTitle(h.ruleId),
+      detail: `${h.reason} · ${units}`,
+      active: input.lint!.active,
       units: [...h.units],
     });
   }

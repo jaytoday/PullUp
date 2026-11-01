@@ -46,6 +46,11 @@ human review before shipping it (and fixing bugs later) is the cheaper move.
   decision on a local branch (nothing sent, nothing written to history) and
   says what keeps it off the fast path; `skills/pullup-preview` teaches coding
   agents to use it. See `docs/preview.md`.
+- **The repo's own lint rules** (optional) — Markdown rule files in the
+  Gallant linter's format (`.agents/gallant/`), read from the default branch
+  and checked per changed file by the same decision model in a separate lane.
+  A failing rule is a raise-only finding; `pullup lint` runs the same rules
+  before a push. See `docs/lint.md`.
 - **No auto-merge** — PullUp approves, requests changes or asks a human; it
   never merges or touches branch protection.
 
@@ -155,7 +160,7 @@ web/        dashboard (Vite + SolidJS + Tailwind v4, nikala-ui components)
 fixtures/   healthy · congested (+ synthetic hunks) · calibration (600 PRs) ·
             jev (scenario PRs #1001–#1005 covering every band)
 evals/      offline evals (recovery, congestion, smoke, jev/*) + live-tagged Jev
-docs/       architecture · cost-model · analytics · jev · configuration · github · authority · outcomes · preview
+docs/       architecture · cost-model · analytics · jev · lint · configuration · github · authority · outcomes · preview
 skills/     pullup-preview (agent skill: run a preview before opening a pull request)
 scripts/    generate-fixtures.ts
 ```

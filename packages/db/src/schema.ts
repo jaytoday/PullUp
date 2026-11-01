@@ -162,6 +162,13 @@ export const verdicts = sqliteTable("verdicts", {
   createdAt: text("created_at").notNull(),
 });
 
+/** The repo's lint rule files as last read (one row per repo, replaced on each read). */
+export const lintRules = sqliteTable("lint_rules", {
+  repoId: text("repo_id").primaryKey(),
+  record: text("record").notNull(),
+  fetchedAt: text("fetched_at").notNull(),
+});
+
 /** One row per verifier run (counts, cost, errors). */
 export const verifyRuns = sqliteTable(
   "verify_runs",

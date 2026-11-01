@@ -84,3 +84,62 @@ describe("OctokitPullSource hunks", () => {
     expect(pulls.map((p) => [p.number, p.additions])).toEqual([[42, 10]]);
   });
 });
+
+describe("OctokitPullSource lint rules", () => {
+  /** A repo whose default branch has `.agents/gallant/` with a rule, a nested rule, a hidden folder and a non-rule file. */
+  function contentsOctokit(tree: Record<string, Array<{ type: string; name: string }> | string>, calls: string[]): Octokit {
+    return {
+      rest: {
+        repos: {
+          getBranch: async ({ branch }: { branch: string }) => ({ data: { commit: { sha: `sha-of-${branch}` } } }),
+          getContent: async ({ path, ref }: { path: string; ref: string }) => {
+            calls.push(`${path}@${ref}`);
+            const entry = tree[path];
+            if (entry === undefined) throw Object.assign(new Error("Not Found"), { status: 404 });
+            if (typeof entry === "string") return { data: { content: Buffer.from(entry).toString("base64"), encoding: "base64" } };
+            return { data: entry.map((e) => ({ ...e, path: `${path}/${e.name}` })) };
+          },
+        },
+      },
+    } as unknown as Octokit;
+  }
+
+  it("reads rule files at the default branch's pinned commit, skipping hidden and non-Markdown files", async () => {
+    const calls: string[] = [];
+    const octokit = contentsOctokit(
+      {
+        ".agents/gallant": [
+          { type: "file", name: "a.md" },
+          { type: "file", name: "notes.txt" },
+          { type: "dir", name: "go" },
+          { type: "dir", name: ".hidden" },
+        ],
+        ".agents/gallant/a.md": "rule a",
+        ".agents/gallant/go": [{ type: "file", name: "b.markdown" }],
+        ".agents/gallant/go/b.markdown": "rule b",
+        ".agents/gallant/.hidden": [{ type: "file", name: "c.md" }],
+      },
+      calls,
+    );
+    const source = new OctokitPullSource({ repoId: "o/r", octokit });
+    const read = await source.readLintRules(".agents/gallant", "main");
+    expect(read).toEqual({
+      commitSha: "sha-of-main",
+      files: [
+        { path: "a.md", content: "rule a" },
+        { path: "go/b.markdown", content: "rule b" },
+      ],
+    });
+    expect(calls.every((c) => c.endsWith("@sha-of-main"))).toBe(true);
+    expect(calls.some((c) => c.includes(".hidden"))).toBe(false);
+  });
+
+  it("returns null when the folder is missing, and throws on other errors so stored rules are kept", async () => {
+    const source = new OctokitPullSource({ repoId: "o/r", octokit: contentsOctokit({}, []) });
+    expect(await source.readLintRules(".agents/gallant", "main")).toBeNull();
+    const broken = {
+      rest: { repos: { getBranch: async () => ({ data: { commit: { sha: "s" } } }), getContent: async () => Promise.reject(Object.assign(new Error("boom"), { status: 500 })) } },
+    } as unknown as Octokit;
+    await expect(new OctokitPullSource({ repoId: "o/r", octokit: broken }).readLintRules(".agents/gallant", "main")).rejects.toThrow("boom");
+  });
+});

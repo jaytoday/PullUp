@@ -15,6 +15,7 @@ import type {
   VerdictRecord,
   VerifyRunRecord,
   LearningDismissal,
+  LintRuleSnapshot,
   SignalRecord,
   SignalRunRecord,
   RepositoryRecord,
@@ -37,6 +38,7 @@ import {
   reviewActions,
   findingComments,
   verdicts,
+  lintRules,
   verifyRuns,
   learningDismissals,
   repoConfigVersions,
@@ -181,6 +183,10 @@ export class SqliteStore implements PullStore {
       `CREATE TABLE IF NOT EXISTS verdicts (
         cache_key TEXT PRIMARY KEY, repo_id TEXT NOT NULL, pull_number INTEGER NOT NULL,
         record TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    );
+    await this.client.execute(
+      `CREATE TABLE IF NOT EXISTS lint_rules (
+        repo_id TEXT PRIMARY KEY, record TEXT NOT NULL, fetched_at TEXT NOT NULL)`,
     );
     await this.client.execute(
       `CREATE TABLE IF NOT EXISTS verify_runs (
@@ -606,6 +612,19 @@ export class SqliteStore implements PullStore {
           .from(findingComments)
           .where(and(eq(findingComments.repoId, repoId), eq(findingComments.pullNumber, pullNumber)));
     return rows.map((r) => JSON.parse(r.record) as FindingCommentRecord);
+  }
+
+  async getLintRules(repoId: string): Promise<LintRuleSnapshot | null> {
+    const rows = await this.db.select().from(lintRules).where(eq(lintRules.repoId, repoId));
+    return rows[0] ? (JSON.parse(rows[0].record) as LintRuleSnapshot) : null;
+  }
+
+  async setLintRules(snapshot: LintRuleSnapshot): Promise<void> {
+    const record = JSON.stringify(snapshot);
+    await this.db
+      .insert(lintRules)
+      .values({ repoId: snapshot.repoId, record, fetchedAt: snapshot.fetchedAt })
+      .onConflictDoUpdate({ target: lintRules.repoId, set: { record, fetchedAt: snapshot.fetchedAt } });
   }
 
   async getVerdict(cacheKey: string): Promise<VerdictRecord | null> {

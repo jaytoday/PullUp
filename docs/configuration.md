@@ -113,6 +113,19 @@ verifier version.
   check annotations.
 - `budgetUsdPerDay` stops live calls once the day's recorded spend reaches it.
 
+## Lint rules (`lint`)
+
+```json
+"lint": { "mode": "off", "dir": ".agents/gallant", "level": "p2", "budgetUsdPerRun": 0.5 }
+```
+
+The repo's own Markdown rule files, in the Gallant linter's format, read from
+the default branch and checked per changed file by the risk-signal model in a
+separate lane. `mode` is `off` · `observe` · `on`. A failing rule is a P2 note
+by default (`level`, or `pullupLevel` in the rule), P1 at most; it can't
+request changes unless signals may, and never touches the risk score, the fast
+path or the calibration. See `docs/lint.md`.
+
 ## Guardrails (the approval envelope)
 
 `guardrails` runs in every Jev mode. Two outcomes:

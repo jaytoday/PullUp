@@ -29,6 +29,8 @@ import type { GuardrailResult } from "../policy/guardrails.js";
 import type { AppliedRule } from "../config/rules.js";
 import type { SeverityActions, SeverityConfig, SignalsCanRequestChanges } from "../config/severity.js";
 import type { Finding, RuleFindingInput } from "../findings/findings.js";
+import type { LintLevel } from "../config/lint.js";
+import type { LintPullResult } from "../lint/run.js";
 import { collectFindings } from "../findings/findings.js";
 
 export type Recommendation =
@@ -88,6 +90,21 @@ export interface DecisionScope {
 export interface FindingContext {
   readonly severity: SeverityConfig;
   readonly sensitiveHigh: number;
+  /** The lint lane's results for open pulls (absent when lint is off). */
+  readonly lint?: {
+    readonly mode: "observe" | "on";
+    readonly level: LintLevel;
+    readonly results: ReadonlyMap<number, LintPullResult>;
+  };
+}
+
+/** What the lint lane saw on this pull (absent when lint is off). */
+export interface DecisionLint {
+  readonly mode: "observe" | "on";
+  /** Files whose every lint unit has an answer: PullUp may resolve its old lint comments there. */
+  readonly evaluatedPaths: readonly string[];
+  readonly unitsTotal: number;
+  readonly unitsEvaluated: number;
 }
 
 export interface PullDecision {
@@ -111,6 +128,7 @@ export interface PullDecision {
   /** P0/P1/P2 findings — present when guardrails were evaluated (severity mode). */
   readonly findings?: readonly Finding[];
   readonly scope?: DecisionScope;
+  readonly lint?: DecisionLint;
 }
 
 function lastReviewState(reviews: readonly ReviewRecord[]): ReviewState | null {
@@ -158,18 +176,30 @@ export function decideOne(
   if (d.recommendation === "request-changes" && d.lastReviewState !== "CHANGES_REQUESTED") {
     ruleInputs.push({ kind: "net-negative", detail: d.reason });
   }
+  const lintResult = ctx.lint?.results.get(pull.number);
   const findings = collectFindings({
     hits: overlay?.assessment.hits ?? null,
     signalsActive: overlay?.mode === "active",
     sensitiveHigh: ctx.sensitiveHigh,
     severity: ctx.severity,
     rules: ruleInputs,
+    ...(ctx.lint && lintResult ? { lint: { hits: lintResult.hits, active: ctx.lint.mode === "on", level: ctx.lint.level } } : {}),
   });
   return {
     ...d,
     reason,
     guardrails,
     findings,
+    ...(ctx.lint && lintResult
+      ? {
+          lint: {
+            mode: ctx.lint.mode,
+            evaluatedPaths: lintResult.evaluatedPaths,
+            unitsTotal: lintResult.unitsTotal,
+            unitsEvaluated: lintResult.unitsEvaluated,
+          },
+        }
+      : {}),
     scope: {
       appliedRules: guard.appliedRules,
       actions: guard.scope.actions,
