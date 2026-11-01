@@ -81,6 +81,8 @@ export interface ReviewClient {
   createComment(p: { owner: string; repo: string; issue_number: number; body: string }): Promise<{ id: number }>;
   updateComment(p: { owner: string; repo: string; comment_id: number; body: string }): Promise<{ id: number }>;
   requestReviewers(p: { owner: string; repo: string; pull_number: number; reviewers: string[] }): Promise<void>;
+  /** Who is currently requested to review: user logins and team slugs (for post-send verification). */
+  listRequestedReviewers(p: { owner: string; repo: string; pull_number: number }): Promise<{ users: string[]; teams: string[] }>;
   /** Reviews on the PR (for post-send verification). */
   listReviews(p: { owner: string; repo: string; pull_number: number }): Promise<Array<{ id: number; state: string; commitId: string | null }>>;
   /** Newest check run named `name` on commit `ref`, or null. */
@@ -173,6 +175,10 @@ export function octokitReviewClient(octokit: Octokit): ReviewClient {
     },
     async requestReviewers(p) {
       await octokit.rest.pulls.requestReviewers(p);
+    },
+    async listRequestedReviewers(p) {
+      const { data } = await octokit.rest.pulls.listRequestedReviewers(p);
+      return { users: data.users.map((u) => u.login), teams: data.teams.map((t) => t.slug) };
     },
     async listReviews(p) {
       const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, { ...p, per_page: 100 });
@@ -395,10 +401,12 @@ export class GitHubReviewActuator implements ReviewActuator {
     }
 
     const req = a.call.requestReviewers;
+    let requestedNow: readonly string[] | undefined;
     if (req && !reviewersRequested) {
       try {
         await client.requestReviewers({ ...req, reviewers: [...req.reviewers] });
         reviewersRequested = req.reviewers;
+        requestedNow = req.reviewers;
       } catch (err) {
         errors.push(errText("pulls.requestReviewers", err));
       }
@@ -444,8 +452,8 @@ export class GitHubReviewActuator implements ReviewActuator {
 
     // VAL-04: confirm on GitHub that what we sent is what landed.
     let verified: ReviewDelivery["verified"];
-    if (errors.length === 0 && (createdNow || commentId != null || checkRunId != null || inline)) {
-      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId, checkRunId, inline);
+    if (errors.length === 0 && (createdNow || commentId != null || checkRunId != null || inline || requestedNow)) {
+      verified = await this.verify(client, a, pr, createdNow ? reviewId : undefined, commentId, checkRunId, inline, requestedNow);
       await this.evidence(a, "verified", this.now(), { ...verified });
       if (!verified.ok) errors.push(`verification: ${verified.detail}`);
     }
@@ -472,6 +480,7 @@ export class GitHubReviewActuator implements ReviewActuator {
     commentId: number | undefined,
     checkRunId?: number,
     inline?: ReviewDelivery["inline"],
+    requestedNow?: readonly string[],
   ): Promise<{ ok: boolean; detail: string }> {
     const checks: string[] = [];
     try {
@@ -492,6 +501,14 @@ export class GitHubReviewActuator implements ReviewActuator {
         });
         if (found !== commentId) return { ok: false, detail: `comment ${commentId} does not carry this task's marker` };
         checks.push(`comment ${commentId} carries task ${a.taskId}`);
+      }
+      if (requestedNow?.length) {
+        // A configured reviewer is a user login or "org/team"; GitHub lists teams by slug.
+        const { users, teams } = await client.listRequestedReviewers(pr);
+        const listed = new Set([...users, ...teams].map((x) => x.toLowerCase()));
+        const missing = requestedNow.filter((r) => !listed.has((r.split("/").at(-1) ?? r).toLowerCase()));
+        if (missing.length > 0) return { ok: false, detail: `reviewer request for ${missing.join(", ")} is not on the PR` };
+        checks.push(`reviewers requested: ${requestedNow.join(", ")}`);
       }
       const plannedCheck = a.call.checkRun;
       if (checkRunId != null && plannedCheck) {

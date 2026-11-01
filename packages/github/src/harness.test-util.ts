@@ -27,11 +27,21 @@ type Call = { fn: string; args: Record<string, unknown> };
 
 const STATE: Record<string, string> = { APPROVE: "APPROVED", REQUEST_CHANGES: "CHANGES_REQUESTED", COMMENT: "COMMENTED" };
 
-export function fakeClient(opts: { state?: string; head?: string; fail?: Partial<Record<string, number>>; existingComment?: number } = {}) {
+export function fakeClient(
+  opts: {
+    state?: string;
+    head?: string;
+    fail?: Partial<Record<string, number>>;
+    existingComment?: number;
+    /** Reviewers GitHub accepts the request for but doesn't list afterwards. */
+    unlistedReviewers?: string[];
+  } = {},
+) {
   const calls: Call[] = [];
   let nextId = 100;
   const comments = new Map<number, string>(opts.existingComment ? [[opts.existingComment, DECISION_COMMENT_MARKER]] : []);
   const reviews: Array<{ id: number; state: string; commitId: string | null }> = [];
+  const requested = new Set<string>();
   const checkRuns = new Map<number, { name: string; headSha: string; conclusion: string | null }>();
   const reviewComments: Array<{ id: number; body: string; reviewId: number | null; path: string }> = [];
   const threads: Array<{ id: string; isResolved: boolean; firstCommentId: number | null }> = [];
@@ -76,6 +86,11 @@ export function fakeClient(opts: { state?: string; head?: string; fail?: Partial
     async requestReviewers(args) {
       calls.push({ fn: "requestReviewers", args });
       maybeFail("requestReviewers");
+      for (const r of args.reviewers) if (!opts.unlistedReviewers?.includes(r)) requested.add(r.split("/").at(-1)!);
+    },
+    async listRequestedReviewers(args) {
+      calls.push({ fn: "listRequestedReviewers", args });
+      return { users: [...requested], teams: [] };
     },
     async listReviews(args) {
       calls.push({ fn: "listReviews", args });

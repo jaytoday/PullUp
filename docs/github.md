@@ -129,8 +129,10 @@ on the same file keeps its comment across pushes.
   quarantine); any failure is `denied` before GitHub is touched.
 - **Per-action token:** with an App, a token for this one repo and the minimum
   permissions is minted for the action and revoked after it.
-- **Verified:** after sending, the review is re-read (event and commit) and
-  the comment is found by its task marker; a mismatch is `failed`.
+- **Verified:** after sending, the review is re-read (event and commit), the
+  comment is found by its task marker, and every reviewer requested in this
+  run must be on the pull request's requested-reviewers list; a mismatch is
+  `failed`.
 - **Stale-head guard:** before sending, it re-reads the PR. A closed or merged
   PR, or a head that moved past the planned sha, is recorded `skipped`. The next
   `synchronize` webhook re-plans the new head.
@@ -168,9 +170,8 @@ on the same file keeps its comment across pushes.
 - The App path was tested live on a private sandbox repo (2026-10-30): per-action
   tokens minted for one repo and revoked, the check run (neutral, failure,
   annotations, update in place), a REQUEST_CHANGES review and its dismissal
-  after a fix push, the approval lock, and a webhook-driven agent turn. A
-  successful reviewer request was not tested: the sandbox had no collaborator
-  other than the pull request's author.
+  after a fix push, the approval lock, a reviewer request to a second
+  account, and a webhook-driven agent turn.
 - The check reports the decision at planning time. It doesn't count down the
   wait window (`w*`); nothing re-plans a pull request when `w*` passes except
   the next webhook or an explicit run.
