@@ -5,6 +5,7 @@
 
 import type { Octokit } from "@octokit/rest";
 import type {
+  LintRuleFile,
   PullSource,
   SourceHunk,
   SourceDefectEvent,
@@ -24,6 +25,10 @@ export interface OctokitSourceOptions {
    */
   readonly pullNumbers?: readonly number[];
 }
+
+/** Bounds on reading a rules folder: subfolder depth and file count. */
+const LINT_MAX_DEPTH = 4;
+const LINT_MAX_FILES = 60;
 
 const REVERT_RE = /\b(revert|hotfix|rollback)\b/i;
 const FOLLOWUP_RE = /\b(follow[- ]?up fix|fix.*regression|reopen)\b/i;
@@ -177,6 +182,40 @@ export class OctokitPullSource implements PullSource {
       path: c.path ?? null,
       body: c.body,
     }));
+  }
+
+  /**
+   * Lint rule files under `dir` at the tip of `ref` (the default branch),
+   * read through the contents API at one pinned commit. Never the pull
+   * request head: a pull request can't change the rules it is checked by.
+   */
+  async readLintRules(dir: string, ref: string): Promise<{ commitSha: string | null; files: LintRuleFile[] } | null> {
+    const { data: branch } = await this.opts.octokit.rest.repos.getBranch({ owner: this.owner, repo: this.repo, branch: ref });
+    const commitSha = branch.commit.sha;
+    const files: LintRuleFile[] = [];
+    const walk = async (path: string, depth: number): Promise<boolean> => {
+      let entries: Array<{ type: string; path: string; name: string; size?: number }>;
+      try {
+        const { data } = await this.opts.octokit.rest.repos.getContent({ owner: this.owner, repo: this.repo, path, ref: commitSha });
+        if (!Array.isArray(data)) return depth > 0;
+        entries = data as typeof entries;
+      } catch (err) {
+        if ((err as { status?: number }).status === 404) return false;
+        throw err;
+      }
+      for (const e of [...entries].sort((a, b) => (a.path < b.path ? -1 : 1))) {
+        if (e.name.startsWith(".")) continue;
+        if (e.type === "dir" && depth < LINT_MAX_DEPTH) await walk(e.path, depth + 1);
+        if (e.type !== "file" || !/\.(md|markdown)$/i.test(e.name) || files.length >= LINT_MAX_FILES) continue;
+        const { data } = await this.opts.octokit.rest.repos.getContent({ owner: this.owner, repo: this.repo, path: e.path, ref: commitSha });
+        const file = data as { content?: string; encoding?: string };
+        if (typeof file.content !== "string" || file.encoding !== "base64") continue;
+        files.push({ path: e.path.slice(dir.length + 1), content: Buffer.from(file.content, "base64").toString("utf8") });
+      }
+      return true;
+    };
+    const found = await walk(dir, 0);
+    return found ? { commitSha, files } : null;
   }
 
   /**

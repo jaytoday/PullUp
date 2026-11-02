@@ -173,5 +173,9 @@ export function sourceFromFixtureFile(file: FixtureFile, repoIdOverride?: string
     listReviews: async (n) => [...(byNumber.get(n)?.reviews ?? [])],
     listReviewComments: async (n) => [...(byNumber.get(n)?.reviewComments ?? [])],
     listDefectEvents: async (n) => [...(byNumber.get(n)?.defectEvents ?? [])],
+    readLintRules: async (dir) => {
+      const files = file.lintRules?.[dir];
+      return files ? { commitSha: null, files: [...files] } : null;
+    },
   };
 }

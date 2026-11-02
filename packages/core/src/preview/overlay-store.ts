@@ -11,7 +11,7 @@ import { InMemoryStore } from "../schema/store.js";
 const PASS_THROUGH_WRITES = new Set<string>(["upsertSignal"]);
 /** Reads answered from both stores (real first, then the overlay). */
 const MERGED_LISTS = new Set<string>(["listPulls", "listHunks", "listSignalRuns", "listReviewActions", "listFindingComments", "listVerdicts"]);
-const OVERLAY_FIRST_GETS = new Set<string>(["getPull", "getRepository"]);
+const OVERLAY_FIRST_GETS = new Set<string>(["getPull", "getRepository", "getLintRules"]);
 
 export function createOverlayStore(real: PullStore): PullStore & { readonly overlay: InMemoryStore } {
   const overlay = new InMemoryStore();

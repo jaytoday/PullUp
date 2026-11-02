@@ -39,6 +39,8 @@ import type {
   OutcomeSummary,
   Learning,
   OutcomesConfig,
+  LintConfig,
+  LintRuleProblem,
 } from "@pullup/core";
 
 export type {
@@ -253,6 +255,16 @@ const postJson = <T,>(path: string, body: unknown) =>
 const repoPath = (repoId: string) => `/api/repos/${repoId}`;
 const q = (mode: JevMode) => `?mode=${mode}`;
 
+/** The repo's lint rules as PullUp last read them from the default branch. */
+export interface LintRulesResponse {
+  readonly config: LintConfig;
+  readonly fetchedAt: string | null;
+  readonly source: { readonly kind: string; readonly ref: string | null; readonly commitSha: string | null; readonly dir: string } | null;
+  readonly rules: ReadonlyArray<{ readonly path: string; readonly type: string; readonly appliesTo: readonly string[]; readonly level: string }>;
+  readonly problems: readonly LintRuleProblem[];
+  readonly notes: readonly string[];
+}
+
 export const api = {
   config: () => request<AppConfig>("/api/config"),
   repos: () => request<RepoSummary[]>("/api/repos"),
@@ -264,7 +276,7 @@ export const api = {
   calibration: (repoId: string) =>
     request<{ path: string; artifact: CalibrationArtifact | null }>(`${repoPath(repoId)}/calibration`),
   runSignals: (repoId: string) =>
-    request<{ run: SignalRunRecord; note: string | null }>(`${repoPath(repoId)}/signals`, {
+    request<{ run: SignalRunRecord; lintRun: SignalRunRecord | null; note: string | null }>(`${repoPath(repoId)}/signals`, {
       method: "POST",
       body: JSON.stringify({ scope: "open" }),
     }),
@@ -296,6 +308,7 @@ export const api = {
     postJson<SaveResponse>(`${repoPath(repoId)}/config`, body),
   restoreConfig: (repoId: string, version: number, body: { baseVersion: number | null; confirmLoosen?: string }) =>
     postJson<SaveResponse>(`${repoPath(repoId)}/config/restore/${version}`, body),
+  lintRules: (repoId: string) => request<LintRulesResponse>(`${repoPath(repoId)}/lint-rules`),
   sizeStats: (repoId: string) => request<SizeStats>(`${repoPath(repoId)}/stats/sizes`),
   tryQuestion: (repoId: string, text: string, pullNumber?: number) =>
     postJson<TryQuestionResponse>(`${repoPath(repoId)}/questions/try`, { text, pullNumber }),

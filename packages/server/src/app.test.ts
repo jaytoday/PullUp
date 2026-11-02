@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import type { AddressInfo, Server } from "node:net";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -467,3 +467,55 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
   });
 });
 
+
+describe("lint rules (the repo's own rule files)", () => {
+  it("ingest reads a fixture's rules; GET lint-rules lists them; POST signals runs the lint lane; findings reach the report", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pullup-lint-"));
+    const fixture = JSON.parse(readFileSync(join(fixturesDir, "jev.json"), "utf8"));
+    fixture.lintRules = {
+      ".agents/gallant": [
+        { path: "no-console.md", content: "---\nappliesTo: \"*.ts\"\ntype: noul\npullupLevel: p1\n---\nFlag `console.log` left in.\n" },
+        { path: "broken.md", content: "---\ntype: noul\n---\nNo globs.\n" },
+      ],
+    };
+    fixture.pulls.push({
+      number: 2001, title: "Add retry helper", author: "carol", createdAt: "2026-08-31T20:00:00.000Z", closedAt: null, mergedAt: null,
+      state: "open", baseBranch: "main", headSha: "cafe000000002001", additions: 2, deletions: 0, changedFiles: 1, labels: [], draft: false,
+      files: ["src/ops/retry.ts"],
+      hunks: [{ path: "src/ops/retry.ts", index: 0, header: "@@ -1,2 +1,3 @@", patch: " a\n+  console.log(\"x\");\n b" }],
+    });
+    writeFileSync(join(dir, "lintdemo.json"), JSON.stringify(fixture));
+    const lintStore = new InMemoryStore();
+    const handle = createApp({
+      store: lintStore,
+      config: () => resolveConfig({ file: { lint: { mode: "on" } } }),
+      now: () => NOW,
+      fixturesDir: dir,
+      dataDir: mkdtempSync(join(tmpdir(), "pullup-server-")),
+      env: {},
+      allowIngest: true,
+    });
+    const srv = createServer((req, res) => void handle(req, res));
+    await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`;
+    try {
+      await fetch(`${url}/api/ingest`, { method: "POST", body: JSON.stringify({ fixture: "lintdemo" }) });
+      const rules = (await (await fetch(`${url}/api/repos/fixtures/lintdemo/lint-rules`)).json()) as any;
+      expect(rules.source).toMatchObject({ kind: "default-branch", ref: "main", dir: ".agents/gallant" });
+      expect(rules.rules).toEqual([{ path: "no-console.md", type: "noul", appliesTo: ["*.ts"], level: "p1" }]);
+      expect(rules.problems.map((p: any) => p.path)).toEqual(["broken.md"]);
+
+      // GET report reads cached answers only: nothing yet.
+      const before = (await (await fetch(`${url}/api/repos/fixtures/lintdemo/report?mode=off`)).json()) as any;
+      expect(before.report.lint.units.evaluated).toBe(0);
+      const ran = (await (await fetch(`${url}/api/repos/fixtures/lintdemo/signals`, { method: "POST", body: "{}" })).json()) as any;
+      expect(ran.lintRun.evaluated).toBeGreaterThan(0);
+      const after = (await (await fetch(`${url}/api/repos/fixtures/lintdemo/report?mode=off`)).json()) as any;
+      const d = after.report.decisions.find((x: any) => x.pullNumber === 2001);
+      expect(after.report.risk).toBeUndefined();
+      expect(d.findings.find((f: any) => f.kind === "lint")).toMatchObject({ id: "lint:no-console.md", level: "p1", active: true });
+    } finally {
+      await new Promise<void>((r) => srv.close(() => r()));
+    }
+  });
+});

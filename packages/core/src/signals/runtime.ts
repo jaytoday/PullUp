@@ -15,8 +15,13 @@ import type { CalibrationArtifact } from "./calibrate.js";
 import type { JevConfig, JevMode, RiskWeights } from "./config.js";
 import { loadPullSignals } from "./run.js";
 import type { QuestionSet } from "./types.js";
+import type { LintRuntime } from "../lint/runtime.js";
 
 export interface JevRuntime {
+  /**
+   * The risk lane's config. Its mode may be "off" when only the lint lane is
+   * on: buildReport then skips the risk lane and runs `lint` alone.
+   */
   readonly config: JevConfig;
   readonly policy: PolicyRules;
   readonly qs: QuestionSet;
@@ -24,6 +29,8 @@ export interface JevRuntime {
   readonly modelId: string;
   readonly calibration: CalibrationArtifact | null;
   readonly notes?: readonly string[];
+  /** The lint lane (the repo's own lint rules), when lint is on. */
+  readonly lint?: LintRuntime;
 }
 
 export interface RiskSummary {

@@ -106,6 +106,7 @@ export class SyntheticSignalModel implements SignalModel {
   }
 
   private answer(u: SignalUnit, qs: QuestionSet): UnitAnswers {
+    if (qs.lane === "lint") return this.lintAnswer(u, qs);
     const { added, removed } = changedLines(u.state.hunk);
     const changed = [...added, ...removed].join("\n");
     const removedText = removed.join("\n");
@@ -141,6 +142,38 @@ export class SyntheticSignalModel implements SignalModel {
       inputTokens: estimateTokens(statePayload(u.state)) + 600,
       latencyMs: 0,
     };
+  }
+
+  /**
+   * Lint lane stand-in: a rule "fails" when a code snippet it quotes in
+   * backticks (such as `fmt.Println`) appears on an added line. A choice then
+   * picks its last option and a score its top level (Gallant's examples list
+   * the bad outcome last); otherwise the first option or lowest level.
+   */
+  private lintAnswer(u: SignalUnit, qs: QuestionSet): UnitAnswers {
+    const added = changedLines(u.state.hunk).added.join("\n");
+    const answers: Record<string, Answer> = {};
+    for (const [q, spec] of Object.entries(qs.questions)) {
+      const snippets = [...spec.text.matchAll(/`([^`\n]{3,60})`/g)].map((m) => m[1]!);
+      const hit = snippets.some((s) => added.includes(s));
+      const rand = seeded(`${this.id}|${u.stateHash}|${q}`);
+      const top = round(Math.min(0.97, 0.85 + 0.1 * rand()));
+      if (spec.kind === "noul") {
+        answers[q] = { kind: "noul", p: hit ? top : round(1 - top) };
+      } else if (spec.kind === "choice") {
+        const labels = Object.keys(spec.options);
+        const pick = hit ? labels[labels.length - 1]! : labels[0]!;
+        const rest = round((1 - top) / Math.max(1, labels.length - 1));
+        answers[q] = { kind: "choice", choice: pick, confidence: top, probabilities: Object.fromEntries(labels.map((l) => [l, l === pick ? top : rest])) };
+      } else {
+        const n = spec.levels.length;
+        const level = hit ? n - 1 : 0;
+        const rest = round((1 - top) / Math.max(1, n - 1));
+        const probabilities = Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i), i === level ? top : rest]));
+        answers[q] = { kind: "score", score: level, confidence: top, probabilities };
+      }
+    }
+    return { answers, modelId: this.id, inputTokens: estimateTokens(statePayload(u.state)) + 600, latencyMs: 0 };
   }
 
   private changeKind(

@@ -155,11 +155,24 @@ multiplier stays at 1 and approval stays clamped to a comment.
 | model | where | use |
 |---|---|---|
 | `JevSignalModel` | `@pullup/jev` | Live, via `@typesafe-ai/sdk` (`systemOne`). Pinned `jev-1.13.0`. The SDK retries 408/429/5xx (incl. 529); the adapter adds a requests/minute limiter and a concurrency cap. A failed unit returns `null` (unknown risk). |
+| `JevSignalModel` (`systemone`) | `@pullup/jev` | Any System One server (`POST <url>/v1/systemone`: Ollama, llama.cpp, OpenCode Zen), through the same SDK with a different base URL. Set by the operator's environment only (`PULLUP_SYSTEMONE_URL`, optional `PULLUP_SYSTEMONE_MODEL`, `PULLUP_SYSTEMONE_API_KEY`), never by repo settings, because it decides where code is sent. Sends the unit as one text block (what Gallant sends; `PULLUP_SYSTEMONE_STATE=object` for TypeSafe's JSON shape). Its model id is `model@host`, so its answers and calibration never mix with TypeSafe's. |
 | `SyntheticSignalModel` | `@pullup/core/testing` | Deterministic stand-in: a keyword oracle plus seeded noise, **deliberately miscalibrated** per question, and it reproduces the published injection effect (reviewer-addressed "pre-approved" text drags sensitive probabilities down). Offline default with no key. |
 | `ReplaySignalModel` | `@pullup/core` | Exact recorded answers keyed by state hash. A miss throws. Record with `pullup signals --record <file>`. |
 
 Model selection: `--model` / `PULLUP_SIGNAL_MODEL`, else `jev` if
-`TYPESAFE_API_KEY` is set, else `synthetic` (and every report says so).
+`TYPESAFE_API_KEY` is set, else `systemone` if `PULLUP_SYSTEMONE_URL` is set,
+else `synthetic` (and every report says so).
+
+**Question ids on the wire.** Built-in ids (`touchesAuthn`, …) and lint rule
+ids (`r_<hash>`) are plain letters, digits and underscore and are sent as they
+are. Any other id, such as a custom question's `custom:<slug>`, is sent as a
+positional `q<n>` (Gallant does the same, because servers may reject `:` or
+`/`) and mapped back on the answer. Cache keys and calibration use PullUp's
+own ids, so this changes nothing stored.
+
+**Lint lane.** The repo's own lint rules (`docs/lint.md`) are asked of the
+same model in a separate lane: one call per changed file, their own
+question-set versions, never part of the risk features or the calibration.
 
 ## Cost and caching
 
@@ -175,7 +188,11 @@ $0.026.
 
 The live model sends diff hunks to TypeSafe's API. ZDR is enterprise-only on the
 direct API. Enabling `jev` with a key is an explicit, per-repo opt-in to sending
-code to a third party.
+code to a third party. To keep code in-house, point `PULLUP_SYSTEMONE_URL` at a
+System One server you run (such as Ollama with a decision model): hunks go only
+there. Calibrate on that model before trusting its probabilities; a model with
+a small input window will leave large hunks unevaluated (unknown risk, so the
+review band).
 
 ## Known blind spots
 

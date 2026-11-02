@@ -6,13 +6,15 @@
 import { createClient } from "@libsql/client";
 import type { Client } from "@libsql/client";
 import { DEFAULT_PRIORS, configReportOptions, loadConfig, loadRepoConfig, resolveQuestionSet } from "@pullup/core";
-import type { JevMode, JevRuntime, PullSource, ResolvedConfig } from "@pullup/core";
+import type { JevMode, JevRuntime, LintMode, PullSource, ResolvedConfig } from "@pullup/core";
 import type { SignalModelKind } from "@pullup/jev";
 import { SqliteStore } from "@pullup/db";
 import { OctokitPullSource } from "@pullup/github";
 import { Command } from "commander";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { userInfo } from "node:os";
+import { lintExitCode } from "./lint-exit.js";
 interface GlobalOpts {
   db?: string;
 }
@@ -52,9 +54,15 @@ async function resolveSource(repoId: string, fixture: string | undefined): Promi
 
 interface JevCliOpts {
   jevMode?: JevMode;
+  lintMode?: LintMode;
   model?: SignalModelKind;
   replay?: string;
   calibration?: string;
+}
+
+/** The lint folder to read on ingest: always for a fixture (free), otherwise only when lint is on. */
+function lintRulesDirFor(cfg: ResolvedConfig, fixture: boolean): string | null {
+  return fixture || cfg.lint.mode !== "off" ? cfg.lint.dir : null;
 }
 
 /** Jev runtime for report-style commands (null when the layer is off). */
@@ -65,8 +73,9 @@ async function jevRuntimeFor(
   opts: JevCliOpts,
 ): Promise<JevRuntime | undefined> {
   const { prepareJevRuntime } = await import("@pullup/jev");
-  const { runtime, run } = await prepareJevRuntime(store, repoId, cfg, {
+  const { runtime, run, lintRun } = await prepareJevRuntime(store, repoId, cfg, {
     mode: opts.jevMode,
+    lintMode: opts.lintMode,
     kind: opts.model,
     replayPath: opts.replay,
     calibrationPath: opts.calibration,
@@ -76,13 +85,19 @@ async function jevRuntimeFor(
       `[jev] ${run.modelId}: ${run.evaluated} evaluated · ${run.cached} cached · ${run.failed} failed · $${run.costUsd}`,
     );
   }
+  if (lintRun) {
+    console.error(
+      `[lint] ${lintRun.modelId}: ${lintRun.evaluated} evaluated · ${lintRun.cached} cached · ${lintRun.failed} failed · $${lintRun.costUsd}`,
+    );
+  }
   return runtime ?? undefined;
 }
 
 function addJevOptions(cmd: Command): Command {
   return cmd
     .option("--jev-mode <mode>", "Jev risk signals: off | shadow (observe) | active (use in decisions); default: config")
-    .option("--model <kind>", "signal model: jev | synthetic | replay (default: jev if TYPESAFE_API_KEY)")
+    .option("--lint-mode <mode>", "the repo's lint rules: off | observe | on; default: config")
+    .option("--model <kind>", "signal model: jev | systemone | synthetic | replay (default: jev if TYPESAFE_API_KEY, systemone if PULLUP_SYSTEMONE_URL)")
     .option("--replay <path>", "replay file for --model replay")
     .option("--calibration <path>", "calibration artifact (default: config jev.calibrationPath)");
 }
@@ -114,11 +129,13 @@ program
   .description("Ingest a repo into the SQLite store")
   .argument("<repoId>", "owner/repo (fixture repoId, or GitHub owner/repo)")
   .option("-f, --fixture <path>", "path to a fixture JSON file (offline)")
-  .action(async (repoId: string, opts: { fixture?: string }) => {
+  .option("-c, --config <path>", "path to pullup.config.json (for the lint rules folder)", "pullup.config.json")
+  .action(async (repoId: string, opts: { fixture?: string; config: string }) => {
     const source = await resolveSource(repoId, opts.fixture);
     await withStore(program.opts<GlobalOpts>(), async (s) => {
       const { ingestRepo } = await import("@pullup/core");
-      const result = await ingestRepo(source, s);
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
+      const result = await ingestRepo(source, s, { lintRulesDir: lintRulesDirFor(cfg, Boolean(opts.fixture)) });
       console.log(
         `ingested ${result.pulls} pulls / ${result.reviews} reviews / ${result.comments} comments / ${result.defects} defect events`,
       );
@@ -135,12 +152,12 @@ addJevOptions(program
   .action(async (repoId: string, opts: { fixture?: string; config: string; out: string } & JevCliOpts) => {
     const source = opts.fixture ? await resolveSource(repoId, opts.fixture) : null;
     await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
       if (source) {
         const { ingestRepo } = await import("@pullup/core");
-        await ingestRepo(source, s);
+        await ingestRepo(source, s, { lintRulesDir: lintRulesDirFor(cfg, true) });
       }
       const { buildReport, renderMarkdown, renderJson } = await import("@pullup/core");
-      const cfg = await loadRepoConfig(s, repoId, opts.config);
       const jev = await jevRuntimeFor(s, repoId, cfg, opts);
       const report = await buildReport(s, repoId, cfg.priors, { jev, configPath: cfg.path, ...configReportOptions(cfg) });
       const md = renderMarkdown(report);
@@ -196,6 +213,15 @@ program
           budgetUsd: cfg.jev.budgetUsdPerRun,
         });
         console.log(JSON.stringify(run, null, 2));
+        if (cfg.lint.mode !== "off") {
+          const { runLint, storedLintRuleSet } = await import("@pullup/core");
+          const { ruleSet, notes } = await storedLintRuleSet(s, repoId, cfg.lint);
+          for (const n of notes) console.error(`[lint] ${n}`);
+          if (ruleSet.rules.length > 0) {
+            const lintRun = await runLint(s, repoId, model, ruleSet, { pullNumbers, openOnly: opts.openOnly, budgetUsd: cfg.lint.budgetUsdPerRun });
+            console.log(JSON.stringify(lintRun, null, 2));
+          }
+        }
         if (opts.record) {
           // From the cache, so units answered in earlier runs are included too.
           const file = await exportReplayFile(s, repoId, qs, model.id, pullNumbers);
@@ -246,7 +272,8 @@ program
   .option("--label <label...>", "labels the pull request will have")
   .option("--ai", "the change is AI-authored (adds the ai-generated label)")
   .option("--jev-mode <mode>", "off | shadow | active (default: config)")
-  .option("--model <kind>", "signal model: jev | synthetic | replay")
+  .option("--lint-mode <mode>", "the repo's lint rules (read at --base): off | observe | on (default: config)")
+  .option("--model <kind>", "signal model: jev | systemone | synthetic | replay")
   .option("--json", "print the versioned JSON result (for coding agents)")
   .option("-v, --verbose", "also print raw signal probabilities")
   .option("--fail-on <what>", "exit 1 when PullUp would: human (ask a human or request changes) | changes (request changes)")
@@ -261,12 +288,13 @@ program
       label?: string[];
       ai?: boolean;
       jevMode?: JevMode;
+      lintMode?: LintMode;
       model?: SignalModelKind;
       json?: boolean;
       verbose?: boolean;
       failOn?: "human" | "changes";
     }) => {
-      const { approvalGate, calibrationPathFor, loadCalibration, renderPreview, resolveDelivery, runPreview } = await import("@pullup/core");
+      const { approvalGate, buildLintRuleSet, calibrationPathFor, isLintRulePath, loadCalibration, renderPreview, resolveDelivery, runPreview } = await import("@pullup/core");
       const { prepareJevRuntime } = await import("@pullup/jev");
       const git = await import("./git.js");
       const cwd = process.cwd();
@@ -298,9 +326,21 @@ program
           approval: approvalGate({ repoId, delivery: resolveDelivery(), calibration }),
           prepareJev: async (store, pullNumbers) => {
             const mode = opts.jevMode ?? cfg.jev.mode;
-            if (mode === "off") return { runtime: null, notes: [] };
-            const prepared = await prepareJevRuntime(store, repoId, cfg, { mode, kind: opts.model, pullNumbers: [...pullNumbers] });
-            return { runtime: prepared.runtime, notes: prepared.runtime?.notes ?? [] };
+            const lintMode = opts.lintMode ?? cfg.lint.mode;
+            if (mode === "off" && lintMode === "off") return { runtime: null, notes: [] };
+            // Lint rules as the base branch has them, as PullUp would read them for the pull request.
+            const lintRuleSet =
+              lintMode === "off"
+                ? undefined
+                : buildLintRuleSet({
+                    source: "git-ref",
+                    ref: base,
+                    commitSha: await git.tryRevParse(cwd, base),
+                    dir: cfg.lint.dir,
+                    files: (await git.filesAtRef(cwd, base, cfg.lint.dir)).filter((f) => isLintRulePath(f.path)),
+                  });
+            const prepared = await prepareJevRuntime(store, repoId, cfg, { mode, lintMode, ...(lintRuleSet ? { lintRuleSet } : {}), kind: opts.model, pullNumbers: [...pullNumbers] });
+            return { runtime: prepared.runtime, notes: [...(prepared.runtime?.notes ?? []), ...(prepared.runtime?.lint?.notes ?? [])] };
           },
         });
         if (opts.json) console.log(JSON.stringify(result, null, 2));
@@ -315,6 +355,156 @@ program
       });
     },
   );
+
+/** Rule files under a local folder (paths relative to it), skipping hidden files and folders. */
+function readRulesFolder(dir: string): Array<{ path: string; content: string }> {
+  if (!existsSync(dir)) return [];
+  const out: Array<{ path: string; content: string }> = [];
+  const walk = (rel: string) => {
+    for (const e of readdirSync(join(dir, rel), { withFileTypes: true })) {
+      if (e.name.startsWith(".")) continue;
+      const path = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(path);
+      else if (e.isFile()) out.push({ path, content: readFileSync(join(dir, path), "utf8") });
+    }
+  };
+  walk("");
+  return out;
+}
+
+program
+  .command("lint")
+  .description("Check the branch's changes against the repo's lint rules (Gallant's format) before you push; exits 1 when a rule fails, 2 when the model could not check some file")
+  .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
+  .option("--repo <owner/repo>", "repo id, for its saved settings (default: from the origin remote)")
+  .option("--base <ref>", "base branch (default: origin's default branch, else main)")
+  .option("--head <ref>", "head ref", "HEAD")
+  .option("--staged", "check the staged changes instead of base...head")
+  .option("--rules <dir>", "rules folder (default: lint.dir from the config, else .agents/gallant)")
+  .option("--rules-from <where>", "worktree (your local copy, the default) | base (as the base branch has them, like PullUp on a pull request)", "worktree")
+  .option("--model <kind>", "decision model: jev | systemone | synthetic (default: jev if TYPESAFE_API_KEY, systemone if PULLUP_SYSTEMONE_URL)")
+  .option("--json", "print the result as JSON")
+  .option("--no-fail", "always exit 0 (report only)")
+  .action(
+    async (opts: {
+      config: string;
+      repo?: string;
+      base?: string;
+      head: string;
+      staged?: boolean;
+      rules?: string;
+      rulesFrom: "worktree" | "base";
+      model?: SignalModelKind;
+      json?: boolean;
+      fail: boolean;
+    }) => {
+      const { buildLintRuleSet, classifyArea, diffHunks, hunkContentHash, lintHunks, parseGitDiff } = await import("@pullup/core");
+      const { resolveSignalModel } = await import("@pullup/jev");
+      const git = await import("./git.js");
+      const cwd = process.cwd();
+      if (opts.rulesFrom !== "worktree" && opts.rulesFrom !== "base") throw new Error("--rules-from is worktree or base.");
+      const repoId = opts.repo ?? (await git.originRepoId(cwd));
+      const base = opts.base ?? (await git.defaultBase(cwd));
+      const global = program.opts<GlobalOpts>();
+      // Only use the answer cache when a PullUp database is already here: linting shouldn't create one.
+      const useStore = program.getOptionValueSource("db") === "cli" || existsSync(global.db ?? "pullup.db");
+      const run = async (store: SqliteStore | null) => {
+        const cfg = store && repoId ? await loadRepoConfig(store, repoId, opts.config) : loadConfig(opts.config);
+        const dir = opts.rules ?? cfg.lint.dir;
+        const files =
+          opts.rulesFrom === "base" ? await git.filesAtRef(cwd, base, dir) : readRulesFolder(dir);
+        const ruleSet = buildLintRuleSet({
+          source: opts.rulesFrom === "base" ? "git-ref" : "directory",
+          ref: opts.rulesFrom === "base" ? base : null,
+          commitSha: opts.rulesFrom === "base" ? await git.tryRevParse(cwd, base) : null,
+          dir,
+          files,
+        });
+        for (const p of ruleSet.problems) console.error(`[lint] ${p.path}: ${p.message}`);
+        if (ruleSet.rules.length === 0) {
+          console.error(`[lint] no usable rules in ${dir}${opts.rulesFrom === "base" ? ` at ${base}` : ""}.`);
+          return;
+        }
+        const diff = await git.branchDiff(cwd, { base, head: opts.head, staged: opts.staged });
+        if (!diff.trim()) {
+          console.error(`[lint] no changes between ${base} and ${opts.head}${opts.staged ? " (staged)" : ""}.`);
+          return;
+        }
+        const changed = parseGitDiff(diff);
+        const hunks = diffHunks(changed).map((h) => ({
+          repoId: repoId ?? "local",
+          pullNumber: 0,
+          path: h.path,
+          index: h.index,
+          header: h.header,
+          patch: h.patch,
+          noPatch: h.noPatch ?? false,
+          contentHash: hunkContentHash(h),
+        }));
+        const { model, note } = resolveSignalModel({ kind: opts.model, config: cfg.jev });
+        if (note) console.error(`[lint] ${note}`);
+        const result = await lintHunks(model, ruleSet, hunks, {
+          area: classifyArea({ files: changed.map((f) => f.path) }),
+          ...(store ? { cache: store } : {}),
+          ...(repoId ? { repoId } : {}),
+        });
+        if (opts.json) console.log(JSON.stringify({ base, head: opts.head, rulesFrom: opts.rulesFrom, dir, model: model.id, ...result }, null, 2));
+        else {
+          console.log(
+            `pullup lint · ${result.rules} rule(s) · ${result.files} file(s) checked · ${result.failures.length} failing` +
+              ` · ${result.evaluated} asked, ${result.cached} cached${result.costUsd > 0 ? ` · $${result.costUsd}` : ""}`,
+          );
+          for (const f of result.failures) {
+            const where = f.lines.map((l) => (l.end > l.start ? `${l.start}-${l.end}` : `${l.start}`)).join(",");
+            console.log(`  FAIL ${f.rulePath}  ${f.path}${where ? `:${where}` : ""}  (${f.reason})`);
+          }
+          if (result.failed > 0) console.log(`  ${result.failed} file part(s) could not be checked (model error), so the check did not pass.`);
+          if (result.notEvaluable > 0) console.log(`  ${result.notEvaluable} file part(s) too large or binary, not checked.`);
+        }
+        process.exitCode = lintExitCode(result, opts.fail);
+      };
+      if (useStore) await withStore(global, run);
+      else await run(null);
+    },
+  );
+
+program
+  .command("lint-rules")
+  .description("Show the lint rules PullUp holds for a repo (read from its default branch on ingest), or replace them from a folder or git ref")
+  .argument("<repoId>", "owner/repo as ingested")
+  .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
+  .option("--from-dir <dir>", "replace the stored rules with the files in this local folder")
+  .option("--from-ref <ref>", "replace the stored rules with lint.dir as it is at this git ref in the current repo (such as origin/main)")
+  .action(async (repoId: string, opts: { config: string; fromDir?: string; fromRef?: string }) => {
+    const { buildLintRuleSet } = await import("@pullup/core");
+    await withStore(program.opts<GlobalOpts>(), async (s) => {
+      const cfg = await loadRepoConfig(s, repoId, opts.config);
+      if (opts.fromDir && opts.fromRef) throw new Error("Pass --from-dir or --from-ref, not both.");
+      if (opts.fromDir || opts.fromRef) {
+        const git = await import("./git.js");
+        const cwd = process.cwd();
+        await s.setLintRules({
+          repoId,
+          source: opts.fromDir ? "directory" : "git-ref",
+          ref: opts.fromRef ?? null,
+          commitSha: opts.fromRef ? await git.tryRevParse(cwd, opts.fromRef) : null,
+          dir: cfg.lint.dir,
+          files: opts.fromDir ? readRulesFolder(opts.fromDir) : await git.filesAtRef(cwd, opts.fromRef!, cfg.lint.dir),
+          fetchedAt: new Date().toISOString(),
+        });
+      }
+      const snap = await s.getLintRules(repoId);
+      if (!snap) {
+        console.log(`No lint rules stored for ${repoId}. Ingest with lint on (pullup fetch), or pass --from-dir / --from-ref.`);
+        return;
+      }
+      const set = buildLintRuleSet(snap);
+      console.log(`${repoId} · ${snap.dir} · ${snap.source}${snap.ref ? ` ${snap.ref}` : ""}${snap.commitSha ? ` @ ${snap.commitSha.slice(0, 7)}` : ""} · read ${snap.fetchedAt} · lint ${cfg.lint.mode}`);
+      for (const r of set.rules) console.log(`  ${r.path}  ${r.type}  ${r.appliesTo.join(" ")}  ${(r.level ?? cfg.lint.level).toUpperCase()}`);
+      for (const p of set.problems) console.log(`  not used: ${p.path} — ${p.message}`);
+      if (set.rules.length === 0 && set.problems.length === 0) console.log("  (no rule files)");
+    });
+  });
 
 program
   .command("outcomes")

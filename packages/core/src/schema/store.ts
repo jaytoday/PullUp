@@ -9,6 +9,7 @@ import type { ConfigFile } from "../config/schema.js";
 import type { SignalRecord, SignalRunRecord } from "../signals/types.js";
 import type { VerdictRecord, VerifyRunRecord } from "../verify/types.js";
 import type { LearningDismissal } from "../outcomes/learn.js";
+import type { LintRuleSnapshot } from "../lint/load.js";
 import type {
   AgentRecord,
   ControlState,
@@ -72,6 +73,10 @@ export interface PullStore {
   listVerdicts(repoId: string, pullNumber?: number): Promise<VerdictRecord[]>;
   recordVerifyRun(run: VerifyRunRecord): Promise<void>;
   listVerifyRuns(repoId: string): Promise<VerifyRunRecord[]>;
+
+  /** The repo's lint rule files as last read (one snapshot per repo, replaced on each read). */
+  getLintRules(repoId: string): Promise<LintRuleSnapshot | null>;
+  setLintRules(snapshot: LintRuleSnapshot): Promise<void>;
 
   /** Learnings an operator dismissed (append-only). */
   appendLearningDismissal(d: LearningDismissal): Promise<void>;
@@ -142,6 +147,7 @@ export class InMemoryStore implements PullStore {
   private findingComments = new Map<string, FindingCommentRecord>();
   private verdicts = new Map<string, VerdictRecord>();
   private verifyRuns: VerifyRunRecord[] = [];
+  private lintRules = new Map<string, LintRuleSnapshot>();
   private dismissals: LearningDismissal[] = [];
   private configVersions: ConfigVersionRecord[] = [];
   private controlStates = new Map<string, ControlState>();
@@ -263,6 +269,14 @@ export class InMemoryStore implements PullStore {
     return [...this.findingComments.values()].filter(
       (c) => c.repoId === repoId && (pullNumber === undefined || c.pullNumber === pullNumber),
     );
+  }
+
+  async getLintRules(repoId: string): Promise<LintRuleSnapshot | null> {
+    return this.lintRules.get(repoId) ?? null;
+  }
+
+  async setLintRules(snapshot: LintRuleSnapshot): Promise<void> {
+    this.lintRules.set(snapshot.repoId, snapshot);
   }
 
   async getVerdict(cacheKey: string): Promise<VerdictRecord | null> {

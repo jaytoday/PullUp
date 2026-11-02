@@ -57,6 +57,8 @@ import {
   previewConfig,
   resolveDelivery,
   resolveQuestionSet,
+  runLint,
+  storedLintRuleSet,
   runSignals,
   runVerification,
   computeLearnings,
@@ -497,7 +499,39 @@ export function createApp(deps: AppDeps) {
           budgetUsd: cfg.jev.budgetUsdPerRun,
           now: now(),
         });
-        return { run, note };
+        // The lint lane shares the model; it runs whenever lint is on, whatever the risk mode.
+        let lintRun = null;
+        if (cfg.lint.mode !== "off") {
+          const { ruleSet } = await storedLintRuleSet(deps.store, repoId, cfg.lint);
+          if (ruleSet.rules.length > 0) {
+            lintRun = await runLint(deps.store, repoId, model, ruleSet, {
+              openOnly: body.scope === "open",
+              budgetUsd: cfg.lint.budgetUsdPerRun,
+              now: now(),
+            });
+          }
+        }
+        return { run, lintRun, note };
+      },
+    ],
+    [
+      // The repo's lint rules as last read from its default branch (parsed; problems listed). Read only.
+      "GET",
+      /^\/api\/repos\/([^/]+)\/([^/]+)\/lint-rules$/,
+      async (m) => {
+        const repoId = `${m[1]}/${m[2]}`;
+        await ensureRepo(repoId);
+        const cfg = await configFor(repoId);
+        const snapshot = await deps.store.getLintRules(repoId);
+        const { ruleSet, notes } = await storedLintRuleSet(deps.store, repoId, cfg.lint);
+        return {
+          config: cfg.lint,
+          fetchedAt: snapshot?.fetchedAt ?? null,
+          source: snapshot ? { kind: snapshot.source, ref: snapshot.ref, commitSha: snapshot.commitSha, dir: snapshot.dir } : null,
+          rules: ruleSet.rules.map((r) => ({ path: r.path, type: r.type, appliesTo: r.appliesTo, level: r.level ?? cfg.lint.level })),
+          problems: ruleSet.problems,
+          notes,
+        };
       },
     ],
     [
@@ -870,7 +904,10 @@ export function createApp(deps: AppDeps) {
         const { fixture } = z.object({ fixture: z.string().regex(/^[a-z0-9-]+$/) }).parse(await readBody(req));
         const path = join(deps.fixturesDir, `${fixture}.json`);
         if (!existsSync(path)) throw new HttpError(404, `No fixture "${fixture}".`);
-        return ingestRepo(loadFixture(path, `fixtures/${fixture}`), deps.store, { now: now() });
+        const repoId = `fixtures/${fixture}`;
+        // Reading a fixture's lint rules costs nothing, so they are read whatever lint's mode.
+        const { lint } = await configFor(repoId);
+        return ingestRepo(loadFixture(path, repoId), deps.store, { now: now(), lintRulesDir: lint.dir });
       },
     ],
   ];

@@ -6,7 +6,7 @@ import { ingestRepo } from "@pullup/core";
 import { OctokitPullSource, createRepoOctokit, loadFixture } from "@pullup/github";
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { getStore } from "../lib/core.js";
+import { getRepoConfig, getStore } from "../lib/core.js";
 
 export default defineTool({
   description:
@@ -33,7 +33,9 @@ export default defineTool({
         ...(scope === "pulls" ? { pullNumbers } : {}),
       });
     }
-    const result = await ingestRepo(source, store);
+    // Lint rules are read from the default branch when lint is on (free for a fixture, so always then).
+    const { lint } = await getRepoConfig(source.repoId);
+    const result = await ingestRepo(source, store, { lintRulesDir: fixturePath || lint.mode !== "off" ? lint.dir : null });
     return {
       scope,
       repoId: result.repoId,

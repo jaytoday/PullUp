@@ -42,6 +42,9 @@ const LEVEL_WORD: Record<SeverityLevel, string> = { p0: "P0", p1: "P1", p2: "P2"
 const LEVEL_RANK: Record<SeverityLevel, number> = { p0: 0, p1: 1, p2: 2 };
 
 function copyFor(f: Finding): { title: string; why: string } {
+  if (f.kind === "lint") {
+    return { title: f.title, why: `This repo's lint rule \`${f.id.replace(/^lint:/, "")}\` (read from the default branch) failed for this file` };
+  }
   const q = f.id.replace(/^signal:/, "");
   if (FINDING_COPY[q]) return FINDING_COPY[q]!;
   if (q.startsWith("custom:")) return { title: f.title, why: "One of this repo's own risk questions answered yes for this hunk." };
@@ -96,10 +99,14 @@ function body(f: Finding, first: FindingLocation, rest: readonly FindingLocation
   const evidence = v
     ? `\n\nChecked against the code: ${v.evidence.map((e) => `\`${e.path}:${e.line}\` ${"`"}${e.quote.replace(/`/g, "'")}${"`"}`).join("; ")}.${v.fix ? ` Suggested fix: ${v.fix}` : ""}`
     : "";
+  const why =
+    f.kind === "lint"
+      ? `${c.why} (\`${f.detail.split(" · ")[0]}\`). Fix it, or a human can decide the rule doesn't apply here.${also}`
+      : `${c.why.replace(/\.$/, "")}${p ? ` (\`${q}\`, ${p})` : ""}. A human should confirm the change is intended and safe.${evidence}${also}`;
   return [
     `**${c.title}** · ${LEVEL_WORD[f.level]}${observe}${v ? " · confirmed" : ""}`,
     "",
-    `${c.why.replace(/\.$/, "")}${p ? ` (\`${q}\`, ${p})` : ""}. A human should confirm the change is intended and safe.${evidence}${also}`,
+    why,
     "",
     `<sub>PullUp${questionSet ? ` \`${questionSet}\`` : ""} · \`${f.id}\` · head \`${headSha.slice(0, 7)}\` · \`${first.path}:${first.startLine}\`</sub>`,
     findingMarker(key),
@@ -115,15 +122,26 @@ export interface PlanInlineInput {
   /** PullUp's stored comments for this pull. */
   readonly existing: readonly FindingCommentRecord[];
   readonly headSha: string;
-  /** False when the signal layer didn't run (off): nothing is posted or resolved. */
+  /** False when the risk lane didn't run (off): no risk finding is posted or resolved. */
   readonly signalsRan: boolean;
+  /**
+   * When the lint lane ran: the files it fully checked. Lint comments are
+   * posted when lint ran, and resolved only on these files (or removed files).
+   */
+  readonly lintEvaluatedPaths?: readonly string[];
   readonly questionSet?: string | null;
 }
 
 /** What to post, keep and resolve for one pull at its current head. Pure. */
 export function planInline(input: PlanInlineInput): InlinePlan {
-  const { config, findings, hunks, existing, headSha } = input;
-  if (!config.enabled || !input.signalsRan) return EMPTY_INLINE_PLAN;
+  const { config, hunks, existing, headSha } = input;
+  const lintRan = input.lintEvaluatedPaths !== undefined;
+  if (!config.enabled || (!input.signalsRan && !lintRan)) return EMPTY_INLINE_PLAN;
+  // Each lane only speaks for itself: a lane that didn't run posts nothing and resolves nothing.
+  const isLint = (id: string) => id.startsWith("lint:");
+  const ran = (id: string) => (isLint(id) ? lintRan : input.signalsRan);
+  const findings = input.findings.filter((f) => ran(f.id));
+  const lintPaths = new Set(input.lintEvaluatedPaths ?? []);
   // An injection tripwire makes the pull request hostile by assumption: the decision comment is enough.
   if (findings.some((f) => f.kind === "injection")) return EMPTY_INLINE_PLAN;
 
@@ -187,10 +205,11 @@ export function planInline(input: PlanInlineInput): InlinePlan {
   if (config.resolveFixed) {
     for (const e of existing) {
       if (e.status !== "open" || present.has(e.findingKey)) continue;
+      if (!ran(e.findingId)) continue;
       if (resolve.length >= config.maxResolutions) break;
       const removed = !filesInPull.has(e.path);
       // Warden's guard: only resolve when the file was fully analysed this run.
-      if (!removed && unevaluatedPaths.has(e.path)) continue;
+      if (!removed && (isLint(e.findingId) ? !lintPaths.has(e.path) : unevaluatedPaths.has(e.path))) continue;
       resolve.push({
         findingKey: e.findingKey,
         commentId: e.commentId,

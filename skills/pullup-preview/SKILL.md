@@ -36,6 +36,10 @@ link in its comment.
   review is expected and why.
 - **Risk-signal findings:** describe them to the user. Do not reword or restructure code to
   make a signal go away.
+- **Lint findings** (`lint:<rule file>`): the repository's own rules in `.agents/gallant/`
+  (or `lint.dir`). Run `pnpm pullup lint --rules-from base` to see the failing lines, and fix
+  the code when the rule is right. If it isn't, tell the user; don't edit the rule to pass,
+  since PullUp reads rules from the default branch anyway.
 
 ## Help the human reviewer
 

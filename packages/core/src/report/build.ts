@@ -11,6 +11,8 @@ import type { PullStore } from "../schema/store.js";
 import { runAnalytics } from "../analytics/run.js";
 import type { JevRuntime, RiskSummary } from "../signals/runtime.js";
 import { assessOpenPulls } from "../signals/runtime.js";
+import type { LintSummary } from "../lint/runtime.js";
+import { assessLintOpenPulls } from "../lint/runtime.js";
 import type { GuardrailsConfig, Tier } from "../config/guardrails.js";
 import type { PolicyRules } from "../policy/policy.js";
 import type { ReviewRule } from "../config/rules.js";
@@ -35,6 +37,8 @@ export interface PullupReport {
   };
   /** Jev risk layer summary — present only when the layer is shadow/active. */
   readonly risk?: RiskSummary;
+  /** Lint lane summary — present only when lint is observe/on. */
+  readonly lint?: LintSummary;
   /** Guardrail summary over open PRs — present only when guardrails were evaluated. */
   readonly guardrails?: GuardrailSummary;
   /** Which config produced this report — present when the caller supplies it. */
@@ -86,6 +90,8 @@ export async function buildReport(
   const params = assembleParams(analytics, priors);
   const jevOn = opts.jev !== undefined && opts.jev.config.mode !== "off";
   const risk = jevOn ? await assessOpenPulls(store, repoId, params, opts.jev!) : null;
+  const lintRt = opts.jev?.lint && opts.jev.lint.config.mode !== "off" ? opts.jev.lint : null;
+  const lint = lintRt ? await assessLintOpenPulls(store, repoId, lintRt) : null;
   const g = opts.guardrails;
   const guards = g
     ? await evaluateRepoGuardrails(store, repoId, g.policy, g.config, now, { rules: g.rules, severity: g.severity })
@@ -94,6 +100,9 @@ export async function buildReport(
     ? {
         severity: g.severity ?? DEFAULT_SEVERITY,
         sensitiveHigh: (opts.jev?.config ?? DEFAULT_JEV_CONFIG).thresholds.sensitiveHigh,
+        ...(lint && lintRt
+          ? { lint: { mode: lintRt.config.mode as "observe" | "on", level: lintRt.config.level, results: lint.results } }
+          : {}),
       }
     : undefined;
   const decided = await decideForRepo(store, repoId, params, now, risk?.overlays, guards, ctx);
@@ -124,6 +133,7 @@ export async function buildReport(
       counts: summarizeDecisions(decisions),
     },
     ...(risk ? { risk: risk.summary } : {}),
+    ...(lint ? { lint: lint.summary } : {}),
     ...(opts.guardrails && guards ? { guardrails: summarizeGuardrails(decisions, opts.guardrails.config) } : {}),
     ...(opts.configProvenance ? { configProvenance: opts.configProvenance } : {}),
   };

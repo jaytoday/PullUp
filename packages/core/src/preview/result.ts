@@ -35,6 +35,8 @@ export interface PreviewResult {
   readonly fastPath: { readonly eligible: boolean; readonly blockers: readonly PreviewBlocker[] };
   readonly findings: readonly { readonly id: string; readonly level: string; readonly source: string; readonly title: string; readonly paths: readonly string[] }[];
   readonly signals: { readonly model: string | null; readonly band: string | null; readonly questionSet: string | null };
+  /** The repo's lint rules, when lint is on: how many ran, where they were read, how many failed. */
+  readonly lint?: { readonly rules: number; readonly ref: string | null; readonly failing: number };
   readonly history: { readonly ingested: boolean; readonly mergedPulls: number };
   /** Changed walkthrough files (such as diffmap specs) PullUp would link in its comment. */
   readonly walkthroughs: readonly string[];
@@ -63,6 +65,7 @@ const FINDING_HINT: Readonly<Record<string, string>> = {
   "tests-missing": "Add or update a test next to the changed code.",
   "net-negative": "The change is small next to its review cost; consider folding it into related work.",
   unevaluated: "Some hunks couldn't be evaluated (too large or binary); a human will look at them.",
+  lint: "One of this repo's own lint rules failed here (`pullup lint` shows the lines). Fix the code, or tell the reviewer why the rule doesn't apply.",
 };
 
 export function previewResult(input: {
@@ -82,6 +85,7 @@ export function previewResult(input: {
   readonly ingested: boolean;
   readonly walkthroughs: readonly string[];
   readonly notes: readonly string[];
+  readonly lint?: { readonly rules: number; readonly ref: string | null } | null;
 }): PreviewResult {
   const d = input.decision;
   const blockers: PreviewBlocker[] = [];
@@ -122,6 +126,7 @@ export function previewResult(input: {
       paths: [...new Set((f.units ?? []).map((u) => u.slice(0, u.lastIndexOf("#"))))],
     })),
     signals: { model: input.model, band: d.risk?.band ?? null, questionSet: input.questionSet },
+    ...(input.lint ? { lint: { ...input.lint, failing: (d.findings ?? []).filter((f) => f.kind === "lint").length } } : {}),
     history: { ingested: input.ingested, mergedPulls: input.mergedPulls },
     walkthroughs: input.walkthroughs,
     notes: input.notes,
@@ -145,6 +150,7 @@ export function renderPreview(r: PreviewResult): string {
   }
   lines.push(`Max wait:  ${r.would.maxWaitHours.toFixed(1)} h (w*)`);
   lines.push("", `Signals:   ${r.signals.model ?? "off"}${r.signals.band ? ` · band ${r.signals.band}` : ""}${r.signals.questionSet ? ` · ${r.signals.questionSet}` : ""}`);
+  if (r.lint) lines.push(`Lint:      ${r.lint.rules} rule(s)${r.lint.ref ? ` from ${r.lint.ref}` : ""} · ${r.lint.failing} failing`);
   if (!r.history.ingested) lines.push("History:   none ingested — wait times use default priors. Run `pullup fetch <repo>` first.");
   else if (r.history.mergedPulls === 0) lines.push("History:   no merged pull requests yet — wait times use default priors.");
   else lines.push(`History:   ${r.history.mergedPulls} merged pull requests`);

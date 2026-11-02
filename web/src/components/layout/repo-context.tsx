@@ -83,9 +83,9 @@ export const RepoProvider: ParentComponent = (props) => {
       }),
     runSignals: () =>
       guarded("Run signals", async () => {
-        const { run, note } = await api.runSignals(repoId());
+        const { run, lintRun, note } = await api.runSignals(repoId());
         showToast({
-          title: `Signals: ${run.evaluated} evaluated · ${run.cached} cached`,
+          title: `Signals: ${run.evaluated} evaluated · ${run.cached} cached${lintRun ? ` · lint ${lintRun.evaluated} evaluated` : ""}`,
           description: `${usd(run.costUsd)} · ${run.modelId}${run.failed ? ` · ${run.failed} failed` : ""}${note ? ` — ${note}` : ""}`,
           variant: run.failed ? "warning" : "success",
         });

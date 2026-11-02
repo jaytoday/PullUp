@@ -54,3 +54,31 @@ export async function branchDiff(cwd: string, opts: { base: string; head: string
   const common = ["diff", "--no-color", "--no-ext-diff", "-M", "--src-prefix=a/", "--dst-prefix=b/"];
   return git(cwd, opts.staged ? [...common, "--cached"] : [...common, `${opts.base}...${opts.head}`]);
 }
+
+/**
+ * Text files under `dir` at `ref` (paths relative to `dir`), read from git's
+ * object store: what the branch holds, not the working tree. Empty when the
+ * folder doesn't exist at that ref.
+ */
+export async function filesAtRef(cwd: string, ref: string, dir: string): Promise<Array<{ path: string; content: string }>> {
+  let listing: string;
+  try {
+    listing = await git(cwd, ["ls-tree", "-r", "-z", "--name-only", ref, "--", dir]);
+  } catch {
+    return [];
+  }
+  const out: Array<{ path: string; content: string }> = [];
+  for (const path of listing.split("\0").filter((p) => p.startsWith(`${dir}/`))) {
+    out.push({ path: path.slice(dir.length + 1), content: await git(cwd, ["show", `${ref}:${path}`]) });
+  }
+  return out;
+}
+
+/** The commit `ref` points at, or null. */
+export async function tryRevParse(cwd: string, ref: string): Promise<string | null> {
+  try {
+    return await revParse(cwd, ref);
+  } catch {
+    return null;
+  }
+}

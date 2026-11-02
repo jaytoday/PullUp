@@ -26,6 +26,12 @@ export type QuestionSpec = NoulSpec | ChoiceSpec | ScoreSpec;
 
 export interface QuestionSet {
   readonly version: string;
+  /**
+   * Which lane asks it: the risk lane (default; the calibrated questions) or
+   * the lint lane (the repo's own lint rules, see lint/). Lint sets leave the
+   * risk fields below empty.
+   */
+  readonly lane?: "risk" | "lint";
   readonly questions: Readonly<Record<string, QuestionSpec>>;
   /** Noul ids whose "yes" raises risk (risk features; ≥ medium → review band). */
   readonly sensitive: readonly string[];

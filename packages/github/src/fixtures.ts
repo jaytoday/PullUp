@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import type {
   FixtureFile,
+  LintRuleFile,
   PullSource,
   SourceDefectEvent,
   SourcePull,
@@ -44,6 +45,11 @@ export class FixturePullSource implements PullSource {
 
   async listDefectEvents(pullNumber: number): Promise<SourceDefectEvent[]> {
     return [...(this.fixture.pulls.find((p) => p.number === pullNumber)?.defectEvents ?? [])];
+  }
+
+  async readLintRules(dir: string): Promise<{ commitSha: string | null; files: LintRuleFile[] } | null> {
+    const files = this.fixture.lintRules?.[dir];
+    return files ? { commitSha: null, files: [...files] } : null;
   }
 }
 

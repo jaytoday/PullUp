@@ -343,6 +343,7 @@ export function planReviewActions(
               existing: (opts.findingComments ?? []).filter((c) => c.pullNumber === d.pullNumber),
               headSha,
               signalsRan: d.risk !== undefined,
+              ...(d.lint ? { lintEvaluatedPaths: d.lint.evaluatedPaths } : {}),
               questionSet: opts.questionSet ?? null,
             }),
           }
@@ -450,7 +451,7 @@ export function findingsSection(findings: readonly Finding[]): string {
   for (const lvl of ["p0", "p1", "p2"] as const) {
     const fs = findings.filter((f) => f.level === lvl);
     if (fs.length === 0) continue;
-    parts.push(`**${heads[lvl]}**\n${fs.map((f) => `- ${CC_LABEL[lvl]}: ${f.title} — ${f.detail} _(${f.source})_${verdictNote(f)}`).join("\n")}`);
+    parts.push(`**${heads[lvl]}**\n${fs.map((f) => `- ${CC_LABEL[lvl]}: ${f.title} — ${f.detail} _(${f.kind === "lint" ? "lint rule" : f.source})_${verdictNote(f)}`).join("\n")}`);
   }
   return `\n\n${parts.join("\n\n")}`;
 }
