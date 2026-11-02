@@ -6,7 +6,7 @@ PullUp's engine decides what *should* happen to a pull request (approve,
 request changes, ask a human). This layer decides, separately, whether PullUp
 is *allowed* to make it happen, on which repository, with which GitHub
 permissions, and for how long. It implements a subset of the
-[Agent Baseline](../../../libraries/agentbaseline/whitepaper/controls.yaml)
+[Agent Baseline](https://github.com/agentbaseline/agentbaseline/blob/main/whitepaper/controls.yaml)
 controls (v1.0-draft). Agent Baseline is a specification, not a library, so
 the control identifiers are cited in code, tests and evidence.
 

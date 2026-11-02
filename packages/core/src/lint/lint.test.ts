@@ -31,15 +31,8 @@ import { storedLintRuleSet } from "./runtime.js";
 const NOW = "2026-09-01T00:00:00.000Z";
 const REPO = "fixtures/jev";
 const base = JSON.parse(readFileSync(new URL("../../../../fixtures/jev.json", import.meta.url), "utf8")) as FixtureFile;
-const gallant = (p: string) => readFileSync(new URL(`../../../../../../libraries/gallant/${p}`, import.meta.url), "utf8");
-const hasGallant = (() => {
-  try {
-    gallant("README.md");
-    return true;
-  } catch {
-    return false;
-  }
-})();
+// Gallant's own example rules, copied with its license into testdata/gallant.
+const gallant = (p: string) => readFileSync(new URL(`./testdata/gallant/${p}`, import.meta.url), "utf8");
 
 const NO_DEBUG = `---
 appliesTo: "*.ts"
@@ -100,7 +93,7 @@ describe("lint rule parsing (Gallant's format)", () => {
     expect(s.ok && s.rule).toMatchObject({ type: "score", levels: ["Easy to read", "Very hard"], minConfidence: 0 });
   });
 
-  it.runIf(hasGallant)("accepts every example rule that ships with Gallant", () => {
+  it("accepts every example rule that ships with Gallant", () => {
     for (const p of [
       "examples/diff/rules/leftover-debugging.md",
       "examples/comments/rules/comments.md",
