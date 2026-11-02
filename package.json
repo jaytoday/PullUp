@@ -2,7 +2,7 @@
   "name": "pullup",
   "private": true,
   "version": "0.1.0",
-  "description": "PullUp \u2014 workflows for dynamic CI. Compiles code-review economics from a repo's own PR history: the cost of waiting for human review vs the cost of shipping a bug, and a per-PR max-wait threshold. Built on Eve.",
+  "description": "PullUp — workflows for dynamic CI. Compiles code-review economics from a repo's own PR history: the cost of waiting for human review vs the cost of shipping a bug, and a per-PR max-wait threshold. Built on Eve.",
   "type": "module",
   "packageManager": "pnpm@9.14.2",
   "engines": {
