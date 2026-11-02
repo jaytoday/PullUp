@@ -14,6 +14,7 @@ import { Command } from "commander";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { userInfo } from "node:os";
+import { lintExitCode } from "./lint-exit.js";
 interface GlobalOpts {
   db?: string;
 }
@@ -373,7 +374,7 @@ function readRulesFolder(dir: string): Array<{ path: string; content: string }> 
 
 program
   .command("lint")
-  .description("Check the branch's changes against the repo's lint rules (Gallant's format) before you push; exits 1 when a rule fails")
+  .description("Check the branch's changes against the repo's lint rules (Gallant's format) before you push; exits 1 when a rule fails, 2 when the model could not check some file")
   .option("-c, --config <path>", "path to pullup.config.json", "pullup.config.json")
   .option("--repo <owner/repo>", "repo id, for its saved settings (default: from the origin remote)")
   .option("--base <ref>", "base branch (default: origin's default branch, else main)")
@@ -457,10 +458,10 @@ program
             const where = f.lines.map((l) => (l.end > l.start ? `${l.start}-${l.end}` : `${l.start}`)).join(",");
             console.log(`  FAIL ${f.rulePath}  ${f.path}${where ? `:${where}` : ""}  (${f.reason})`);
           }
-          if (result.failed > 0) console.log(`  ${result.failed} file part(s) could not be checked (model error).`);
+          if (result.failed > 0) console.log(`  ${result.failed} file part(s) could not be checked (model error), so the check did not pass.`);
           if (result.notEvaluable > 0) console.log(`  ${result.notEvaluable} file part(s) too large or binary, not checked.`);
         }
-        if (opts.fail && result.failures.length > 0) process.exitCode = 1;
+        process.exitCode = lintExitCode(result, opts.fail);
       };
       if (useStore) await withStore(global, run);
       else await run(null);

@@ -128,14 +128,16 @@ result and the hunks, for example `yes 0.93 > 0.5 · src/main.go#0`.
 ## Before a push: `pullup lint`
 
 ```bash
-pnpm pullup lint                   # base...HEAD, rules from your working copy; exit 1 if a rule fails
+pnpm pullup lint                   # base...HEAD, rules from your working copy; exit 1 if a rule fails, 2 if a file couldn't be checked
 pnpm pullup lint --staged          # only staged changes
 pnpm pullup lint --rules-from base # rules as the base branch has them (what the pull request gets)
 pnpm pullup lint --json            # for scripts and coding agents
 pnpm pullup lint --no-fail         # report only
 ```
 
-It prints each failing rule with the file and new-side line ranges. When a
+It prints each failing rule with the file and new-side line ranges. When the
+model can't check some file (server down, error) and no rule failed, it exits 2:
+an unchecked change never counts as a pass. When a
 PullUp database is present (`pullup.db`, or `--db`), answers go through the
 same cache, so the pull request later reuses them. It never creates a
 database.
@@ -145,6 +147,28 @@ Gallant itself reads the same folder:
 ```bash
 git diff origin/main...HEAD | gallant --provider opencode --model jev-1.13 --rules .agents/gallant --diff
 ```
+
+## Example rule: is the change switched off behind a feature flag?
+
+`docs/examples/lint/flag-off-behavior.md` asks, for each changed file, whether
+anything that runs or can be observed differs with every feature flag off. A
+pull request whose new behavior sits entirely behind a flag that defaults to
+off should pass it. Copy it into `.agents/gallant/` and adjust the line naming
+how your code reads flags.
+
+`scripts/inert-lint-test/run.sh` checks the rule against eight labeled
+branches of a small test repo (three inert, five not: a shared function changed
+outside the flag, an inverted flag check, a side effect at startup, data
+written regardless of the flag, a flag default turned on). It runs PullUp's real
+`pullup lint` against a stand-in System One server backed by Claude
+(`ANTHROPIC_API_KEY`), and exits 1 if any branch gets the wrong result.
+
+Result on 2026-11-01 (claude-sonnet-5, four runs each, same every run): 8 of 8
+when the model writes its reasoning before the probability (`--reason-first`),
+7 of 8 when it answers first. The miss is the inverted check
+(`if (!isEnabled("skipOrderAudit")) insert(...)`): new code that runs while the
+flag is off. A model that answers without reasoning, as Jev does, can miss it,
+so this rule is a helper, not proof that a change is inert.
 
 ## Models
 

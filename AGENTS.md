@@ -9,9 +9,9 @@ surface are thin adapters over it.
 | Command | Description |
 |---------|-------------|
 | `pnpm install` | Install dependencies |
-| `pnpm build` | Build the seven `@pullup/*` packages (web builds via `pnpm web:build`) |
+| `pnpm build` | Build the seven `@pullup/*` packages (web builds via `pnpm web:build`). After switching branches run `pnpm install` first: a branch may add a dependency, and the CLI's `dist/` is otherwise stale (prefer `pnpm pullup`, which runs the source) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 228 · db 13 · github 48 · jev 8 · verify 4 · cli 1 · server 26) |
+| `pnpm -r test` | Package tests (core 228 · db 13 · github 48 · jev 8 · verify 4 · cli 5 · server 26) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |
