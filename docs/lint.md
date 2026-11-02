@@ -49,7 +49,7 @@ value, or commented-out code kept in case it is needed.
 
 | field | meaning |
 |---|---|
-| `appliesTo` | A glob, or a list of globs, matched against the **file name**, not its folder (Gallant's rule). A rule without one never runs. |
+| `appliesTo` | A glob, or a list of globs, matched against the **file name**, not its folder (Gallant's rule). A rule without one never runs. A glob with a folder part (`**/*.ts`) could never match, so PullUp refuses the rule and says so. |
 | `type` | `noul` (yes/no: "yes" is a violation), `choice` (pick one option) or `score` (pick a level). |
 | `criteria` | `choice`: options mapped to descriptions. `score`: levels, lowest first (2 to 10). |
 | `violation` | `choice` / `score` only: `if` results that fail the rule above a probability, `unless` results that cancel it. A choice or score rule without one can never fail, so PullUp doesn't ask it. |

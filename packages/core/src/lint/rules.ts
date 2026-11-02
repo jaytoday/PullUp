@@ -201,7 +201,13 @@ export function parseLintRule(path: string, content: string): ParsedLintRule {
           ? (rawGlobs as string[])
           : null;
   if (appliesTo === null) return fail("appliesTo: expected a string or a list of strings");
-  for (const g of appliesTo) if (!globToNameRegExp(g)) return fail(`invalid appliesTo glob "${g}"`);
+  for (const g of appliesTo) {
+    // Globs match the file name only, so one with a folder part ("**/*.ts",
+    // "src/*.go") can never match anything. Gallant silently skips such a rule;
+    // refusing it says why the rule never runs.
+    if (g.includes("/")) return fail(`appliesTo glob "${g}" has a folder part, but globs match the file name only (try "${g.slice(g.lastIndexOf("/") + 1)}")`);
+    if (!globToNameRegExp(g)) return fail(`invalid appliesTo glob "${g}"`);
+  }
 
   let options: Record<string, string> | undefined;
   let levels: string[] | undefined;

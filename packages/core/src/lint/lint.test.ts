@@ -119,6 +119,14 @@ describe("lint rule parsing (Gallant's format)", () => {
     }
   });
 
+  it("refuses an appliesTo glob with a folder part, which could never match a file name", () => {
+    for (const g of ["**/*.ts", "src/*.go"]) {
+      const r = parseLintRule("r.md", `---\ntype: noul\nappliesTo: '${g}'\n---\nx\n`);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.problem.message).toMatch(/file name only \(try "\*\.(ts|go)"\)/);
+    }
+  });
+
   it("rejects what Gallant rejects, with the reason", () => {
     const bad: Array<[string, RegExp]> = [
       ["no frontmatter\n", /missing frontmatter/],
