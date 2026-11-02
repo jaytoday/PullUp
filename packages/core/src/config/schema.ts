@@ -29,6 +29,8 @@ import type { ChecksConfig } from "./checks.js";
 import { DEFAULT_CHECKS, checksSchema, resolveChecks } from "./checks.js";
 import type { InlineConfig } from "./inline.js";
 import { DEFAULT_INLINE, inlineSchema, resolveInline } from "./inline.js";
+import type { WalkthroughConfig } from "./walkthroughs.js";
+import { DEFAULT_WALKTHROUGHS, resolveWalkthroughs, walkthroughsSchema } from "./walkthroughs.js";
 import type { VerifyConfig } from "./verify.js";
 import { DEFAULT_VERIFY, resolveVerify, verifySchema } from "./verify.js";
 import type { OutcomesConfig } from "./outcomes.js";
@@ -179,6 +181,8 @@ export const configFileSchema = z
     checks: checksSchema.optional(),
     /** Inline finding comments on the diff (see config/inline.ts). */
     inline: inlineSchema.optional(),
+    /** Links to walkthrough files (such as diffmap specs) in the decision comment (see config/walkthroughs.ts). */
+    walkthroughs: walkthroughsSchema.optional(),
     /** Evidence verifier for strong risk-signal findings (see config/verify.ts). */
     verify: verifySchema.optional(),
     /** Windows for judging what humans did after a decision (see config/outcomes.ts). */
@@ -215,6 +219,7 @@ export function resolvePriors(fullFile: ConfigFile = {}): CostPriors {
     rules: _rules,
     checks: _checks,
     inline: _inline,
+    walkthroughs: _walkthroughs,
     verify: _verify,
     outcomes: _outcomes,
     review: _review,
@@ -273,6 +278,7 @@ export interface ResolvedLayers {
   readonly rules: readonly ReviewRule[];
   readonly checks: ChecksConfig;
   readonly inline: InlineConfig;
+  readonly walkthroughs: WalkthroughConfig;
   readonly verify: VerifyConfig;
   readonly outcomes: OutcomesConfig;
   /** Normalised review focus, or null. */
@@ -292,6 +298,7 @@ export function resolveConfigFile(file: ConfigFile = {}): ResolvedLayers {
     rules: (file.rules ?? []) as ReviewRule[],
     checks: resolveChecks(file.checks),
     inline: resolveInline(file.inline),
+    walkthroughs: resolveWalkthroughs(file.walkthroughs),
     verify: resolveVerify(file.verify),
     outcomes: resolveOutcomes(file.outcomes),
     reviewFocus: focus === "" ? null : focus,
@@ -366,6 +373,7 @@ export function defaultConfigFile(): ConfigFile {
     rules: [],
     checks: { ...DEFAULT_CHECKS },
     inline: { ...DEFAULT_INLINE },
+    walkthroughs: { ...DEFAULT_WALKTHROUGHS, paths: [...DEFAULT_WALKTHROUGHS.paths] },
     verify: { ...DEFAULT_VERIFY },
     outcomes: { ...DEFAULT_OUTCOMES },
     review: { focus: "" },

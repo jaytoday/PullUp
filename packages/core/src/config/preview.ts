@@ -111,6 +111,7 @@ async function planOpen(store: PullStore, repoId: string, side: PreviewSide, now
     humanReviewers: cfg.jev.humanReviewers,
     authority: cfg.authority,
     configVersion: cfg.version,
+    walkthroughs: cfg.walkthroughs,
   });
   return { report, planned };
 }

@@ -33,6 +33,9 @@ import type { InlineComment, InlinePlan, InlineResolve } from "../findings/inlin
 import { planInline } from "../findings/inline.js";
 import type { CheckRunCall, CheckSpec } from "./check.js";
 import { buildCheckSpec, checkRunCall } from "./check.js";
+import type { WalkthroughConfig } from "../config/walkthroughs.js";
+import type { WalkthroughLink } from "./walkthroughs.js";
+import { walkthroughLinks, walkthroughSection } from "./walkthroughs.js";
 
 export type BotReviewAction = "approve" | "request_changes" | "defer_to_human";
 
@@ -117,6 +120,8 @@ export interface PlannedReviewAction {
   readonly check?: CheckSpec;
   /** Inline finding comments to post / resolve (present when inline comments are enabled). */
   readonly inline?: InlinePlan;
+  /** Changed walkthrough files linked in the comment (reviewer help only; never changes the action). */
+  readonly walkthroughs?: readonly WalkthroughLink[];
 }
 
 /**
@@ -203,6 +208,8 @@ export interface PlanOptions {
   readonly findingComments?: readonly FindingCommentRecord[];
   /** The question-set version, quoted in inline comments. */
   readonly questionSet?: string | null;
+  /** Walkthrough link settings; absent ⇒ the defaults. Needs `files` on the pulls. */
+  readonly walkthroughs?: WalkthroughConfig;
 }
 
 const BOT_FOOTER = "\n\n_— PullUp_";
@@ -227,12 +234,13 @@ const WOULD: Readonly<Record<BotReviewAction, string>> = {
  */
 export function planReviewActions(
   decisions: readonly PullDecision[],
-  pulls: readonly (Pick<PullRecord, "number" | "headSha"> & Partial<Pick<PullRecord, "author">>)[],
+  pulls: readonly (Pick<PullRecord, "number" | "headSha"> & Partial<Pick<PullRecord, "author" | "files">>)[],
   opts: PlanOptions,
 ): PlannedReviewAction[] {
   const [owner, repo] = opts.repoId.split("/") as [string, string];
   const shaByPull = new Map(pulls.map((p) => [p.number, p.headSha]));
   const authorByPull = new Map(pulls.map((p) => [p.number, p.author?.toLowerCase()]));
+  const filesByPull = new Map(pulls.map((p) => [p.number, p.files ?? []]));
   const reviewers = opts.humanReviewers ?? [];
   const out: PlannedReviewAction[] = [];
 
@@ -279,6 +287,8 @@ export function planReviewActions(
       reason = `Would approve, but auto-approval is blocked: ${blockers.join("; ")}. Asking a human instead.`;
     }
 
+    const walkthroughs = walkthroughLinks(opts.repoId, headSha, filesByPull.get(d.pullNumber) ?? [], opts.walkthroughs);
+
     // Scoped rules can add reviewers for this PR.
     // GitHub refuses (422) to request a review from the pull request's own author.
     const author = authorByPull.get(d.pullNumber);
@@ -292,7 +302,7 @@ export function planReviewActions(
         pull_number: d.pullNumber,
         commit_id: headSha,
         event,
-        body: `${reason}${findingsSection(activeFindings(d))}${BOT_FOOTER}`,
+        body: `${reason}${findingsSection(activeFindings(d))}${walkthroughSection(walkthroughs)}${BOT_FOOTER}`,
       },
       requestReviewers:
         action === "defer_to_human" && prReviewers.length > 0
@@ -309,6 +319,7 @@ export function planReviewActions(
       band,
       reason,
       ...(d.findings ? { findings: activeFindings(d) } : {}),
+      ...(walkthroughs.length > 0 ? { walkthroughs } : {}),
       ...(opts.authority && opts.checks?.enabled
         ? {
             check: buildCheckSpec({
@@ -446,7 +457,10 @@ export function findingsSection(findings: readonly Finding[]): string {
 
 /** The body of PullUp's single, edited-in-place PR comment. */
 export function decisionCommentBody(
-  a: Pick<PlannedReviewAction, "action" | "reason" | "headSha"> & { readonly findings?: readonly Finding[] },
+  a: Pick<PlannedReviewAction, "action" | "reason" | "headSha"> & {
+    readonly findings?: readonly Finding[];
+    readonly walkthroughs?: readonly WalkthroughLink[];
+  },
   level: AuthorityLevel,
 ): string {
   const sha = a.headSha ? ` at \`${a.headSha.slice(0, 7)}\`` : "";
@@ -460,7 +474,7 @@ export function decisionCommentBody(
     level === "act"
       ? "_— PullUp_"
       : "_— PullUp, evaluation only: this comment is the whole action. It will be updated as the PR changes._";
-  return `${DECISION_COMMENT_MARKER}\n${head}\n\n${a.reason}${findingsSection(a.findings ?? [])}\n\n${tail}`;
+  return `${DECISION_COMMENT_MARKER}\n${head}\n\n${a.reason}${findingsSection(a.findings ?? [])}${walkthroughSection(a.walkthroughs ?? [])}\n\n${tail}`;
 }
 
 /**
@@ -494,7 +508,7 @@ export function plannedInline(
 }
 
 export function plannedCheckRun(
-  planned: Pick<PlannedReviewAction, "repoId" | "headSha" | "action" | "reason" | "rationale" | "findings" | "check">,
+  planned: Pick<PlannedReviewAction, "repoId" | "headSha" | "action" | "reason" | "rationale" | "findings" | "check" | "walkthroughs">,
   level: AuthorityLevel,
   clamped: string | null = null,
 ): CheckRunCall | null | undefined {
@@ -566,7 +580,7 @@ export function withReviewBody(planned: PlannedReviewAction, body: string): Plan
     rationale: body,
     call: {
       ...call,
-      createReview: call.createReview ? { ...call.createReview, body } : null,
+      createReview: call.createReview ? { ...call.createReview, body: `${body}${walkthroughSection(planned.walkthroughs ?? [])}` } : null,
       ...(call.upsertComment
         ? { upsertComment: { ...call.upsertComment, body: decisionCommentBody({ ...planned, reason: body }, level) } }
         : {}),

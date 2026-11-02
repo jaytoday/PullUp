@@ -46,7 +46,7 @@ const prepareJev = (cfg: ReturnType<typeof resolveConfig>) => async (s: PullStor
 const file = (path: string, header: string, body: string[], extra = "") =>
   `diff --git a/${path} b/${path}\n${extra}--- a/${path}\n+++ b/${path}\n${header}\n${body.join("\n")}\n`;
 
-async function preview(diff: string, over: { author?: string; ai?: boolean } = {}) {
+async function preview(diff: string, over: { author?: string; ai?: boolean; headSha?: string } = {}) {
   const { store, cfg } = await loaded();
   const before = { pulls: (await store.listPulls(REPO)).length, hunks: (await store.listHunks(REPO)).length, runs: (await store.listSignalRuns(REPO)).length };
   const { result } = await runPreview({
@@ -109,6 +109,19 @@ describe("runPreview", () => {
     expect(result.sent).toBe(false);
     expect(after).toEqual(before);
     expect(renderPreview(result)).toContain("Nothing was sent to GitHub.");
+  });
+
+  it("lists changed walkthroughs, and suggests one when a human will review", async () => {
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    const ci = file(".github/workflows/ci.yml", "@@ -1,2 +1,3 @@", [" on: push", "+permissions: write-all", " jobs:"]);
+    const bare = await preview(ci, { headSha: sha });
+    expect(bare.result.walkthroughs).toEqual([]);
+    expect(renderPreview(bare.result)).toMatch(/Walkthrough: none — a human will review/);
+    const spec = file("specs/ci-permissions.md", "@@ -0,0 +1 @@", ["+# Why CI needs write"], "new file mode 100644\n");
+    const withSpec = await preview(ci + spec, { headSha: sha });
+    expect(withSpec.result.walkthroughs).toEqual(["specs/ci-permissions.md"]);
+    expect(withSpec.result.would.action).toBe(bare.result.would.action);
+    expect(renderPreview(withSpec.result)).toContain("Walkthrough: specs/ci-permissions.md");
   });
 
   it("an unknown author is not treated as a first-time contributor, and says so", async () => {

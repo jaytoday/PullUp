@@ -247,6 +247,7 @@ export function createApp(deps: AppDeps) {
       configVersion: cfg.version,
       checks: cfg.checks,
       inline: cfg.inline,
+      walkthroughs: cfg.walkthroughs,
       hunks: cfg.checks.enabled || cfg.inline.enabled ? await deps.store.listHunks(repoId) : [],
       findingComments: cfg.inline.enabled ? await deps.store.listFindingComments(repoId) : [],
       questionSet: r.risk?.questionSetVersion ?? null,

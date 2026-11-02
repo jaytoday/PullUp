@@ -81,6 +81,20 @@ for loosening because none of them changes a decision or an action.
 comments ride on PullUp's action for the pull request; a pull request with no
 action (for example still inside its wait window with nothing to flag) gets none.
 
+## Walkthrough links (`walkthroughs`)
+
+```json
+"walkthroughs": { "enabled": true, "paths": ["specs/**/*.md", "specs/**/*.mdx"], "maxLinks": 3 }
+```
+
+When a pull request changes a walkthrough file (a Markdown spec that explains
+the change, such as the "living specs" the [diffmap](https://github.com/tanishqkancharla/diffmap)
+agent skill writes in `specs/`), PullUp's comment links to it so the reviewer
+can start there (`docs/github.md`). On by default. Information only: every
+field is neutral for loosening, nothing reads the file's contents, and a
+walkthrough never changes a decision, a finding or an action. Like inline
+comments, the link rides on PullUp's action for the pull request.
+
 ## Evidence check (`verify`)
 
 ```json

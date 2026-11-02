@@ -11,7 +11,7 @@ surface are thin adapters over it.
 | `pnpm install` | Install dependencies |
 | `pnpm build` | Build the seven `@pullup/*` packages (web builds via `pnpm web:build`) |
 | `pnpm typecheck` | Typecheck packages + agent/evals/scripts |
-| `pnpm -r test` | Package tests (core 212 · db 11 · github 46 · jev 4 · verify 4 · cli 1 · server 25) |
+| `pnpm -r test` | Package tests (core 223 · db 12 · github 46 · jev 4 · verify 4 · cli 1 · server 25) |
 | `pnpm pullup <cmd>` | Run the CLI via tsx |
 | `pnpm web:dev` | Dashboard: API :4174 + Vite :5174 (proxy `/api`) |
 | `pnpm web` | Build packages + web, serve `web/dist` from the API |

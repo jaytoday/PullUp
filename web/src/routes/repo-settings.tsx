@@ -15,6 +15,7 @@ import { SeverityCard } from "@/components/settings/basic/severity-card";
 import { RulesCard } from "@/components/settings/basic/rules-card";
 import { ChecksCard } from "@/components/settings/basic/checks-card";
 import { InlineCard } from "@/components/settings/basic/inline-card";
+import { WalkthroughsCard } from "@/components/settings/basic/walkthroughs-card";
 import { VerifyCard } from "@/components/settings/basic/verify-card";
 import { PathsSection } from "@/components/settings/advanced/paths-section";
 import { DependenciesSection } from "@/components/settings/advanced/dependencies-section";
@@ -187,6 +188,7 @@ function SettingsPage() {
               <ReviewFocusCard />
               <ChecksCard />
               <InlineCard />
+              <WalkthroughsCard />
               <VerifyCard />
             </TabsContent>
             <TabsContent value="advanced" class="mt-4">

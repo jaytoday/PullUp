@@ -429,6 +429,7 @@ addJevOptions(program
         configVersion: cfg.version,
         checks: cfg.checks,
         inline: cfg.inline,
+        walkthroughs: cfg.walkthroughs,
         hunks: cfg.checks.enabled || cfg.inline.enabled ? await s.listHunks(repoId) : [],
         findingComments: cfg.inline.enabled ? await s.listFindingComments(repoId) : [],
         questionSet: report.risk?.questionSetVersion ?? null,
