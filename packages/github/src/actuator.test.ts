@@ -89,8 +89,25 @@ describe("GitHubReviewActuator", () => {
         },
       }),
     ]);
-    expect(f.fns()).toEqual(["getPull", "findComment", "createComment", "requestReviewers", "findComment"]);
+    expect(f.fns()).toEqual(["getPull", "findComment", "createComment", "requestReviewers", "findComment", "listRequestedReviewers"]);
     expect(rec!.delivery?.reviewersRequested).toEqual(["alice"]);
+    expect(rec!.delivery?.verified?.detail).toMatch(/reviewers requested: alice/);
+  });
+
+  it("fails verification when a requested reviewer is not on the PR afterwards", async () => {
+    const f = fakeClient({ unlistedReviewers: ["bob"] });
+    const [rec] = await send(f.client, await trustedStore(), [
+      planned({
+        action: "defer_to_human",
+        call: {
+          createReview: null,
+          upsertComment: comment(),
+          requestReviewers: { owner: "acme", repo: "api", pull_number: 7, reviewers: ["alice", "bob"] },
+        },
+      }),
+    ]);
+    expect(rec!.status).toBe("failed");
+    expect(rec!.delivery?.errors).toEqual(["verification: reviewer request for bob is not on the PR"]);
   });
 
   it("records partial failure and a retry only repeats what failed", async () => {
@@ -112,7 +129,7 @@ describe("GitHubReviewActuator", () => {
     const good = fakeClient();
     const [retry] = await send(good.client, store, [plan]);
     expect(retry!.status).toBe("sent");
-    expect(good.fns()).toEqual(["getPull", "updateComment", "requestReviewers", "findComment"]);
+    expect(good.fns()).toEqual(["getPull", "updateComment", "requestReviewers", "findComment", "listRequestedReviewers"]);
   });
 
   it("dismisses its own stale REQUEST_CHANGES once the new head no longer warrants it", async () => {

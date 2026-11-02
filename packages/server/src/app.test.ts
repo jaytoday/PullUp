@@ -339,6 +339,7 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
       },
       updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
       requestReviewers: async () => {},
+      listRequestedReviewers: async () => ({ users: [], teams: [] }),
       listReviews: async () => [],
       ...noCheckRuns,
     };
@@ -371,6 +372,7 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
     const comments = new Map<number, { issue: number; body: string }>();
     const reviews: Array<{ id: number; state: string; commitId: string | null }> = [];
     const heads = new Map<number, string>();
+    const requested = new Set<string>();
     let id = 1;
     const client: ReviewClient = {
       getPull: async ({ pull_number }) => ({ state: "open", headSha: heads.get(pull_number)! }),
@@ -387,7 +389,11 @@ describe("live GitHub delivery (PULLUP_GITHUB_DELIVERY=live)", () => {
         return { id: id++ };
       },
       updateComment: async (p) => (comments.set(p.comment_id, { ...comments.get(p.comment_id)!, body: p.body }), { id: p.comment_id }),
-      requestReviewers: async (p) => void sent.push(`reviewers #${p.pull_number}`),
+      requestReviewers: async (p) => {
+        sent.push(`reviewers #${p.pull_number}`);
+        for (const r of p.reviewers) requested.add(r.split("/").at(-1)!);
+      },
+      listRequestedReviewers: async () => ({ users: [...requested], teams: [] }),
       listReviews: async () => reviews,
       ...noCheckRuns,
     };

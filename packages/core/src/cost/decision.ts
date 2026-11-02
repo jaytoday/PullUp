@@ -334,7 +334,15 @@ export async function decideForRepo(
   ctx?: FindingContext,
 ): Promise<PullDecision[]> {
   const pulls = await store.listPulls(repoId);
-  const reviews = await store.listReviews(repoId);
+  // PullUp's own reviews are not a human deciding. Counting them would freeze
+  // PullUp after its first REQUEST_CHANGES: no later action, so that block is
+  // never dismissed after a fix. Only ids PullUp recorded sending are skipped.
+  const own = new Set<number>();
+  for (const a of await store.listReviewActions(repoId)) {
+    if (a.delivery?.reviewId != null) own.add(a.delivery.reviewId);
+    if (a.delivery?.inline?.reviewId != null) own.add(a.delivery.inline.reviewId);
+  }
+  const reviews = (await store.listReviews(repoId)).filter((r) => !own.has(r.id));
   const byPull = new Map<number, ReviewRecord[]>();
   for (const r of reviews) {
     const list = byPull.get(r.pullNumber);

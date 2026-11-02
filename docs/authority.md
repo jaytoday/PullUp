@@ -69,8 +69,9 @@ touched. Permits are never persisted and never shown to the model.
 ## Credentials (AUT-04)
 
 With a GitHub App, each action gets its own installation token minted for
-**one repository** and the **minimum permissions** (`pull_requests: write` to
-act, `pull_requests: read` + `issues: write` to comment), and revoked
+**one repository** and the **minimum permissions** (`pull_requests: write`
+for any write: GitHub refuses an App's comment on a pull request without it,
+even with `issues: write`), and revoked
 (`DELETE /installation/token`) right after, whatever happened. GitHub tokens
 cannot be shortened below an hour, so revocation is what keeps the window
 short. The record stores the token's repositories, permissions and whether
@@ -156,7 +157,8 @@ in `packages/core/src/authority/authority.test.ts`.
 - Multi-agent delegation (AUT-03) and a separate approval workflow (AUT-05):
   asking a human already makes the human's own GitHub review the independent
   decision.
-- The App token minting and revocation path is tested with fakes only.
+- The App token minting and revocation path was tested live once on a
+  sandbox repo (see `docs/github.md`); the conformance suite uses fakes.
 - The Eve GitHub channel posts the agent's conversational reply as a PR
   comment using the App's standing credentials. That reply is not governed by
   this layer (review actions are; they go only through `log_review_action`).

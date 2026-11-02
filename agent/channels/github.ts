@@ -7,6 +7,12 @@
 
 import { githubChannel } from "eve/channels/github";
 
+// eve's channel reads the App key from GITHUB_APP_PRIVATE_KEY; PullUp's own
+// clients (fetch, actuator) read GITHUB_PRIVATE_KEY. Accept PullUp's name so one
+// variable configures both. Without this the agent's reply comment fails with
+// "GITHUB_APP_PRIVATE_KEY is required" (found in live testing).
+process.env.GITHUB_APP_PRIVATE_KEY ??= process.env.GITHUB_PRIVATE_KEY;
+
 export default {
   ...githubChannel({
     onPullRequest(ctx, pullRequest) {
