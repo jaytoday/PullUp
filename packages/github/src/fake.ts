@@ -44,9 +44,18 @@ export class FakeGitHub implements GitHubApi {
     this.calls.push("findCheckRun");
     return [...this.checkRuns].reverse().find((c) => c.repo === repo && c.headSha === headSha && c.name === name)?.id ?? null;
   }
+  /** GitHub's limits on check run buttons ("requested actions"), which it enforces by refusing the call. */
+  private checkLimits(call: CheckRunCall) {
+    for (const a of call.actions ?? []) {
+      if (a.label.length > 20 || a.identifier.length > 20 || a.description.length > 40) throw new Error(`Invalid request: action "${a.label}" is over GitHub's length limits`);
+    }
+    if ((call.actions?.length ?? 0) > 3) throw new Error("Invalid request: at most 3 actions");
+    if (call.title.length > 255 || call.summary.length > 65_535) throw new Error("Invalid request: output too long");
+  }
   async createCheckRun(call: CheckRunCall) {
     this.calls.push("createCheckRun");
     if (this.failWrites) throw new Error("Resource not accessible by integration");
+    this.checkLimits(call);
     const id = this.checkRuns.length + 1;
     this.checkRuns.push({ ...call, id });
     return id;
@@ -54,6 +63,7 @@ export class FakeGitHub implements GitHubApi {
   async updateCheckRun(id: number, call: CheckRunCall) {
     this.calls.push("updateCheckRun");
     if (this.failWrites) throw new Error("Resource not accessible by integration");
+    this.checkLimits(call);
     const i = this.checkRuns.findIndex((c) => c.id === id);
     this.checkRuns[i] = { ...call, id };
     return id;

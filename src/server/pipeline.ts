@@ -162,8 +162,8 @@ export async function finishRun(runId: string, deps: PipelineDeps): Promise<stri
       ? {
           title: `${waitingFor.reason.replace(/\.$/, "")}: ${waitingFor.question.prompt}`.slice(0, 200),
           actions: [
-            { label: "Pass", identifier: "pass", description: "Let this run pass (people asked or repo admins)." },
-            { label: "Fail", identifier: "fail", description: "Fail this run (people asked or repo admins)." },
+            { label: "Pass", identifier: "pass", description: "Pass this run (people asked or admins)" },
+            { label: "Fail", identifier: "fail", description: "Fail this run (people asked or admins)" },
           ],
         }
       : {}),
