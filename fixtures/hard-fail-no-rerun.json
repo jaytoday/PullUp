@@ -1,0 +1,36 @@
+{
+  "description": "A required test failed once, no rerun, and it is not a known-flaky test.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "a1b2c3d",
+    "diff": "--- a/src/cart.ts\n+++ b/src/cart.ts\n@@ -10,3 +10,4 @@\n export function total(items) {\n-  return items.reduce((s, i) => s + i.price, 0);\n+  const sum = items.reduce((s, i) => s + i.price * i.qty, 0);\n+  return Math.round(sum * 100) / 100;\n }\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "failure",
+            "failedTests": [
+              "cart.test.ts > rounds totals"
+            ],
+            "logExcerpt": "expected 0.3"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": true
+  }
+}

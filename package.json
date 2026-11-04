@@ -1,0 +1,15 @@
+{
+  "name": "pullup",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PullUp: a CI check that fails hard failures, passes when nothing is tricky, and asks a WithAI council (then a person) about the rest.",
+  "type": "module",
+  "packageManager": "pnpm@9.14.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "test": "pnpm -r test"
+  }
+}
