@@ -1,0 +1,43 @@
+{
+  "description": "A flaky rerun and a migration in one change: two questions.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "--- /dev/null\n+++ b/db/migrations/0042_add_index.sql\n@@ -0,0 +1,1 @@\n+CREATE INDEX orders_user ON orders(user_id);\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "failure",
+            "failedTests": [
+              "orders.spec.ts > lists orders"
+            ],
+            "logExcerpt": "ECONNRESET while calling the test database"
+          },
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": [
+      "flaky-test",
+      "sensitive-path"
+    ]
+  }
+}

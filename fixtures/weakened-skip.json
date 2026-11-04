@@ -1,0 +1,35 @@
+{
+  "description": "A test was skipped in the same change that edits the code it covers.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "--- a/test/cart.test.ts\n+++ b/test/cart.test.ts\n@@ -4,3 +4,3 @@\n-it('rounds totals to cents', () => {\n+it.skip('rounds totals to cents', () => {\n   expect(total([{ price: 0.1, qty: 3 }])).toBe(0.3);\n });\n--- a/src/cart.ts\n+++ b/src/cart.ts\n@@ -12,1 +12,1 @@\n-  return Math.round(sum * 100) / 100;\n+  return sum;\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": [
+      "weakened-tests"
+    ]
+  }
+}

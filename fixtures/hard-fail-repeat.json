@@ -38,6 +38,7 @@
     ]
   },
   "expect": {
-    "hardFailure": true
+    "hardFailure": true,
+    "triggers": []
   }
 }

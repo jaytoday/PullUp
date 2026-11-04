@@ -19,6 +19,9 @@ export const attemptSchema = z.object({
 });
 export type Attempt = z.infer<typeof attemptSchema>;
 
+/** A skipped job counts as passed; the hard-failure rule handles a workflow that skipped everything. */
+export const attemptPassed = (a: Attempt) => a.conclusion === "success" || a.conclusion === "skipped";
+
 export const jobSchema = z.object({
   workflow: z.string(),
   name: z.string(),

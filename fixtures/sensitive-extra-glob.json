@@ -1,0 +1,40 @@
+{
+  "description": "A path the repository marked sensitive itself.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    },
+    "sensitivePaths": {
+      "extraGlobs": [
+        "src/pricing/**"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "--- a/src/pricing/rates.ts\n+++ b/src/pricing/rates.ts\n@@ -3,1 +3,1 @@\n-export const VAT = 0.2;\n+export const VAT = 0.25;\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": [
+      "sensitive-path"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import type { Config } from "./config";
-import type { Attempt, Job, ParsedCiRun } from "./ci";
+import { attemptPassed as passed, type Job, type ParsedCiRun } from "./ci";
 
 /**
  * Rule 1 of the flow: a hard failure always fails the run, with no AI call.
@@ -19,8 +19,6 @@ export interface HardFailure {
   reason: string;
   logExcerpt: string;
 }
-
-const passed = (a: Attempt) => a.conclusion === "success" || a.conclusion === "skipped";
 
 function jobFailure(job: Job, knownFlaky: Set<string>): HardFailure | null {
   const last = job.attempts[job.attempts.length - 1]!;

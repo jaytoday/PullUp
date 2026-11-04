@@ -1,0 +1,45 @@
+{
+  "description": "The flaky trigger is switched off for this repository.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    },
+    "triggers": {
+      "flaky-test": {
+        "enabled": false
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "failure",
+            "failedTests": [
+              "a"
+            ],
+            "logExcerpt": "timeout"
+          },
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": []
+  }
+}

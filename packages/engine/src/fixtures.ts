@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { ciRunSchema, type ParsedCiRun } from "./ci";
-import { configSchema, type Config } from "./config";
+import { configSchema, type Config, TRIGGER_IDS } from "./config";
 
 /**
  * Recorded CI results and diffs for offline tests and `pullup check --fixture`.
@@ -12,7 +12,7 @@ const fixtureSchema = z.object({
   description: z.string(),
   config: configSchema,
   run: ciRunSchema,
-  expect: z.object({ hardFailure: z.boolean() }),
+  expect: z.object({ hardFailure: z.boolean(), triggers: z.array(z.enum(TRIGGER_IDS)) }),
 });
 
 export interface Fixture {

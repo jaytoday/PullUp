@@ -31,6 +31,9 @@
     ]
   },
   "expect": {
-    "hardFailure": false
+    "hardFailure": false,
+    "triggers": [
+      "flaky-test"
+    ]
   }
 }

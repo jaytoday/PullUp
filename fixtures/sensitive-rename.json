@@ -1,0 +1,35 @@
+{
+  "description": "A file was moved out of the sign-in folder: the old path counts.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "--- a/src/auth/tokens.ts\n+++ b/src/tokens.ts\n@@ -1,1 +1,1 @@\n-export const TTL = 60;\n+export const TTL = 600;\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": [
+      "sensitive-path"
+    ]
+  }
+}

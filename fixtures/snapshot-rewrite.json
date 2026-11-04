@@ -1,0 +1,35 @@
+{
+  "description": "A snapshot was rewritten in the same change as the component it covers.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "flaky": {
+      "knownTests": [
+        "checkout.spec.ts > shows confirmation"
+      ]
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "b2c3d4e",
+    "diff": "--- a/src/__snapshots__/cart.test.ts.snap\n+++ b/src/__snapshots__/cart.test.ts.snap\n@@ -1,1 +1,1 @@\n-exports[`cart 1`] = `\"$0.30\"`;\n+exports[`cart 1`] = `\"$0.3\"`;\n--- a/src/cart.ts\n+++ b/src/cart.ts\n@@ -12,1 +12,1 @@\n-  return Math.round(sum * 100) / 100;\n+  return sum;\n",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "triggers": [
+      "weakened-tests"
+    ]
+  }
+}
