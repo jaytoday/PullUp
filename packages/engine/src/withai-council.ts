@@ -31,7 +31,7 @@ export const MAX_DIFF_CHARS = 40_000;
 
 const answerJsonSchema = z.toJSONSchema(seatAnswerSchema) as Record<string, unknown>;
 
-export function councilRequest(question: Question, run: ParsedCiRun): Pick<ApplyInput, "request" | "state"> {
+function councilRequest(question: Question, run: ParsedCiRun): Pick<ApplyInput, "request" | "state"> {
   const diff = run.diff.length > MAX_DIFF_CHARS ? `${run.diff.slice(0, MAX_DIFF_CHARS)}\n… (diff cut at ${MAX_DIFF_CHARS} characters)` : run.diff;
   return {
     request: [

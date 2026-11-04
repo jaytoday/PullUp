@@ -8,6 +8,7 @@ import Stepper, { Step } from "@/components/effects/stepper";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 const NO_ANSWER_LABEL: Record<NoAnswerOption, string> = {
@@ -21,6 +22,23 @@ const TRIGGER_LABEL: Record<TriggerId, string> = {
   "weakened-tests": "Weakened tests (skips, deleted tests or assertions, rewritten snapshots)",
   "sensitive-path": "Sensitive paths (sign-in, migrations, payments, secrets, CI configuration)",
 };
+
+function OptionSelect<T extends NoAnswerOption>({ value, onChange, options }: { value: T; onChange: (value: T) => void; options: readonly T[] }) {
+  return (
+    <Select value={value} onValueChange={(next) => onChange(next as T)}>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o} value={o}>
+            {NO_ANSWER_LABEL[o]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 /**
  * Builds `.pullup/config.json` for one repository. PullUp never writes to the
@@ -60,7 +78,6 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
   const file = JSON.stringify({ requiredWorkflows: raw.requiredWorkflows, ...(JSON.stringify(triggers) === JSON.stringify({ "flaky-test": { enabled: true, councilMayPass: true }, "weakened-tests": { enabled: true, councilMayPass: true }, "sensitive-path": { enabled: true, councilMayPass: false } }) ? {} : { triggers }), ...(passStrength !== 4 ? { council: { passStrength } } : {}), ask: raw.ask }, null, 2);
 
   const canNext = [true, raw.requiredWorkflows.length > 0, raw.ask.to.length > 0 && (onNoAnswer !== "escalate" || !!backup.trim()), parsed.success && confirmed][step - 1] ?? true;
-  const select = "h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground";
 
   return (
     <Stepper
@@ -111,13 +128,7 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
               <Input type="number" min={1} value={deadline} onChange={(e) => setDeadline(Number(e.target.value) || 1)} />
             </FormField>
             <FormField label="When no one answers">
-              <select className={select} value={onNoAnswer} onChange={(e) => setOnNoAnswer(e.target.value as NoAnswerOption)}>
-                {NO_ANSWER_OPTIONS.map((o) => (
-                  <option key={o} value={o}>
-                    {NO_ANSWER_LABEL[o]}
-                  </option>
-                ))}
-              </select>
+              <OptionSelect value={onNoAnswer} onChange={setOnNoAnswer} options={NO_ANSWER_OPTIONS} />
             </FormField>
           </div>
           {onNoAnswer === "escalate" ? (
@@ -126,13 +137,7 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
                 <Input value={backup} onChange={(e) => setBackup(e.target.value)} placeholder="oncall@example.com" />
               </FormField>
               <FormField label="If the backup does not answer">
-                <select className={select} value={after} onChange={(e) => setAfter(e.target.value as Exclude<NoAnswerOption, "escalate">)}>
-                  {NO_ANSWER_OPTIONS.filter((o) => o !== "escalate").map((o) => (
-                    <option key={o} value={o}>
-                      {NO_ANSWER_LABEL[o]}
-                    </option>
-                  ))}
-                </select>
+                <OptionSelect value={after} onChange={setAfter} options={NO_ANSWER_OPTIONS.filter((o): o is Exclude<NoAnswerOption, "escalate"> => o !== "escalate")} />
               </FormField>
             </div>
           ) : null}

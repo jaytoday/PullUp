@@ -3,7 +3,7 @@
 // to the plan's list.
 
 /** Minimal glob → RegExp: `**` spans directories, `*` stays within one segment. */
-export function globToRegExp(glob: string): RegExp {
+function globToRegExp(glob: string): RegExp {
   let re = "";
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i]!;

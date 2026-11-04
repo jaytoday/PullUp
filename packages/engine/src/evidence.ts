@@ -38,7 +38,7 @@ export class MemoryEvidenceStore implements EvidenceStore {
   }
 }
 
-export const evidenceHash = (row: Omit<EvidenceRow, "hash">) => sha256(canonicalJson(row));
+const evidenceHash = (row: Omit<EvidenceRow, "hash">) => sha256(canonicalJson(row));
 
 /** Appends one row to its scope's chain. Retries a few times if another writer took the sequence number. */
 export async function appendEvidence(store: EvidenceStore, entry: NewEvidence): Promise<EvidenceRow> {

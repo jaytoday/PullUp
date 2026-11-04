@@ -48,7 +48,7 @@ export type Council = (question: Question, run: ParsedCiRun, seats: string[]) =>
 const MIN_QUOTE = 6;
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 
-export function quoteChecksOut(quote: SeatAnswer["quotes"][number], question: Question, run: ParsedCiRun): boolean {
+function quoteChecksOut(quote: SeatAnswer["quotes"][number], question: Question, run: ParsedCiRun): boolean {
   // Seats often copy a diff line with its leading "+" or "-"; the line's text is what counts.
   const text = norm(quote.source === "diff" ? quote.text.replace(/^\s*[+-](?![+-])/, "") : quote.text);
   if (text.length < MIN_QUOTE) return false;

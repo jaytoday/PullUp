@@ -8,7 +8,7 @@ import { Octokit } from "@octokit/rest";
 export type GitHubEnv = Readonly<Record<string, string | undefined>>;
 
 /** Hosted platforms often store keys with escaped newlines. */
-export const normalizePrivateKey = (key: string) => (key.includes("\\n") ? key.replace(/\\n/g, "\n") : key);
+const normalizePrivateKey = (key: string) => (key.includes("\\n") ? key.replace(/\\n/g, "\n") : key);
 
 const cache = new Map<string, Promise<Octokit>>();
 

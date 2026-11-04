@@ -53,6 +53,7 @@ pnpm build
 pnpm pullup check --fixture fixtures/weakened-skip.json --replay fixtures/recorded/weakened-skip.json
 node e2e/screens.mjs         # every page, light and dark, desktop and phone (needs `pnpm dev` and `pnpm seed`)
 node e2e/effects.mjs         # every animated effect, with and without reduced motion
+node e2e/setup.mjs           # the repo setup wizard, including the confirmation for looser settings
 ```
 
 ## Libraries with conditions

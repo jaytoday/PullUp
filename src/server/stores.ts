@@ -1,5 +1,5 @@
 import type { EvidenceRow, EvidenceStore, NonceLedger } from "@pullup/engine";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { evidence, permitNonces, settings } from "@/lib/db/schema";
 
@@ -19,7 +19,7 @@ export async function evidenceFor(runId: string): Promise<EvidenceRow[]> {
 }
 
 export async function evidenceChain(scope: string): Promise<EvidenceRow[]> {
-  return (await db.select().from(evidence).where(and(eq(evidence.scope, scope))).orderBy(evidence.seq)) as EvidenceRow[];
+  return (await db.select().from(evidence).where(eq(evidence.scope, scope)).orderBy(evidence.seq)) as EvidenceRow[];
 }
 
 export const nonceLedger: NonceLedger = {

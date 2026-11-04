@@ -6,7 +6,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { canonicalJson, sha256 } from "./canonical";
 
-export const PERMIT_TTL_MS = 5 * 60 * 1000;
+const PERMIT_TTL_MS = 5 * 60 * 1000;
 
 export interface PermitClaims {
   readonly v: 1;

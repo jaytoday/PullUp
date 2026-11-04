@@ -20,7 +20,7 @@ export type Collected =
     }
   | { state: "waiting"; pending: string[] };
 
-export function toConclusion(c: string | null): Conclusion {
+function toConclusion(c: string | null): Conclusion {
   if (c === "success" || c === "neutral") return "success";
   if (c === "skipped" || c === "cancelled" || c === "timed_out") return c;
   return "failure";
