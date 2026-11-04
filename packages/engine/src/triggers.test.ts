@@ -65,4 +65,10 @@ describe("parseDiff", () => {
       { kind: "add", text: "z", newLine: 6, oldLine: null },
     ]);
   });
+
+  it("a removed '-- ' line followed by an added '++ ' line stays inside the hunk", () => {
+    const files = parseDiff("--- a/q.sql\n+++ b/q.sql\n@@ -1,2 +1,2 @@\n--- old comment\n+++ new comment\n select 1;\n--- a/r.sql\n+++ b/r.sql\n@@ -1 +1 @@\n-x\n+y\n");
+    expect(files.map((f) => f.path)).toEqual(["q.sql", "r.sql"]);
+    expect(files[0]!.lines.map((l) => `${l.kind}:${l.text}`)).toEqual(["remove:-- old comment", "add:++ new comment", "context:select 1;"]);
+  });
 });

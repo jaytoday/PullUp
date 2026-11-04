@@ -82,7 +82,8 @@ export const configSchema = z.object({
       passStrength: z.number().int().min(1).max(5).default(4),
       /**
        * When true (default), one seat saying "needs a person" stops a council pass.
-       * When false, a pass needs a majority of seats saying "pass" strongly and none saying "fail".
+       * When false, a pass needs a strict majority of seats saying "pass" strongly
+       * (a seat with a valid "fail" still fails the question first).
        */
       needsPersonBlocksPass: z.boolean().default(true),
     })

@@ -19,7 +19,7 @@ export interface DiffFile {
   lines: DiffLine[];
 }
 
-const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const stripPrefix = (p: string) => p.replace(/^[ab]\//, "");
 
 export function parseDiff(diff: string): DiffFile[] {
@@ -27,11 +27,15 @@ export function parseDiff(diff: string): DiffFile[] {
   let file: DiffFile | null = null;
   let oldLine = 0;
   let newLine = 0;
-  let inHunk = false;
+  // Lines still to read in the current hunk, from its header. Counting them is
+  // what tells a removed "-- comment" line apart from the next file's header.
+  let oldLeft = 0;
+  let newLeft = 0;
   const lines = diff.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    if (line.startsWith("--- ") && lines[i + 1]?.startsWith("+++ ")) {
+    const inHunk = oldLeft > 0 || newLeft > 0;
+    if (!inHunk && line.startsWith("--- ") && lines[i + 1]?.startsWith("+++ ")) {
       const from = line.slice(4).trim();
       const to = lines[i + 1]!.slice(4).trim();
       const deleted = to === "/dev/null";
@@ -43,21 +47,30 @@ export function parseDiff(diff: string): DiffFile[] {
         lines: [],
       };
       files.push(file);
-      inHunk = false;
       i++;
       continue;
     }
-    const header = HUNK_HEADER.exec(line);
+    const header = inHunk ? null : HUNK_HEADER.exec(line);
     if (header && file) {
       oldLine = Number(header[1]);
-      newLine = Number(header[2]);
-      inHunk = true;
+      oldLeft = Number(header[2] ?? 1);
+      newLine = Number(header[3]);
+      newLeft = Number(header[4] ?? 1);
       continue;
     }
     if (!file || !inHunk) continue;
-    if (line.startsWith("+")) file.lines.push({ kind: "add", text: line.slice(1), newLine: newLine++, oldLine: null });
-    else if (line.startsWith("-")) file.lines.push({ kind: "remove", text: line.slice(1), newLine: null, oldLine: oldLine++ });
-    else if (line.startsWith(" ")) file.lines.push({ kind: "context", text: line.slice(1), newLine: newLine++, oldLine: oldLine++ });
+    if (line.startsWith("+")) {
+      file.lines.push({ kind: "add", text: line.slice(1), newLine: newLine++, oldLine: null });
+      newLeft--;
+    } else if (line.startsWith("-")) {
+      file.lines.push({ kind: "remove", text: line.slice(1), newLine: null, oldLine: oldLine++ });
+      oldLeft--;
+    } else if (line.startsWith(" ") || line === "") {
+      // A context line; some tools drop the leading space of an empty one.
+      file.lines.push({ kind: "context", text: line.slice(1), newLine: newLine++, oldLine: oldLine++ });
+      oldLeft--;
+      newLeft--;
+    }
   }
   return files;
 }

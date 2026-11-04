@@ -1,5 +1,5 @@
 import type { ParsedCiRun } from "./ci";
-import { checkSeat, type CheckedSeat, type Council } from "./council";
+import { checkSeat, type CheckedSeat, type Council, type RawSeatAnswer } from "./council";
 import type { Config } from "./config";
 import { findHardFailures, type HardFailure } from "./hard-failure";
 import type { Question } from "./question";
@@ -36,7 +36,7 @@ export function resolveQuestion(question: Question, seats: CheckedSeat[], config
   const strongPasses = seats.filter((s) => s.verdict === "pass" && s.strength >= passStrength).length;
   const councilPass = needsPersonBlocksPass
     ? seats.length > 0 && strongPasses === seats.length
-    : strongPasses * 2 > seats.length && seats.every((s) => s.verdict !== "fail");
+    : strongPasses * 2 > seats.length;
   if (councilPass && question.councilMayPass) {
     return { ...base, outcome: "pass", decidedBy: "council", reason: `The council passed it (${strongPasses} of ${seats.length} seats, strength ${passStrength} or more).` };
   }
@@ -86,9 +86,12 @@ export async function decideRun(
   let councilCalls = 0;
   const questions = await Promise.all(
     found.map(async (question) => {
-      const raw = await council(question, run, config.council.seats);
-      councilCalls += raw.length;
-      return resolveQuestion(question, raw.map((r) => checkSeat(r, question, run)), config);
+      const seats = config.council.seats;
+      councilCalls += seats.length;
+      const raw = await council(question, run, seats).catch((error: Error): RawSeatAnswer[] => seats.map((seat) => ({ seat, answer: null, error: error.message })));
+      // Exactly one answer per configured seat: a seat with no answer counts as a failed call, extra answers are ignored.
+      const answers = seats.map((seat) => raw.find((r) => r.seat === seat) ?? { seat, answer: null, error: "no answer from this seat" });
+      return resolveQuestion(question, answers.map((r) => checkSeat(r, question, run)), config);
     }),
   );
   return { ...combine(questions), hardFailures, questions, councilCalls };

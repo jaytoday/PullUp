@@ -52,6 +52,27 @@ describe("rules that must never break, over every fixture", () => {
   });
 });
 
+describe("council failures", () => {
+  const f = fixtures.find((x) => x.name === "flaky-rerun-pass")!;
+
+  it("a council that answers for only some seats cannot pass: the missing seats count as failed calls", async () => {
+    const partial = Object.assign(async (_q: unknown, _r: unknown, seats: string[]) => [{ seat: seats[0]!, answer: PASS }, { seat: seats[0]!, answer: PASS }], { calls: 0 });
+    const decision = await decideRun(f.run, f.config, partial);
+    expect(decision.result).toBe("waiting");
+    expect(decision.questions[0]!.seats).toHaveLength(f.config.council.seats.length);
+    expect(decision.questions[0]!.seats.slice(1).every((s) => s.problems[0] === "call failed: no answer from this seat")).toBe(true);
+  });
+
+  it("a council call that throws (WithAI down or its daily limit reached) asks a person instead of crashing", async () => {
+    const down = async () => {
+      throw new Error("429 daily limit reached");
+    };
+    const decision = await decideRun(f.run, f.config, down);
+    expect(decision.result).toBe("waiting");
+    expect(decision.questions[0]!.seats.every((s) => s.verdict === "needs-person")).toBe(true);
+  });
+});
+
 describe("council answers", () => {
   const f = fixtures.find((x) => x.name === "weakened-skip")!;
   const [question] = findQuestions(f.run, f.config);
