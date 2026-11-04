@@ -33,7 +33,12 @@ export async function overview(now = new Date()) {
   const council = decided.filter((r) => r.councilCalls > 0);
   const recent = await db.select().from(runs).orderBy(desc(runs.firstSeenAt)).limit(12);
   const waiting = await db.select().from(runs).where(eq(runs.state, "waiting"));
+  // Repositories where the council (not a person or a rule) has passed a run.
+  const councilPasses = (await db.select().from(runs).where(eq(runs.result, "pass")))
+    .filter((r) => r.mode === "active" && decisionOf(r)?.questions.some((q) => q.decidedBy === "council" && q.outcome === "pass"))
+    .map((r) => r.repo);
   return {
+    councilPassRepos: [...new Set(councilPasses)],
     runsToday: today.length,
     councilShare: decided.length ? council.length / decided.length : 0,
     costToday: today.reduce((s, r) => s + r.costUsd, 0),

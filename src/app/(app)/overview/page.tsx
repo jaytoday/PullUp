@@ -3,7 +3,9 @@ import { AutoRefresh } from "@/components/common/auto-refresh";
 import { DotPattern } from "@/components/effects/dot-pattern";
 import { NumberTicker } from "@/components/effects/number-ticker";
 import { EmptyState } from "@/components/common/empty-state";
+import { FirstCouncilPass } from "@/components/runs/first-council-pass";
 import { LiveFeed } from "@/components/runs/live-feed";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { Button } from "@/components/ui/button";
 import { dollars } from "@/lib/format";
 import { overview } from "@/server/dashboard";
@@ -26,9 +28,11 @@ export default async function OverviewPage() {
   return (
     <DashboardPanel title="Overview" actions={<Button href="/runs" color="neutral" variant="ghost" size="sm" trailingIcon="i-lucide-arrow-right">All runs</Button>}>
       <AutoRefresh />
+      <FirstCouncilPass repos={o.councilPassRepos} />
       <PageBody>
         {/* A bento of the day's numbers: the counts move when they change; cost never animates. */}
-        <div className="relative grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="overview-tiles">
+        <div data-testid="overview-tiles">
+        <BentoGrid className="relative max-w-none gap-3 sm:grid-cols-2 md:auto-rows-auto md:grid-cols-2 lg:grid-cols-4">
           <DotPattern className="-z-0 text-border [mask-image:radial-gradient(260px_circle_at_top_left,white,transparent)]" />
           <Tile label="Runs in the last 24 hours" className="lg:col-span-2" hint={`${o.repoCount} repositor${o.repoCount === 1 ? "y" : "ies"}`}>
             <NumberTicker value={o.runsToday} />
@@ -42,6 +46,7 @@ export default async function OverviewPage() {
           <Tile label="Council cost, last 24 hours" className="sm:col-span-2 lg:col-span-4" hint="As reported by WithAI">
             {dollars(o.costToday)}
           </Tile>
+        </BentoGrid>
         </div>
         <section className="space-y-2">
           <h2 className="text-sm font-medium text-foreground">Latest runs</h2>

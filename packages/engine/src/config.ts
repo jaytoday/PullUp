@@ -107,3 +107,23 @@ export function triggerEnabled(config: Config, id: TriggerId): boolean {
 export function councilMayPass(config: Config, id: TriggerId): boolean {
   return config.triggers[id]?.councilMayPass ?? COUNCIL_MAY_PASS_DEFAULT[id];
 }
+
+/**
+ * The settings in a config that are looser than PullUp's defaults, in plain
+ * words. The setup page asks for a typed confirmation when there are any.
+ */
+export function loosenings(config: Config): string[] {
+  const out: string[] = [];
+  for (const id of TRIGGER_IDS) {
+    if (!triggerEnabled(config, id)) out.push(`The ${id} trigger is switched off.`);
+    else if (councilMayPass(config, id) && !COUNCIL_MAY_PASS_DEFAULT[id]) out.push(`The council may pass ${id} questions without a person.`);
+  }
+  if (config.sensitivePaths.off.length) out.push(`Sensitive path categories switched off: ${config.sensitivePaths.off.join(", ")}.`);
+  if (config.council.passStrength < 4) out.push(`The council passes with strength ${config.council.passStrength} (default 4).`);
+  if (!config.council.needsPersonBlocksPass) out.push("One reviewer asking for a person no longer stops a council pass.");
+  const passing = (o: NoAnswerOption) => o === "pass" || o === "follow-council";
+  if (passing(config.ask.onNoAnswer)) out.push(`With no answer by the deadline, the run will ${config.ask.onNoAnswer === "pass" ? "pass" : "follow the council"}.`);
+  if (config.ask.onNoAnswer === "escalate" && passing(config.ask.onNoAnswerAfterBackup)) out.push(`If the backup does not answer either, the run will ${config.ask.onNoAnswerAfterBackup === "pass" ? "pass" : "follow the council"}.`);
+  for (const [trigger, option] of Object.entries(config.ask.perTrigger)) if (option && passing(option)) out.push(`For ${trigger}, no answer means ${option === "pass" ? "pass" : "follow the council"}.`);
+  return out;
+}

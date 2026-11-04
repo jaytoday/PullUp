@@ -78,3 +78,18 @@ describe("parseDiff", () => {
     expect(files[0]!.lines.map((l) => `${l.kind}:${l.text}`)).toEqual(["remove:-- old comment", "add:++ new comment", "context:select 1;"]);
   });
 });
+
+describe("loosenings", () => {
+  it("the defaults loosen nothing; each looser setting is named", async () => {
+    const { loosenings } = await import("./config");
+    expect(loosenings(parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a@b.c" } }))).toEqual([]);
+    const loose = parseConfig({
+      requiredWorkflows: ["ci"],
+      triggers: { "sensitive-path": { councilMayPass: true }, "flaky-test": { enabled: false } },
+      sensitivePaths: { off: ["payments"] },
+      council: { passStrength: 3, needsPersonBlocksPass: false },
+      ask: { to: "a@b.c", backup: "c@d.e", onNoAnswer: "escalate", onNoAnswerAfterBackup: "pass", perTrigger: { "weakened-tests": "follow-council" } },
+    });
+    expect(loosenings(loose)).toHaveLength(7);
+  });
+});

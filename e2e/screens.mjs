@@ -27,7 +27,7 @@ for (const [sizeName, viewport] of Object.entries(sizes)) {
   for (const scheme of ["light", "dark"]) {
     const { context, page } = await signedIn(viewport, scheme);
     const firstRun = async () => (await page.goto(`${base}/runs`), page.locator('a[href^="/runs/"]').first().getAttribute("href"));
-    const paths = ["/", "/overview", "/runs", "/questions", "/accuracy", "/settings", await firstRun()];
+    const paths = ["/", "/overview", "/runs", "/questions", "/accuracy", "/settings", "/setup", await firstRun()];
     for (const path of paths) {
       await page.goto(`${base}${path}`);
       await page.waitForLoadState("networkidle");

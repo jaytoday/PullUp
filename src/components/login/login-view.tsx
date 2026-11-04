@@ -4,13 +4,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ColorModeButton } from "@/components/app-shell/color-mode-button";
-import { DotPattern } from "@/components/effects/dot-pattern";
+import DecryptedText from "@/components/effects/decrypted-text";
 import { Icon } from "@/components/icon";
 import { Wordmark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Spotlight } from "@/components/ui/spotlight-new";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { authClient } from "@/lib/auth-client";
 
 const OUTCOMES = [
@@ -21,7 +23,8 @@ const OUTCOMES = [
 ];
 
 /** Sign in, or create the first account (sign-up closes after that). */
-export function LoginView({ headline }: { headline: React.ReactNode }) {
+export function LoginView({ headline }: { headline: string }) {
+  const reduced = useReducedMotion();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
@@ -85,7 +88,12 @@ export function LoginView({ headline }: { headline: React.ReactNode }) {
       </section>
 
       <section className="relative isolate flex flex-1 flex-col px-4 py-6 sm:px-8 lg:px-12 lg:py-8">
-        <DotPattern className="-z-10 text-border mask-[radial-gradient(ellipse_at_center,white,transparent_75%)]" />
+        {/* Aceternity's moving spotlight, tinted with the theme's primary color; left out with reduced motion. */}
+        {reduced ? null : (
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" data-effect="spotlight">
+            <Spotlight gradientFirst="radial-gradient(68.54% 68.72% at 55.02% 31.46%, color-mix(in oklab, var(--primary) 18%, transparent) 0, color-mix(in oklab, var(--primary) 5%, transparent) 50%, transparent 80%)" gradientSecond="radial-gradient(50% 50% at 50% 50%, color-mix(in oklab, var(--primary) 12%, transparent) 0, color-mix(in oklab, var(--primary) 4%, transparent) 80%, transparent 100%)" gradientThird="radial-gradient(50% 50% at 50% 50%, color-mix(in oklab, var(--primary) 8%, transparent) 0, color-mix(in oklab, var(--primary) 3%, transparent) 80%, transparent 100%)" />
+          </div>
+        )}
         <header className="flex items-center justify-between">
           <Link href="/">
             <Wordmark />
@@ -95,7 +103,10 @@ export function LoginView({ headline }: { headline: React.ReactNode }) {
         <div className="flex flex-1 flex-col justify-center py-10 lg:py-16">
           <div className="max-w-lg space-y-6">
             <div className="space-y-3">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{headline}</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl" data-testid="login-headline">
+                {/* React Bits: the headline decodes once on load (shown plainly with reduced motion). */}
+                <DecryptedText text={headline} animateOn="view" sequential revealDirection="start" speed={40} />
+              </h1>
               <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">Code decides what is tricky. A council of AI reviewers answers through WithAI. A person settles the rest, and everything is on the record.</p>
             </div>
             <ul className="grid gap-2 sm:grid-cols-2">

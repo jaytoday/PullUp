@@ -1,7 +1,8 @@
 import { DashboardPanel, PageBody } from "@/components/app-shell/dashboard-panel";
+import { AgreementTile } from "@/components/accuracy/agreement-tile";
 import { EmptyState } from "@/components/common/empty-state";
 import { costPerDay, triggerAccuracy } from "@/server/dashboard";
-import { dollars, percent } from "@/lib/format";
+import { dollars } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Accuracy" };
@@ -18,13 +19,7 @@ export default async function AccuracyPage() {
           {accuracy.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="accuracy">
               {accuracy.map((a) => (
-                <div key={a.trigger} className="rounded-lg bg-background p-4 ring ring-border">
-                  <p className="font-mono text-xs text-muted-foreground">{a.trigger}</p>
-                  <p className="mt-1 text-3xl font-semibold text-foreground tabular-nums">{percent(a.agreed / a.total)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {a.agreed} of {a.total} answers
-                  </p>
-                </div>
+                <AgreementTile key={a.trigger} {...a} />
               ))}
             </div>
           ) : (

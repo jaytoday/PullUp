@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { DashboardPanel, PageBody } from "@/components/app-shell/dashboard-panel";
 import { AutoRefresh } from "@/components/common/auto-refresh";
 import { BorderBeam } from "@/components/effects/border-beam";
+import { Gauge } from "@/components/effects/gauge";
+import { LogTerminal } from "@/components/runs/log-terminal";
 import { QuestionCard } from "@/components/runs/question-card";
 import { ModeBadge, ResultBadge } from "@/components/runs/result-badge";
 import { RunTimeline, type TimelineStep } from "@/components/runs/run-timeline";
@@ -25,6 +27,8 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const hard = decision?.hardFailures.length ?? 0;
   const questions = decision?.questions ?? [];
   const asked = Object.keys(asks).length;
+  const seats = questions.flatMap((q) => q.seats);
+  const answered = seats.filter((s) => !s.problems.some((p) => p.startsWith("call failed") || p.startsWith("answer has the wrong shape"))).length;
 
   const steps: TimelineStep[] = [
     { label: "Collect", detail: run.state === "collecting" ? `Waiting for ${run.pending.join(", ") || "the required workflows"}` : "Job results, reruns, logs and the diff collected", state: run.state === "collecting" ? "current" : "done" },
@@ -51,6 +55,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             <RunTimeline steps={steps} />
           </div>
           <dl className="space-y-2 text-sm">
+            {seats.length ? (
+              <div className="flex items-center gap-3 pb-1">
+                <Gauge value={answered} max={seats.length} label={`${answered} of ${seats.length} seat answers received`} className="size-14 text-xs" />
+                <dd className="text-xs text-muted-foreground">
+                  {answered} of {seats.length} seat answers received
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt className="text-xs text-muted-foreground">Check run on GitHub</dt>
               <dd className="text-body">{run.checkRun ? ((run.checkRun as { sent: boolean; reason?: string }).sent ? "Posted" : `Not posted: ${(run.checkRun as { reason: string }).reason}`) : "Not posted yet"}</dd>
@@ -70,7 +82,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <section key={i} className="space-y-2 rounded-lg bg-background p-4 ring ring-border">
             <h3 className="font-medium text-foreground">Hard failure: {f.workflow}{f.job ? ` / ${f.job}` : ""}</h3>
             <p className="text-sm text-body">{f.reason}</p>
-            {f.logExcerpt ? <pre className="overflow-x-auto rounded bg-elevated p-3 font-mono text-xs text-body">{f.logExcerpt}</pre> : null}
+            {f.logExcerpt ? <LogTerminal title={`${f.workflow}${f.job ? ` / ${f.job}` : ""}: end of the log`} log={f.logExcerpt} /> : null}
           </section>
         ))}
         {questions.map((q) => (

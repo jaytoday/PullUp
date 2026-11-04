@@ -1,5 +1,6 @@
 import type { AskState, ResolvedQuestion } from "@pullup/engine";
 import { Badge } from "@/components/ui/badge";
+import { QuestionStatus } from "./question-status";
 
 const VERDICT = { pass: "success", fail: "error", "needs-person": "warning" } as const;
 const OUTCOME: Record<string, string> = { pass: "Passed", fail: "Failed", ask: "Needs a person" };
@@ -13,10 +14,13 @@ export function QuestionCard({ q, ask }: { q: ResolvedQuestion; ask?: AskState }
   return (
     <section className="space-y-4 rounded-lg bg-background p-4 ring ring-border" data-testid={`question-${q.question.trigger}`}>
       <header className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="flex min-w-0 gap-3">
+          <QuestionStatus outcome={q.outcome} />
+          <div className="min-w-0">
           <p className="font-mono text-xs text-muted-foreground">{q.question.trigger}</p>
           <h3 className="font-medium text-foreground">{q.question.summary}</h3>
           <p className="text-sm text-muted-foreground">{q.question.prompt}</p>
+          </div>
         </div>
         <Badge color={q.outcome === "pass" ? "success" : q.outcome === "fail" ? "error" : "warning"} variant="subtle">
           {OUTCOME[q.outcome]}
