@@ -1,0 +1,26 @@
+{
+  "name": "@pullup/github",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PullUp's GitHub side: App auth, webhook signature check, collecting a commit's CI results, and the governed sender that posts the check run.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^8.3.1",
+    "@octokit/rest": "^21.0.2",
+    "@pullup/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

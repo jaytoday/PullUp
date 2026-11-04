@@ -10,3 +10,7 @@ export * from "./council";
 export * from "./no-answer";
 export * from "./resolution";
 export * from "./withai-council";
+export * from "./canonical";
+export * from "./permit";
+export * from "./evidence";
+export * from "./check-run";

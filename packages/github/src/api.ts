@@ -1,0 +1,125 @@
+import type { Octokit } from "@octokit/rest";
+
+/**
+ * The GitHub calls PullUp makes, kept narrow so tests can use a fake. Reads
+ * (collection) and the one write (the check run, sent only by the governed
+ * sender). PullUp never merges, changes branch protection or reverts.
+ */
+
+export interface WorkflowRunInfo {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  runAttempt: number;
+  createdAt: string;
+}
+
+export interface JobInfo {
+  id: number;
+  name: string;
+  conclusion: string | null;
+}
+
+export interface CheckRunCall {
+  repo: string;
+  headSha: string;
+  name: string;
+  status: "in_progress" | "completed";
+  conclusion: "success" | "failure" | "neutral" | null;
+  title: string;
+  summary: string;
+  /** Link back to the run in PullUp's dashboard. */
+  detailsUrl?: string;
+}
+
+export interface GitHubApi {
+  /** `.pullup/config.json` on the repository's default branch, or null when there is none. */
+  defaultBranchConfig(repo: string): Promise<string | null>;
+  workflowRuns(repo: string, headSha: string): Promise<WorkflowRunInfo[]>;
+  jobs(repo: string, runId: number, attempt: number): Promise<JobInfo[]>;
+  /** The end of a job's log. */
+  jobLog(repo: string, jobId: number): Promise<string>;
+  pullDiff(repo: string, pull: number): Promise<string>;
+  findCheckRun(repo: string, headSha: string, name: string): Promise<number | null>;
+  createCheckRun(call: CheckRunCall): Promise<number>;
+  updateCheckRun(id: number, call: CheckRunCall): Promise<number>;
+}
+
+const split = (repo: string) => {
+  const [owner, name] = repo.split("/") as [string, string];
+  return { owner, repo: name };
+};
+
+const LOG_TAIL_LINES = 60;
+const LOG_TAIL_CHARS = 4000;
+
+/** The end of a log, with GitHub's timestamps taken off each line. */
+export function logTail(log: string): string {
+  const lines = log.replace(/\r/g, "").split("\n").map((l) => l.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z /, ""));
+  return lines.slice(-LOG_TAIL_LINES).join("\n").trim().slice(-LOG_TAIL_CHARS);
+}
+
+export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubApi {
+  const checkBody = (c: CheckRunCall) => ({
+    ...split(c.repo),
+    name: c.name,
+    head_sha: c.headSha,
+    status: c.status,
+    ...(c.conclusion ? { conclusion: c.conclusion } : {}),
+    ...(c.detailsUrl ? { details_url: c.detailsUrl } : {}),
+    output: { title: c.title, summary: c.summary },
+  });
+  return {
+    async defaultBranchConfig(repo) {
+      const gh = await octokit(repo);
+      const { data } = await gh.rest.repos.get(split(repo));
+      try {
+        const res = await gh.rest.repos.getContent({ ...split(repo), path: ".pullup/config.json", ref: data.default_branch });
+        const file = res.data as { content?: string };
+        return file.content ? Buffer.from(file.content, "base64").toString("utf8") : null;
+      } catch (err) {
+        if ((err as { status?: number }).status === 404) return null;
+        throw err;
+      }
+    },
+    async workflowRuns(repo, headSha) {
+      const gh = await octokit(repo);
+      const runs = await gh.paginate(gh.rest.actions.listWorkflowRunsForRepo, { ...split(repo), head_sha: headSha, per_page: 100 });
+      return runs.map((r) => ({ id: r.id, name: r.name ?? "", status: r.status ?? "", conclusion: r.conclusion ?? null, runAttempt: r.run_attempt ?? 1, createdAt: r.created_at }));
+    },
+    async jobs(repo, runId, attempt) {
+      const gh = await octokit(repo);
+      const jobs = await gh.paginate(gh.rest.actions.listJobsForWorkflowRunAttempt, { ...split(repo), run_id: runId, attempt_number: attempt, per_page: 100 });
+      return jobs.map((j) => ({ id: j.id, name: j.name, conclusion: j.conclusion ?? null }));
+    },
+    async jobLog(repo, jobId) {
+      const gh = await octokit(repo);
+      try {
+        const { data } = await gh.rest.actions.downloadJobLogsForWorkflowRun({ ...split(repo), job_id: jobId });
+        return logTail(String(data));
+      } catch {
+        return "";
+      }
+    },
+    async pullDiff(repo, pull) {
+      const gh = await octokit(repo);
+      const { data } = await gh.rest.pulls.get({ ...split(repo), pull_number: pull, mediaType: { format: "diff" } });
+      return String(data);
+    },
+    async findCheckRun(repo, headSha, name) {
+      const gh = await octokit(repo);
+      const { data } = await gh.rest.checks.listForRef({ ...split(repo), ref: headSha, check_name: name, filter: "latest" });
+      return data.check_runs[0]?.id ?? null;
+    },
+    async createCheckRun(call) {
+      const gh = await octokit(call.repo);
+      return (await gh.rest.checks.create(checkBody(call))).data.id;
+    },
+    async updateCheckRun(id, call) {
+      const gh = await octokit(call.repo);
+      const { head_sha: _sha, ...body } = checkBody(call);
+      return (await gh.rest.checks.update({ ...body, check_run_id: id })).data.id;
+    },
+  };
+}
