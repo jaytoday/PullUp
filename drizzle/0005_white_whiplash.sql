@@ -1,0 +1,1 @@
+ALTER TABLE `runs` ADD `rerun_requested` integer DEFAULT false NOT NULL;

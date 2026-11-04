@@ -6,6 +6,8 @@ import { collectRun } from "./collect";
 import { FakeGitHub } from "./fake";
 import { sendCheckRun, type SenderDeps } from "./send";
 import { verifyWebhookSignature } from "./webhook";
+import { junitFailures } from "./junit";
+import { findHardFailures, findQuestions } from "@pullup/engine";
 
 const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a@example.com" } });
 const repo = "acme/shop";
@@ -51,6 +53,34 @@ describe("collecting a commit's CI", () => {
     const tail = logTail(log);
     expect(tail.startsWith("line 40")).toBe(true);
     expect(tail.endsWith("line 99")).toBe(true);
+  });
+});
+
+describe("test reports", () => {
+  const XML = `<?xml version="1.0"?><testsuites><testsuite name="cart">
+    <testcase classname="checkout.spec.ts" name="shows confirmation"><failure message="timeout">Timeout 5000ms</failure></testcase>
+    <testcase classname="cart.test.ts" name="adds &amp; removes"><error>boom</error></testcase>
+    <testcase classname="cart.test.ts" name="passes"/>
+    <testcase classname="cart.test.ts" name="skipped"><skipped/></testcase>
+  </testsuite></testsuites>`;
+
+  it("reads failing and erroring test cases from JUnit XML", () => {
+    expect(junitFailures(XML)).toEqual(["checkout.spec.ts > shows confirmation", "cart.test.ts > adds & removes"]);
+  });
+
+  it("names the failing tests of the latest attempt, so a known-flaky failure is a question, not a hard failure", async () => {
+    const gh = github();
+    gh.runs[0]!.runAttempt = 1;
+    gh.reportFiles.set(10, new Map([["junit.xml", XML.replace(/<testcase classname="cart.test.ts" name="adds[\s\S]*?<\/testcase>/, "")]]));
+    const known = parseConfig({ requiredWorkflows: ["ci"], flaky: { knownTests: ["checkout.spec.ts > shows confirmation"] }, ask: { to: "a" } });
+    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: known });
+    if (got.state !== "ready") throw new Error("not ready");
+    const run = { ...got.run, diff: got.run.diff ?? "" } as Parameters<typeof findHardFailures>[0];
+    expect(run.jobs.find((j) => j.name === "test")!.attempts[0]!.failedTests).toEqual(["checkout.spec.ts > shows confirmation"]);
+    expect(findHardFailures(run, known)).toEqual([]);
+    expect(findQuestions(run, known).map((q) => q.trigger)).toEqual(["flaky-test"]);
+    expect(got.notes.join(" ")).not.toContain("pullup-reports");
+    expect(got.rerunnable).toEqual([10]);
   });
 });
 

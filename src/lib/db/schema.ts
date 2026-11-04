@@ -35,6 +35,8 @@ export const runs = sqliteTable(
     checkRun: text("check_run", { mode: "json" }),
     firstSeenAt: integer("first_seen_at", { mode: "timestamp_ms" }).notNull(),
     decidedAt: integer("decided_at", { mode: "timestamp_ms" }),
+    /** PullUp asked GitHub to rerun failed jobs for this commit (at most once). */
+    rerunRequested: integer("rerun_requested", { mode: "boolean" }).notNull().default(false),
     /** While set and in the future, one worker owns this run. */
     lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),
   },
@@ -87,6 +89,8 @@ export const asks = sqliteTable(
     /** WithAI questions sent, newest last: `{ id, to, open }`. */
     withai: text("withai", { mode: "json" }).$type<{ id: string; to: string; open: boolean }[]>().notNull().default([]),
     open: integer("open", { mode: "boolean" }).notNull().default(true),
+    /** Bumped on every change of `state`, so two writers (an answer and the worker's clock) cannot overwrite each other. */
+    version: integer("version").notNull().default(0),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.runId, t.questionId] }), index("asks_open").on(t.open)],

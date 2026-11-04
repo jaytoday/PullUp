@@ -98,11 +98,20 @@ async function act(run: Run, row: AskRow, q: ResolvedQuestion, config: Config, a
   return withai;
 }
 
-async function save(row: AskRow, state: AskState, withai: AskRow["withai"], now: Date) {
-  await db
+const sameAsk = (row: AskRow) => and(eq(asks.runId, row.runId), eq(asks.questionId, row.questionId));
+
+/** Write a new state only if no one changed the ask since `row` was read. False means someone else got there first. */
+async function saveState(row: AskRow, state: AskState, now: Date): Promise<boolean> {
+  const done = await db
     .update(asks)
-    .set({ state, withai, open: state.answer === null, updatedAt: now })
-    .where(and(eq(asks.runId, row.runId), eq(asks.questionId, row.questionId)));
+    .set({ state, open: state.answer === null, version: row.version + 1, updatedAt: now })
+    .where(and(sameAsk(row), eq(asks.version, row.version)))
+    .returning();
+  return done.length === 1;
+}
+
+async function saveWithai(row: AskRow, withai: AskRow["withai"]) {
+  await db.update(asks).set({ withai }).where(sameAsk(row));
 }
 
 const questionsOf = (run: Run) => ((run.decision as { questions?: ResolvedQuestion[] } | null)?.questions ?? []);
@@ -116,7 +125,7 @@ export async function ensureAsks(run: Run, deps: AskDeps): Promise<void> {
     const { state, actions } = startAsk(q.question, config, now.getTime());
     const [row] = await db.insert(asks).values({ runId: run.id, questionId: q.question.id, state, updatedAt: now }).onConflictDoNothing().returning();
     if (!row) continue;
-    await save(row, state, await act(run, row, q, config, actions, deps), now);
+    await saveWithai(row, await act(run, row, q, config, actions, deps));
   }
 }
 
@@ -142,10 +151,15 @@ export async function recordAnswer(run: Run, input: { value: PersonAnswer; by: s
       why = result.why;
       continue;
     }
+    // Two answers at the same moment: only the first write wins.
+    if (!(await saveState(row, result.state, now))) {
+      why = "Someone else answered first.";
+      continue;
+    }
     accepted++;
     const q = questionsOf(run).find((x) => x.question.id === row.questionId)!;
     await record(run, "answered", { question: row.questionId, value: input.value, by: input.by, via: input.via, admin: input.isAdmin && !(row.state as AskState).asked.includes(input.by), reason: input.reason }, now);
-    await save(row, result.state, await act(run, row, q, config, result.actions, deps), now);
+    await saveWithai(row, await act(run, row, q, config, result.actions, deps));
   }
   return accepted ? { accepted } : { accepted, why };
 }
@@ -195,7 +209,9 @@ export async function tickAsks(deps: AskDeps): Promise<Set<string>> {
     const now = deps.now();
     const next = tick(state, q.question, q.seats, run.config as Config, now.getTime());
     if (next.state === state) continue;
-    await save(fresh, next.state, await act(run, fresh, q, run.config as Config, next.actions, deps), now);
+    // An answer that arrived in between wins; the clock looks again next minute.
+    if (!(await saveState(fresh, next.state, now))) continue;
+    await saveWithai(fresh, await act(run, fresh, q, run.config as Config, next.actions, deps));
     if (next.state.noAnswer) changed.add(run.id);
   }
   return changed;

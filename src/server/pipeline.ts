@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, settle, withaiCouncil } from "@pullup/engine";
-import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, type SenderDeps } from "@pullup/github";
+import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, sendRerun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
@@ -113,6 +113,12 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
     const collected = await collectRun(deps.github, { repo: run.repo, headSha: run.headSha, pull: run.pull, config, force });
     if (collected.state === "waiting") {
       await db.update(runs).set({ pending: collected.pending }).where(eq(runs.id, runId));
+      return "collecting";
+    }
+    // The flaky-test rule's one rerun (off unless the repo turns it on): ask GitHub, then wait for the new attempt.
+    if (config.flaky.rerun && !run.rerunRequested && collected.rerunnable.length) {
+      for (const workflowRunId of collected.rerunnable) await sendRerun(senderDeps(deps), runId, { repo: run.repo, workflowRunId });
+      await db.update(runs).set({ rerunRequested: true, pending: ["rerun of failed jobs"] }).where(eq(runs.id, runId));
       return "collecting";
     }
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);

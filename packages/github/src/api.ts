@@ -1,4 +1,5 @@
 import type { Octokit } from "@octokit/rest";
+import { strFromU8, unzipSync } from "fflate";
 
 /**
  * The GitHub calls PullUp makes, kept narrow so tests can use a fake. Reads
@@ -35,6 +36,11 @@ export interface CheckRunCall {
   actions?: { label: string; identifier: string; description: string }[];
 }
 
+export interface RerunCall {
+  repo: string;
+  workflowRunId: number;
+}
+
 export interface CommentCall {
   repo: string;
   issue: number;
@@ -53,6 +59,10 @@ export interface GitHubApi {
   createCheckRun(call: CheckRunCall): Promise<number>;
   updateCheckRun(id: number, call: CheckRunCall): Promise<number>;
   createComment(call: CommentCall): Promise<number>;
+  /** The files in a workflow run's newest `pullup-reports` artifact (name → text), or null when there is none. */
+  reports(repo: string, workflowRunId: number): Promise<Map<string, string> | null>;
+  /** Rerun the failed jobs of one workflow run (needs Actions write). */
+  rerunFailedJobs(call: RerunCall): Promise<number>;
   /** "admin", "write", "read" or "none". */
   permission(repo: string, login: string): Promise<string>;
 }
@@ -61,6 +71,9 @@ const split = (repo: string) => {
   const [owner, name] = repo.split("/") as [string, string];
   return { owner, repo: name };
 };
+
+/** The workflow artifact that holds test reports (JUnit XML). */
+export const REPORTS_ARTIFACT = "pullup-reports";
 
 const LOG_TAIL_LINES = 60;
 const LOG_TAIL_CHARS = 4000;
@@ -136,6 +149,20 @@ export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubA
     async createComment(call) {
       const gh = await octokit(call.repo);
       return (await gh.rest.issues.createComment({ ...split(call.repo), issue_number: call.issue, body: call.body })).data.id;
+    },
+    async reports(repo, workflowRunId) {
+      const gh = await octokit(repo);
+      const { data } = await gh.rest.actions.listWorkflowRunArtifacts({ ...split(repo), run_id: workflowRunId, name: REPORTS_ARTIFACT });
+      const newest = data.artifacts.filter((a) => !a.expired).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+      if (!newest) return null;
+      const zip = await gh.rest.actions.downloadArtifact({ ...split(repo), artifact_id: newest.id, archive_format: "zip" });
+      const files = unzipSync(new Uint8Array(zip.data as ArrayBuffer));
+      return new Map(Object.entries(files).map(([name, bytes]) => [name, strFromU8(bytes)]));
+    },
+    async rerunFailedJobs(call) {
+      const gh = await octokit(call.repo);
+      await gh.rest.actions.reRunWorkflowFailedJobs({ ...split(call.repo), run_id: call.workflowRunId });
+      return call.workflowRunId;
     },
     async permission(repo, login) {
       const gh = await octokit(repo);

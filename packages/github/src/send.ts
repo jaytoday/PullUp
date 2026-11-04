@@ -1,12 +1,13 @@
 import { appendEvidence, checkPermit, type EvidenceStore, issuePermit, type NonceLedger } from "@pullup/engine";
-import type { CheckRunCall, CommentCall, GitHubApi } from "./api";
+import type { CheckRunCall, CommentCall, GitHubApi, RerunCall } from "./api";
 
 /**
  * The governed sender: the only code that writes to GitHub. For each call:
  * stop switch → permit issued for this exact call → permit re-checked right
  * before acting (signature, expiry, call, single use) → the call → evidence.
  * Every step, including a refusal or a failed call, goes on the hash-chained
- * record. The only calls are the "PullUp" check run and a reminder comment;
+ * record. The only calls are the "PullUp" check run, a reminder comment and
+ * (when the repo turns it on) one rerun of a workflow's failed jobs;
  * PullUp never merges, changes branch protection or reverts.
  */
 
@@ -65,4 +66,9 @@ export function sendCheckRun(deps: SenderDeps, runId: string, call: CheckRunCall
 /** A comment on the pull request (the reminder to the person asked). */
 export function sendComment(deps: SenderDeps, runId: string, call: CommentCall): Promise<SendResult> {
   return governed(deps, runId, call.repo, "comment", call, async () => ({ id: await deps.api.createComment(call) }));
+}
+
+/** Rerun one workflow run's failed jobs (the flaky-test rule, once per commit, when `flaky.rerun` is on). */
+export function sendRerun(deps: SenderDeps, runId: string, call: RerunCall): Promise<SendResult> {
+  return governed(deps, runId, call.repo, "rerun-failed-jobs", call, async () => ({ id: await deps.api.rerunFailedJobs(call) }));
 }

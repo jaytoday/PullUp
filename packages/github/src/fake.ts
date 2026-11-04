@@ -1,4 +1,4 @@
-import type { CheckRunCall, CommentCall, GitHubApi, JobInfo, WorkflowRunInfo } from "./api";
+import type { CheckRunCall, CommentCall, GitHubApi, JobInfo, RerunCall, WorkflowRunInfo } from "./api";
 
 /** An in-memory GitHub for tests: set the repository's state, then read what PullUp sent. */
 export class FakeGitHub implements GitHubApi {
@@ -11,6 +11,9 @@ export class FakeGitHub implements GitHubApi {
   diffs = new Map<string, string>();
   checkRuns: (CheckRunCall & { id: number })[] = [];
   comments: (CommentCall & { id: number })[] = [];
+  reruns: RerunCall[] = [];
+  /** `pullup-reports` files per workflow run id. */
+  reportFiles = new Map<number, Map<string, string>>();
   /** Repo permission per login; anyone else has "none". */
   permissions = new Map<string, string>();
   /** Every call, by name, in order. */
@@ -61,6 +64,16 @@ export class FakeGitHub implements GitHubApi {
     const id = this.comments.length + 1;
     this.comments.push({ ...call, id });
     return id;
+  }
+  async reports(_repo: string, workflowRunId: number) {
+    this.calls.push("reports");
+    return this.reportFiles.get(workflowRunId) ?? null;
+  }
+  async rerunFailedJobs(call: RerunCall) {
+    this.calls.push("rerunFailedJobs");
+    if (this.failWrites) throw new Error("Resource not accessible by integration");
+    this.reruns.push(call);
+    return call.workflowRunId;
   }
   async permission(_repo: string, login: string) {
     this.calls.push("permission");

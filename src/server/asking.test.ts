@@ -91,6 +91,15 @@ describe("asking a person (active mode)", () => {
     expect((await evidenceFor(id)).map((e) => e.kind)).toContain("answered");
   });
 
+  it("two answers at the same moment: exactly one is accepted", async () => {
+    const s = setup();
+    const { run } = await start(s);
+    const results = await Promise.all([answerFromGithub(run, "owner", "pass", "", "check-run-button", s.deps), answerFromGithub(run, "admin-user", "fail", "", "comment", s.deps)]);
+    expect(results.map((r) => r.accepted).sort()).toEqual([0, 1]);
+    const winner = results[0]!.accepted ? "success" : "failure";
+    expect(check(s.gh).conclusion).toBe(winner);
+  });
+
   it("only the person asked or a repo admin may answer from GitHub", async () => {
     const s = setup();
     const { run } = await start(s);

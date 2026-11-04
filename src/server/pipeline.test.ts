@@ -97,6 +97,25 @@ describe("the pipeline (shadow mode)", () => {
     expect(gh.checkRuns[0]!.title).toBe("Shadow: would pass");
   });
 
+  it("with flaky.rerun on, a first-attempt failure is rerun once through the governed sender, then decided on the new attempt", async () => {
+    const gh = github({ conclusion: "failure" });
+    gh.config.set(repo, JSON.stringify({ requiredWorkflows: ["ci"], flaky: { rerun: true }, ask: { to: "owner@example.com" } }));
+    const id = await noteWorkflowFinished(repo, "s1", 7, T0);
+    expect(await processRun(id, deps(gh))).toBe("collecting");
+    expect(gh.reruns).toEqual([{ repo, workflowRunId: 10 }]);
+    expect(gh.checkRuns).toHaveLength(0);
+    expect((await evidenceFor(id)).map((e) => e.kind)).toEqual(["permit-issued", "sent"]);
+    // GitHub starts attempt 2; when it fails again it is a hard failure, and no second rerun is asked for.
+    gh.runs[0]!.runAttempt = 2;
+    gh.jobsByAttempt.set("10/2", [{ id: 2, name: "test", conclusion: "failure" }]);
+    await noteWorkflowFinished(repo, "s1", 7, T0);
+    const d = deps(gh);
+    expect(await processRun(id, d)).toBe("decided");
+    expect(gh.reruns).toHaveLength(1);
+    expect(d.council.calls).toBe(0);
+    expect(gh.checkRuns[0]!.title).toBe("Shadow: would fail");
+  });
+
   it("with the stop switch on, nothing is posted and the refusal is recorded", async () => {
     await db.insert(settings).values({ key: "stopped", value: true });
     const gh = github();

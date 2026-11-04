@@ -65,8 +65,10 @@ export const configSchema = z.object({
     .object({
       /** Tests known to fail now and then. A failure of only these tests is a question, not a hard failure. */
       knownTests: z.array(z.string()).default([]),
+      /** Rerun a required workflow's failed jobs once, so a flaky failure can show itself (costs CI minutes; off by default). */
+      rerun: z.boolean().default(false),
     })
-    .default({ knownTests: [] }),
+    .default({ knownTests: [], rerun: false }),
   /** Per trigger: switch it off, or change whether the council may pass it alone. */
   triggers: z.partialRecord(z.enum(TRIGGER_IDS), triggerSettingsSchema).default({}),
   sensitivePaths: z
