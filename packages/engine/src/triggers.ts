@@ -20,6 +20,7 @@ const flakyTest: Detector = (run, _files, config) => {
   const known = new Set(config.flaky.knownTests);
   const evidence: Evidence[] = [];
   const tests = new Set<string>();
+  let flakyJobs = 0;
   for (const job of run.jobs) {
     if (!required.has(job.workflow)) continue;
     const last = job.attempts[job.attempts.length - 1]!;
@@ -29,12 +30,13 @@ const flakyTest: Detector = (run, _files, config) => {
       : job.attempts.length === 1 && last.failedTests.length > 0 && last.failedTests.every((t) => known.has(t))
         ? [last]
         : [];
+    if (flaky.length) flakyJobs++;
     for (const attempt of flaky) {
       attempt.failedTests.forEach((t) => tests.add(t));
       if (attempt.logExcerpt) evidence.push({ source: "log", where: `${job.workflow} / ${job.name}`, line: null, text: attempt.logExcerpt });
     }
   }
-  if (!tests.size && !evidence.length) return null;
+  if (!flakyJobs) return null;
   const names = [...tests];
   return {
     prompt: "A test failed and then passed on a rerun, or is known to be flaky. Should this run pass?",

@@ -24,7 +24,7 @@ export function checkRunView(decision: RunDecision, mode: CheckMode, notes: stri
   lines.push(decision.reason, "");
   for (const f of decision.hardFailures) lines.push(`- Hard failure: ${f.reason}`);
   for (const q of decision.questions) {
-    lines.push(`### ${q.question.summary}`, `${q.question.prompt}`, "", `**${q.outcome === "ask" ? "Ask a person" : q.outcome === "pass" ? "Pass" : "Fail"}**: ${q.reason}`, "");
+    lines.push(`### ${q.question.summary}`, `${q.question.prompt}`, "", q.outcome === "ask" ? `**${q.reason}**` : `**${q.outcome === "pass" ? "Pass" : "Fail"}**: ${q.reason}`, "");
     for (const s of q.seats) {
       lines.push(`- ${s.seat.split(":")[0]}: ${s.verdict} (strength ${s.strength})${s.reason ? `. ${s.reason}` : ""}`);
       for (const quote of s.validQuotes) lines.push(`  > \`${quote.text.replace(/`/g, "'")}\` (${quote.source})`);

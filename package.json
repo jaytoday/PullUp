@@ -9,9 +9,14 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "next dev -p 3500",
+    "build": "next build",
+    "start": "next start -p 3500",
+    "worker": "tsx --env-file-if-exists=.env worker/index.ts",
     "pullup": "tsx --env-file-if-exists=.env cli/pullup.ts",
+    "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit && pnpm -r exec tsc --noEmit",
-    "test": "pnpm -r test && vitest run --dir cli"
+    "test": "pnpm -r test && vitest run"
   },
   "bin": {
     "pullup": "cli/pullup.ts"
@@ -19,12 +24,21 @@
   "dependencies": {
     "@pullup/engine": "workspace:*",
     "@withai/client": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@libsql/client": "^0.17.3",
+    "@pullup/github": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/node": "25.9.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.10"
   }
 }

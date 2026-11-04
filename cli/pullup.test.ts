@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { check } from "./pullup";
 
-const NO_WITHAI = {};
+const NO_WITHAI = {} as NodeJS.ProcessEnv;
 
 function repoWithBranch(): string {
   const dir = mkdtempSync(join(tmpdir(), "pullup-check-"));

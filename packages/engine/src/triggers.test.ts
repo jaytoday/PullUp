@@ -28,6 +28,12 @@ describe("triggers over every fixture", () => {
 });
 
 describe("trigger details", () => {
+  it("a job that failed then passed on a rerun is a flaky-test question even with no log or test names", () => {
+    const run = ciRunSchema.parse({ repo: "a/b", headSha: "s", jobs: [{ workflow: "ci", name: "test", attempts: [{ conclusion: "failure" }, { conclusion: "success" }] }] });
+    const [q] = findQuestions(run, parseConfig({ requiredWorkflows: ["ci"], ask: { to: "x" } }));
+    expect(q).toMatchObject({ trigger: "flaky-test", summary: "A job failed and then passed on a rerun.", evidence: [] });
+  });
+
   const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" } });
   const run = (diff: string) => ciRunSchema.parse({ repo: "a/b", headSha: "x", jobs: [{ workflow: "ci", name: "t", attempts: [{ conclusion: "success" }] }], diff });
 
