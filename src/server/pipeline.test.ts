@@ -25,7 +25,7 @@ function github(opts: { conclusion?: string; diff?: string; status?: string } = 
   return gh;
 }
 
-const deps = (gh: FakeGitHub, council = fixedCouncil(PASS), now = T0): PipelineDeps & { council: ReturnType<typeof fixedCouncil> } => ({ github: gh, council, now: () => now });
+const deps = (gh: FakeGitHub, council = fixedCouncil(PASS), now = T0): PipelineDeps & { council: ReturnType<typeof fixedCouncil> } => ({ github: gh, council, withai: null, now: () => now });
 
 beforeAll(migrateDb);
 beforeEach(async () => {

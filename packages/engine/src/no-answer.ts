@@ -102,3 +102,11 @@ export function askOutcome(state: AskState): { outcome: PersonAnswer | "ask"; de
   if (state.noAnswer) return { outcome: state.noAnswer.outcome, decidedBy: "no-answer", reason: state.noAnswer.reason };
   return { outcome: "ask", decidedBy: null, reason: `Waiting for ${state.asked[state.asked.length - 1]}.` };
 }
+
+/** Who a GitHub user is for answering: the person asked (by their configured login), or just that login. */
+export function personForGithubLogin(config: Config, login: string): string {
+  const l = login.toLowerCase();
+  if (config.ask.toGithub?.toLowerCase() === l) return config.ask.to;
+  if (config.ask.backup && config.ask.backupGithub?.toLowerCase() === l) return config.ask.backup;
+  return `github:${login}`;
+}

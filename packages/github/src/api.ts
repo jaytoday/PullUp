@@ -31,6 +31,14 @@ export interface CheckRunCall {
   summary: string;
   /** Link back to the run in PullUp's dashboard. */
   detailsUrl?: string;
+  /** Buttons on the check run (GitHub "requested actions"); pressing one sends a `check_run` webhook. */
+  actions?: { label: string; identifier: string; description: string }[];
+}
+
+export interface CommentCall {
+  repo: string;
+  issue: number;
+  body: string;
 }
 
 export interface GitHubApi {
@@ -44,6 +52,9 @@ export interface GitHubApi {
   findCheckRun(repo: string, headSha: string, name: string): Promise<number | null>;
   createCheckRun(call: CheckRunCall): Promise<number>;
   updateCheckRun(id: number, call: CheckRunCall): Promise<number>;
+  createComment(call: CommentCall): Promise<number>;
+  /** "admin", "write", "read" or "none". */
+  permission(repo: string, login: string): Promise<string>;
 }
 
 const split = (repo: string) => {
@@ -69,6 +80,7 @@ export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubA
     ...(c.conclusion ? { conclusion: c.conclusion } : {}),
     ...(c.detailsUrl ? { details_url: c.detailsUrl } : {}),
     output: { title: c.title, summary: c.summary },
+    actions: c.actions ?? [],
   });
   return {
     async defaultBranchConfig(repo) {
@@ -120,6 +132,18 @@ export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubA
       const gh = await octokit(call.repo);
       const { head_sha: _sha, ...body } = checkBody(call);
       return (await gh.rest.checks.update({ ...body, check_run_id: id })).data.id;
+    },
+    async createComment(call) {
+      const gh = await octokit(call.repo);
+      return (await gh.rest.issues.createComment({ ...split(call.repo), issue_number: call.issue, body: call.body })).data.id;
+    },
+    async permission(repo, login) {
+      const gh = await octokit(repo);
+      try {
+        return (await gh.rest.repos.getCollaboratorPermissionLevel({ ...split(repo), username: login })).data.permission;
+      } catch {
+        return "none";
+      }
     },
   };
 }

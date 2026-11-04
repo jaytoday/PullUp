@@ -1,4 +1,4 @@
-import type { CheckRunCall, GitHubApi, JobInfo, WorkflowRunInfo } from "./api";
+import type { CheckRunCall, CommentCall, GitHubApi, JobInfo, WorkflowRunInfo } from "./api";
 
 /** An in-memory GitHub for tests: set the repository's state, then read what PullUp sent. */
 export class FakeGitHub implements GitHubApi {
@@ -10,6 +10,9 @@ export class FakeGitHub implements GitHubApi {
   logs = new Map<number, string>();
   diffs = new Map<string, string>();
   checkRuns: (CheckRunCall & { id: number })[] = [];
+  comments: (CommentCall & { id: number })[] = [];
+  /** Repo permission per login; anyone else has "none". */
+  permissions = new Map<string, string>();
   /** Every call, by name, in order. */
   calls: string[] = [];
   failWrites = false;
@@ -51,5 +54,16 @@ export class FakeGitHub implements GitHubApi {
     const i = this.checkRuns.findIndex((c) => c.id === id);
     this.checkRuns[i] = { ...call, id };
     return id;
+  }
+  async createComment(call: CommentCall) {
+    this.calls.push("createComment");
+    if (this.failWrites) throw new Error("Resource not accessible by integration");
+    const id = this.comments.length + 1;
+    this.comments.push({ ...call, id });
+    return id;
+  }
+  async permission(_repo: string, login: string) {
+    this.calls.push("permission");
+    return this.permissions.get(login) ?? "none";
   }
 }

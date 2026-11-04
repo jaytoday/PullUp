@@ -42,6 +42,9 @@ const askSchema = z
     to: z.string().min(1),
     /** Asked when `onNoAnswer` is `escalate` and `to` did not answer in time. */
     backup: z.string().min(1).optional(),
+    /** GitHub logins of `to` and `backup`, so their Pass / Fail buttons and `/pullup` comments count as theirs. */
+    toGithub: z.string().min(1).optional(),
+    backupGithub: z.string().min(1).optional(),
     deadlineMinutes: z.number().int().min(1).max(60 * 24 * 14).default(240),
     onNoAnswer: z.enum(NO_ANSWER_OPTIONS).default("fail"),
     /** After `escalate`, if the backup does not answer either. */

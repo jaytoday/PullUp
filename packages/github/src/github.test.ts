@@ -61,8 +61,8 @@ describe("the governed sender", () => {
   it("sends with a permit, updates the same check run on a repeat, and records every step on a valid chain", async () => {
     const gh = github();
     const d = deps(gh);
-    expect(await sendCheckRun(d, "r1", call)).toEqual({ sent: true, checkRunId: 1 });
-    expect(await sendCheckRun(d, "r1", { ...call, title: "Shadow: would fail" })).toEqual({ sent: true, checkRunId: 1 });
+    expect(await sendCheckRun(d, "r1", call)).toEqual({ sent: true, id: 1 });
+    expect(await sendCheckRun(d, "r1", { ...call, title: "Shadow: would fail" })).toEqual({ sent: true, id: 1 });
     expect(gh.checkRuns).toHaveLength(1);
     expect(gh.checkRuns[0]!.title).toBe("Shadow: would fail");
     const store = d.evidence as MemoryEvidenceStore;

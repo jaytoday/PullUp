@@ -21,6 +21,8 @@ export const runs = sqliteTable(
     mode: text("mode", { enum: ["shadow", "active"] }).notNull(),
     /** The engine's full decision (questions, seats, quotes), as JSON. */
     decision: text("decision", { mode: "json" }),
+    /** The config used for the decision (read from the default branch then), so later answers and deadlines use the same rules. */
+    config: text("config", { mode: "json" }),
     notes: text("notes", { mode: "json" }).$type<string[]>().notNull().default([]),
     pending: text("pending", { mode: "json" }).$type<string[]>().notNull().default([]),
     councilCalls: integer("council_calls").notNull().default(0),
@@ -70,3 +72,19 @@ export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).notNull(),
 });
+
+/** One person-ask per open question of a run: the engine's ask state and the WithAI questions sent for it. */
+export const asks = sqliteTable(
+  "asks",
+  {
+    runId: text("run_id").notNull(),
+    questionId: text("question_id").notNull(),
+    /** The engine's `AskState`. */
+    state: text("state", { mode: "json" }).notNull(),
+    /** WithAI questions sent, newest last: `{ id, to, open }`. */
+    withai: text("withai", { mode: "json" }).$type<{ id: string; to: string; open: boolean }[]>().notNull().default([]),
+    open: integer("open", { mode: "boolean" }).notNull().default(true),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.runId, t.questionId] }), index("asks_open").on(t.open)],
+);

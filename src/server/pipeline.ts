@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { appendEvidence, checkRunView, ciRunSchema, type Council, decideRun, parseConfig, type RunDecision, withaiCouncil } from "@pullup/engine";
-import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun } from "@pullup/github";
+import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, settle, withaiCouncil } from "@pullup/engine";
+import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { repos, runs } from "@/lib/db/schema";
+import { asks, repos, runs } from "@/lib/db/schema";
+import { type AskClient, type AskDeps, ensureAsks, loadAsks, recordAnswer, recordGithubAnswer, tickAsks } from "./asking";
 import { evidenceStore, isStopped, nonceLedger } from "./stores";
 
 /**
@@ -13,6 +14,8 @@ import { evidenceStore, isStopped, nonceLedger } from "./stores";
  * fail, no trigger → pass, else the council and the resolution rule), record
  * the evidence, and post the "PullUp" check run through the governed sender.
  * In shadow mode the check is neutral with the would-be result in its text.
+ * In active mode it passes or fails, and a question that needs a person is
+ * asked (see asking.ts); the check stays in progress until it is settled.
  */
 
 export const CHECK_NAME = "PullUp";
@@ -23,21 +26,48 @@ const LOCK_MS = 5 * 60_000;
 export interface PipelineDeps {
   github: GitHubApi;
   council: Council;
+  /** WithAI's ask-a-person calls; null when WithAI is not configured. */
+  withai: AskClient | null;
   now: () => Date;
 }
 
-export function liveDeps(): PipelineDeps {
+function withaiClient(): WithAIClient | null {
   const baseUrl = process.env.WITHAI_URL?.trim();
   const token = process.env.WITHAI_TOKEN?.trim();
-  let skillId: Promise<string> | undefined;
+  return baseUrl && token ? new WithAIClient({ baseUrl, token }) : null;
+}
+
+let skillId: Promise<string> | undefined;
+/** The workspace's CI policy skill: `PULLUP_SKILL_ID`, or created once from WithAI's template. */
+function ciPolicySkill(client: WithAIClient): Promise<string> {
+  const fixed = process.env.PULLUP_SKILL_ID?.trim();
+  if (fixed) return Promise.resolve(fixed);
+  skillId ??= client.createSkill({ template: "ci-policy" }).then((r) => r.skill.id);
+  skillId.catch(() => (skillId = undefined));
+  return skillId;
+}
+
+export function liveDeps(): PipelineDeps {
+  const client = withaiClient();
   const council: Council = async (question, run, seats) => {
-    if (!baseUrl || !token) throw new Error("WithAI is not configured (WITHAI_URL, WITHAI_TOKEN)");
-    const client = new WithAIClient({ baseUrl, token });
-    skillId ??= process.env.PULLUP_SKILL_ID?.trim() ? Promise.resolve(process.env.PULLUP_SKILL_ID.trim()) : client.createSkill({ template: "ci-policy" }).then((r) => r.skill.id);
-    skillId.catch(() => (skillId = undefined));
-    return withaiCouncil({ client, skill: { id: await skillId } })(question, run, seats);
+    if (!client) throw new Error("WithAI is not configured (WITHAI_URL, WITHAI_TOKEN)");
+    return withaiCouncil({ client, skill: { id: await ciPolicySkill(client) } })(question, run, seats);
   };
-  return { github: octokitApi((repo) => repoOctokit(repo)), council, now: () => new Date() };
+  return { github: octokitApi((repo) => repoOctokit(repo)), council, withai: client, now: () => new Date() };
+}
+
+export function senderDeps(deps: PipelineDeps): SenderDeps {
+  return { api: deps.github, permitKey: process.env.PULLUP_PERMIT_KEY?.trim() || null, ledger: nonceLedger, evidence: evidenceStore, stopped: isStopped, now: deps.now };
+}
+
+export function askDeps(deps: PipelineDeps): AskDeps {
+  const client = deps.withai;
+  return {
+    withai: client,
+    sender: senderDeps(deps),
+    skillId: async () => (client instanceof WithAIClient ? ciPolicySkill(client).catch(() => null) : (process.env.PULLUP_SKILL_ID?.trim() ?? null)),
+    now: deps.now,
+  };
 }
 
 /** A required workflow finished (or was rerun) for this commit: (re)open its run for collection. */
@@ -88,18 +118,13 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);
     const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council);
     await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ trigger: q.question.trigger, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd }, deps.now());
-    const view = checkRunView(decision, mode, collected.notes);
-    const sent = await sendCheckRun(
-      { api: deps.github, permitKey: process.env.PULLUP_PERMIT_KEY?.trim() || null, ledger: nonceLedger, evidence: evidenceStore, stopped: isStopped, now: deps.now },
-      runId,
-      { repo: run.repo, headSha: run.headSha, name: CHECK_NAME, ...view, detailsUrl: process.env.PULLUP_URL ? `${process.env.PULLUP_URL.replace(/\/+$/, "")}/runs/${runId}` : undefined },
-    );
-    const state = decision.result === "waiting" ? "waiting" : "decided";
     await db
       .update(runs)
-      .set({ state, result: decision.result, mode, decision, notes: collected.notes, pending: [], councilCalls: decision.councilCalls, costUsd: decision.costUsd, checkRun: sent, decidedAt: deps.now(), error: null })
+      .set({ mode, decision, config, notes: collected.notes, pending: [], councilCalls: decision.councilCalls, costUsd: decision.costUsd, error: null })
       .where(eq(runs.id, runId));
-    return state;
+    const [stored] = await db.select().from(runs).where(eq(runs.id, runId));
+    if (mode === "active") await ensureAsks(stored!, askDeps(deps));
+    return await finishRun(runId, deps);
   } catch (err) {
     await db.update(runs).set({ state: "error", error: (err as Error).message }).where(eq(runs.id, runId));
     return "error";
@@ -108,9 +133,63 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
   }
 }
 
-/** The worker's job: look again at runs still collecting (after an hour they are decided without what is missing). */
+/**
+ * Settle the run's questions with the asks (a person's answer or the no-answer
+ * outcome), combine them into the run's result, and post the check run.
+ * Called after deciding, and again whenever an answer or a deadline changes something.
+ */
+export async function finishRun(runId: string, deps: PipelineDeps): Promise<string> {
+  const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+  if (!run?.decision) return "missing";
+  const decision = run.decision as RunDecision;
+  const questions = settle(decision.questions, await loadAsks(runId));
+  const settled: RunDecision = decision.hardFailures.length ? decision : { ...decision, ...combine(questions), questions };
+  const view = checkRunView(settled, run.mode, run.notes);
+  const waitingFor = questions.find((q) => q.outcome === "ask");
+  const active = run.mode === "active" && settled.result === "waiting";
+  const sent = await sendCheckRun(senderDeps(deps), runId, {
+    repo: run.repo,
+    headSha: run.headSha,
+    name: CHECK_NAME,
+    ...view,
+    ...(active && waitingFor
+      ? {
+          title: `${waitingFor.reason.replace(/\.$/, "")}: ${waitingFor.question.prompt}`.slice(0, 200),
+          actions: [
+            { label: "Pass", identifier: "pass", description: "Let this run pass (people asked or repo admins)." },
+            { label: "Fail", identifier: "fail", description: "Fail this run (people asked or repo admins)." },
+          ],
+        }
+      : {}),
+    detailsUrl: process.env.PULLUP_URL ? `${process.env.PULLUP_URL.replace(/\/+$/, "")}/runs/${runId}` : undefined,
+  });
+  const state = settled.result === "waiting" ? "waiting" : "decided";
+  await db.update(runs).set({ state, result: settled.result, checkRun: sent, decidedAt: deps.now() }).where(eq(runs.id, runId));
+  return state;
+}
+
+/** The worker's minute: runs still collecting (decided without what is missing after an hour), then the asks' clocks and WithAI answers. */
 export async function processOpenRuns(deps: PipelineDeps): Promise<number> {
   const open = await db.select({ id: runs.id }).from(runs).where(eq(runs.state, "collecting"));
   for (const r of open) await processRun(r.id, deps);
+  for (const runId of await tickAsks(askDeps(deps))) await finishRun(runId, deps);
   return open.length;
+}
+
+/** A Pass / Fail button or a `/pullup` comment from GitHub user `login`. */
+export async function answerFromGithub(run: typeof runs.$inferSelect, login: string, value: "pass" | "fail", reason: string, via: string, deps: PipelineDeps) {
+  const result = await recordGithubAnswer(run, login, value, reason, via, { ...askDeps(deps), permission: deps.github.permission.bind(deps.github) });
+  if (result.accepted) await finishRun(run.id, deps);
+  return result;
+}
+
+/** An answer through WithAI: it counts as from the person that question was sent to. */
+export async function answerFromWithai(withaiQuestionId: string, value: "pass" | "fail", reason: string, deps: PipelineDeps) {
+  const row = (await db.select().from(asks).where(eq(asks.open, true))).find((a) => a.withai.some((w) => w.id === withaiQuestionId));
+  const [run] = row ? await db.select().from(runs).where(eq(runs.id, row.runId)) : [];
+  if (!row || !run) return { accepted: 0, why: "No open PullUp question has this WithAI question." };
+  const to = row.withai.find((w) => w.id === withaiQuestionId)!.to;
+  const result = await recordAnswer(run, { value, by: to, isAdmin: false, reason, via: "withai", questionId: row.questionId }, askDeps(deps));
+  if (result.accepted) await finishRun(run.id, deps);
+  return result;
 }
