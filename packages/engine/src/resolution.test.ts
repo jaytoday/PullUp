@@ -4,7 +4,8 @@ import { ciRunSchema } from "./ci";
 import { checkSeat } from "./council";
 import { parseConfig } from "./config";
 import { loadFixtures } from "./fixtures";
-import { decideRun, resolveQuestion } from "./resolution";
+import { answer, startAsk } from "./no-answer";
+import { combine, decideRun, resolveQuestion, settle } from "./resolution";
 import { fixedCouncil, randomCouncil, seeded } from "./testing";
 import { findQuestions } from "./triggers";
 
@@ -86,7 +87,7 @@ describe("council answers", () => {
 
 describe("resolution rule", () => {
   const run = ciRunSchema.parse({ repo: "a/b", headSha: "x", jobs: [{ workflow: "ci", name: "t", attempts: [{ conclusion: "failure", failedTests: ["a"], logExcerpt: "Timeout 5000ms exceeded" }, { conclusion: "success" }] }] });
-  const config = parseConfig({ requiredWorkflows: ["ci"] });
+  const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" } });
   const [question] = findQuestions(run, config);
   const seat = (verdict: string, strength = 5) => checkSeat({ seat: "s", answer: { verdict, strength, reason: "r", quotes: verdict === "fail" ? [{ source: "log", text: "Timeout 5000ms" }] : [] } }, question!, run);
 
@@ -99,15 +100,20 @@ describe("resolution rule", () => {
   });
 
   it("with needsPersonBlocksPass off, a strong majority passes but any fail still stops it", () => {
-    const loose = parseConfig({ requiredWorkflows: ["ci"], council: { needsPersonBlocksPass: false } });
+    const loose = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" }, council: { needsPersonBlocksPass: false } });
     expect(resolveQuestion(question!, [seat("pass"), seat("pass"), seat("pass"), seat("needs-person")], loose).outcome).toBe("pass");
     expect(resolveQuestion(question!, [seat("pass"), seat("pass"), seat("needs-person"), seat("needs-person")], loose).outcome).toBe("ask");
   });
 
-  it("a person's answer decides, and the run waits while a question is open", async () => {
+  it("a person's answer settles an open question, and the run waits until then", async () => {
     const asking = fixedCouncil({ verdict: "needs-person", strength: 3, reason: "unsure", quotes: [] });
-    expect((await decideRun(run, config, asking)).result).toBe("waiting");
-    expect((await decideRun(run, config, asking, { "flaky-test": "fail" })).result).toBe("fail");
-    expect((await decideRun(run, config, asking, { "flaky-test": "pass" })).result).toBe("pass");
+    const decision = await decideRun(run, config, asking);
+    expect(decision.result).toBe("waiting");
+    const { state } = startAsk(question!, config, 0);
+    for (const value of ["pass", "fail"] as const) {
+      const answered = answer(state, { value, by: "sam", isAdmin: false }, 1).state;
+      expect(combine(settle(decision.questions, { "flaky-test": answered })).result).toBe(value);
+    }
   });
+
 });

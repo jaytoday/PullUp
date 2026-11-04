@@ -32,6 +32,29 @@ export const DEFAULT_SEATS = [
 
 const sensitiveCategoryIds = Object.keys(SENSITIVE_CATEGORIES) as [SensitiveCategory, ...SensitiveCategory[]];
 
+export const NO_ANSWER_OPTIONS = ["fail", "follow-council", "pass", "escalate"] as const;
+export type NoAnswerOption = (typeof NO_ANSWER_OPTIONS)[number];
+const finalNoAnswer = z.enum(["fail", "follow-council", "pass"]);
+
+const askSchema = z
+  .object({
+    /** The one person asked (placeholder until a smarter choice): a WithAI member id, an email or a phone number. */
+    to: z.string().min(1),
+    /** Asked when `onNoAnswer` is `escalate` and `to` did not answer in time. */
+    backup: z.string().min(1).optional(),
+    deadlineMinutes: z.number().int().min(1).max(60 * 24 * 14).default(240),
+    onNoAnswer: z.enum(NO_ANSWER_OPTIONS).default("fail"),
+    /** After `escalate`, if the backup does not answer either. */
+    onNoAnswerAfterBackup: finalNoAnswer.default("fail"),
+    /** Per trigger override of `onNoAnswer`. */
+    perTrigger: z.partialRecord(z.enum(TRIGGER_IDS), z.enum(NO_ANSWER_OPTIONS)).default({}),
+    /** One reminder at half the deadline. */
+    remind: z.boolean().default(true),
+  })
+  .refine((a) => a.backup || (a.onNoAnswer !== "escalate" && !Object.values(a.perTrigger).includes("escalate")), {
+    message: "escalate needs ask.backup",
+  });
+
 export const configSchema = z.object({
   /** Workflows that must finish before PullUp decides. A required workflow that never ran is a hard failure. */
   requiredWorkflows: z.array(z.string().min(1)).min(1),
@@ -64,6 +87,7 @@ export const configSchema = z.object({
       needsPersonBlocksPass: z.boolean().default(true),
     })
     .default({ seats: DEFAULT_SEATS, passStrength: 4, needsPersonBlocksPass: true }),
+  ask: askSchema,
 });
 export type Config = z.infer<typeof configSchema>;
 export type ConfigInput = z.input<typeof configSchema>;

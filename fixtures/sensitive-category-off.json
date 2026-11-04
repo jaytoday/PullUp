@@ -13,6 +13,9 @@
       "off": [
         "auth"
       ]
+    },
+    "ask": {
+      "to": "jaytoday-test"
     }
   },
   "run": {

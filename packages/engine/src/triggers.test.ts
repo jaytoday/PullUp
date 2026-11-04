@@ -28,13 +28,13 @@ describe("triggers over every fixture", () => {
 });
 
 describe("trigger details", () => {
-  const config = parseConfig({ requiredWorkflows: ["ci"] });
+  const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" } });
   const run = (diff: string) => ciRunSchema.parse({ repo: "a/b", headSha: "x", jobs: [{ workflow: "ci", name: "t", attempts: [{ conclusion: "success" }] }], diff });
 
   it("a sensitive path is never council-passable by default, but the repo may change that", () => {
     const diff = "--- a/db/migrations/1.sql\n+++ b/db/migrations/1.sql\n@@ -1 +1 @@\n-a\n+b\n";
     expect(findQuestions(run(diff), config)[0]).toMatchObject({ trigger: "sensitive-path", councilMayPass: false });
-    const loosened = parseConfig({ requiredWorkflows: ["ci"], triggers: { "sensitive-path": { councilMayPass: true } } });
+    const loosened = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" }, triggers: { "sensitive-path": { councilMayPass: true } } });
     expect(findQuestions(run(diff), loosened)[0]?.councilMayPass).toBe(true);
   });
 

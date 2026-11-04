@@ -3,6 +3,7 @@ import { checkSeat, type CheckedSeat, type Council } from "./council";
 import type { Config } from "./config";
 import { findHardFailures, type HardFailure } from "./hard-failure";
 import type { Question } from "./question";
+import { askOutcome, type AskState } from "./no-answer";
 import { findQuestions } from "./triggers";
 
 /**
@@ -11,26 +12,24 @@ import { findQuestions } from "./triggers";
  * 2. every seat "pass" at `passStrength` or more, and the trigger allows a
  *    council pass → the question passes;
  * 3. otherwise → ask a person.
- * A person's answer, once given, decides the question.
+ * A person's answer, or the no-answer option, then settles an "ask" (`settle`).
  * Run: a hard failure fails with no council call; no question passes with no
  * council call; then any failed question fails, any open one waits, else pass.
  */
 
 export type QuestionOutcome = "pass" | "fail" | "ask";
-export type PersonAnswer = "pass" | "fail";
 
 export interface ResolvedQuestion {
   question: Question;
   seats: CheckedSeat[];
   outcome: QuestionOutcome;
-  /** Who decided: the council, or a person. */
-  decidedBy: "council" | "person" | null;
+  /** Who decided: the council, a person, or the no-answer option. */
+  decidedBy: "council" | "person" | "no-answer" | null;
   reason: string;
 }
 
-export function resolveQuestion(question: Question, seats: CheckedSeat[], config: Config, person?: PersonAnswer): ResolvedQuestion {
+export function resolveQuestion(question: Question, seats: CheckedSeat[], config: Config): ResolvedQuestion {
   const base = { question, seats };
-  if (person) return { ...base, outcome: person, decidedBy: "person", reason: `A person answered "${person}".` };
   const failing = seats.find((s) => s.verdict === "fail" && s.validQuotes.length > 0);
   if (failing) return { ...base, outcome: "fail", decidedBy: "council", reason: `${failing.seat.split(":")[0]} found a problem: ${failing.reason}` };
   const { passStrength, needsPersonBlocksPass } = config.council;
@@ -56,6 +55,16 @@ export interface RunDecision {
   councilCalls: number;
 }
 
+/** Apply each waiting question's ask state: a person's answer or the no-answer outcome replaces "ask". */
+export function settle(questions: ResolvedQuestion[], asks: Partial<Record<string, AskState>>): ResolvedQuestion[] {
+  return questions.map((q) => {
+    const state = asks[q.question.id];
+    if (q.outcome !== "ask" || !state) return q;
+    const { outcome, decidedBy, reason } = askOutcome(state);
+    return { ...q, outcome, decidedBy, reason };
+  });
+}
+
 export function combine(questions: ResolvedQuestion[]): { result: RunResult; reason: string } {
   const failed = questions.filter((q) => q.outcome === "fail");
   if (failed.length) return { result: "fail", reason: failed.map((q) => q.reason).join(" ") };
@@ -68,7 +77,6 @@ export async function decideRun(
   run: ParsedCiRun,
   config: Config,
   council: Council,
-  people: Partial<Record<string, PersonAnswer>> = {},
 ): Promise<RunDecision> {
   const hardFailures = findHardFailures(run, config);
   if (hardFailures.length) {
@@ -78,8 +86,6 @@ export async function decideRun(
   let councilCalls = 0;
   const questions = await Promise.all(
     found.map(async (question) => {
-      const person = people[question.id];
-      if (person) return resolveQuestion(question, [], config, person);
       const raw = await council(question, run, config.council.seats);
       councilCalls += raw.length;
       return resolveQuestion(question, raw.map((r) => checkSeat(r, question, run)), config);

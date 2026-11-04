@@ -13,6 +13,9 @@
       "flaky-test": {
         "enabled": false
       }
+    },
+    "ask": {
+      "to": "jaytoday-test"
     }
   },
   "run": {

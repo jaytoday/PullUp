@@ -13,6 +13,9 @@
       "extraGlobs": [
         "src/pricing/**"
       ]
+    },
+    "ask": {
+      "to": "jaytoday-test"
     }
   },
   "run": {

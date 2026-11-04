@@ -24,7 +24,7 @@ describe("hard failures over every fixture", () => {
 });
 
 describe("hard failure details", () => {
-  const config = parseConfig({ requiredWorkflows: ["ci"] });
+  const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" } });
   const run = (attempts: object[]) => ciRunSchema.parse({ repo: "a/b", headSha: "x", jobs: [{ workflow: "ci", name: "test", attempts }] });
 
   it("names the failing tests and carries the log excerpt as evidence", () => {
@@ -47,6 +47,6 @@ describe("hard failure details", () => {
   });
 
   it("refuses a config with no required workflow", () => {
-    expect(() => parseConfig({ requiredWorkflows: [] })).toThrow();
+    expect(() => parseConfig({ requiredWorkflows: [], ask: { to: "sam" } })).toThrow();
   });
 });

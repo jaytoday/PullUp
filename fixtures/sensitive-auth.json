@@ -8,6 +8,9 @@
       "knownTests": [
         "checkout.spec.ts > shows confirmation"
       ]
+    },
+    "ask": {
+      "to": "jaytoday-test"
     }
   },
   "run": {
