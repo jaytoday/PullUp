@@ -22,6 +22,14 @@ const triggerSettingsSchema = z.object({
   councilMayPass: z.boolean().optional(),
 });
 
+/** The plan's default viewpoints. */
+export const DEFAULT_SEATS = [
+  "Test reliability: you care whether the tests can be trusted.",
+  "Security: you care about sign-in, permissions, secrets and data exposure.",
+  "Maintainer of the touched area: you know this code and what depends on it.",
+  "Release safety: you care about what could break for users after this ships.",
+];
+
 const sensitiveCategoryIds = Object.keys(SENSITIVE_CATEGORIES) as [SensitiveCategory, ...SensitiveCategory[]];
 
 export const configSchema = z.object({
@@ -43,6 +51,19 @@ export const configSchema = z.object({
       extraGlobs: z.array(z.string().min(1)).default([]),
     })
     .default({ off: [], extraGlobs: [] }),
+  council: z
+    .object({
+      /** One WithAI apply call per seat, each answering from its viewpoint. */
+      seats: z.array(z.string().min(1).max(300)).min(1).max(6).default(DEFAULT_SEATS),
+      /** Every seat must say "pass" at least this strongly (1–5) for the council to pass a question. */
+      passStrength: z.number().int().min(1).max(5).default(4),
+      /**
+       * When true (default), one seat saying "needs a person" stops a council pass.
+       * When false, a pass needs a majority of seats saying "pass" strongly and none saying "fail".
+       */
+      needsPersonBlocksPass: z.boolean().default(true),
+    })
+    .default({ seats: DEFAULT_SEATS, passStrength: 4, needsPersonBlocksPass: true }),
 });
 export type Config = z.infer<typeof configSchema>;
 export type ConfigInput = z.input<typeof configSchema>;
