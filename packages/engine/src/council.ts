@@ -26,6 +26,9 @@ export interface RawSeatAnswer {
   seat: string;
   answer: unknown;
   error?: string;
+  /** What the call cost and took, when it reached WithAI. */
+  costUsd?: number;
+  durationMs?: number;
 }
 
 /** A seat's answer after the checks; `verdict` is what the resolution rule uses. */
@@ -46,7 +49,8 @@ const MIN_QUOTE = 6;
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 
 export function quoteChecksOut(quote: SeatAnswer["quotes"][number], question: Question, run: ParsedCiRun): boolean {
-  const text = norm(quote.text);
+  // Seats often copy a diff line with its leading "+" or "-"; the line's text is what counts.
+  const text = norm(quote.source === "diff" ? quote.text.replace(/^\s*[+-](?![+-])/, "") : quote.text);
   if (text.length < MIN_QUOTE) return false;
   if (quote.source === "diff") {
     return parseDiff(run.diff).some((f) => f.lines.some((l) => l.kind !== "context" && norm(l.text).includes(text)));

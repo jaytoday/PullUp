@@ -1,0 +1,26 @@
+{
+  "name": "@withai/client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for WithAI's public API (/api/v1). A copy of withai-eve's packages/client (branch feat/ask-person-labels, commit 6595e7f), kept here so PullUp builds on its own.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas.ts",
+    "./webhooks": "./src/webhooks.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@types/node": "^22.10.0"
+  }
+}

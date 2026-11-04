@@ -82,6 +82,12 @@ describe("council answers", () => {
     expect(seat).toMatchObject({ verdict: "fail", problems: [] });
   });
 
+  it("accepts a diff quote copied with its leading + (seats do this often), but not a context line with one", () => {
+    const quote = (text: string) => checkSeat({ seat: "s", answer: { verdict: "fail", strength: 4, reason: "x", quotes: [{ source: "diff", text }] } }, question!, f.run).verdict;
+    expect(quote("+  it.skip('rounds totals to cents'")).toBe("fail");
+    expect(quote("+expect(total([{ price: 0.1, qty: 3 }])).toBe(0.3);")).toBe("needs-person");
+  });
+
   it("downgrades a fail quoting an unchanged line, a made-up line, a too-short quote, or the wrong source", () => {
     for (const quote of [
       { source: "diff", text: "expect(total([{ price: 0.1, qty: 3 }])).toBe(0.3);" }, // context line

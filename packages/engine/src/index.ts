@@ -9,3 +9,4 @@ export * from "./triggers";
 export * from "./council";
 export * from "./no-answer";
 export * from "./resolution";
+export * from "./withai-council";

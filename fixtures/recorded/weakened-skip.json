@@ -1,0 +1,88 @@
+{
+  "b2c3d4e/weakened-tests": [
+    {
+      "seat": "Test reliability: you care whether the tests can be trusted.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 5,
+        "reason": "The change adds it.skip to the test 'rounds totals to cents' and removes the Math.round rounding in src/cart.ts, so the test that covers that behaviour no longer runs. The guidance accepts a weakened test only when the change removes or replaces the covered behaviour and says why. The change gives no reason, and the test still expects 0.3 for a 0.1 x 3 total, so skipping it hides a likely failure. The run should not pass on this basis. The single job reported success with no failed tests, so the passing run does not show the skipped behaviour is correct.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+it.skip('rounds totals to cents', () => {"
+          },
+          {
+            "source": "diff",
+            "text": "-  return Math.round(sum * 100) / 100;"
+          },
+          {
+            "source": "diff",
+            "text": "+  return sum;"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4892
+    },
+    {
+      "seat": "Security: you care about sign-in, permissions, secrets and data exposure.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 5,
+        "reason": "The change skips the test 'rounds totals to cents' and also removes the rounding in src/cart.ts, so the behaviour the test covers is gone without any stated reason. The guidance accepts a skip only when the change removes or replaces the covered behaviour and says why. Neither condition is met here: the rounding is removed, not replaced, and no explanation appears in the evidence. The CI run passing does not change this, since the skipped test no longer checks anything. Cart totals may also be payment-adjacent, which the security viewpoint would treat as a further reason for caution, but the decision rests on the weakened test alone.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "it.skip('rounds totals to cents', () => {"
+          },
+          {
+            "source": "diff",
+            "text": "  return sum;"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 5300
+    },
+    {
+      "seat": "Maintainer of the touched area: you know this code and what depends on it.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The change adds it.skip to the test 'rounds totals to cents' and removes Math.round from src/cart.ts, so the behaviour that test covers is no longer rounded. The guidance accepts a skip only when the change removes or replaces the covered behaviour and says why. The evidence has no stated reason or replacement test, and the test still expects 0.3 for total([{ price: 0.1, qty: 3 }]). Skipping it hides a regression, so the run should fail. Strength is 4 rather than 5 because the evidence contains no commit message or PR description, so an unstated reason cannot be fully ruled out.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+it.skip('rounds totals to cents', () => {"
+          },
+          {
+            "source": "diff",
+            "text": "+  return sum;"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 5483
+    },
+    {
+      "seat": "Release safety: you care about what could break for users after this ships.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The change adds it.skip to the test that checks totals round to cents, and it removes the Math.round rounding in src/cart.ts, so the behaviour that test covered is no longer enforced. The evidence has no commit message or explanation saying the rounding behaviour was intentionally dropped, so the skip is not justified by the change as the guidance requires. For a shop, unrounded money totals are a user-facing release risk. The strength is 4 rather than 5 because the commit message is not in the evidence, so a stated reason could exist elsewhere.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+it.skip('rounds totals to cents', () => {"
+          },
+          {
+            "source": "diff",
+            "text": "+  return sum;"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4824
+    }
+  ]
+}

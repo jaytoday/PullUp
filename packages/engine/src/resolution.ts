@@ -53,6 +53,8 @@ export interface RunDecision {
   questions: ResolvedQuestion[];
   /** Council calls made (one per seat per question). */
   councilCalls: number;
+  /** What the council calls cost, in US dollars. */
+  costUsd: number;
 }
 
 /** Apply each waiting question's ask state: a person's answer or the no-answer outcome replaces "ask". */
@@ -80,10 +82,11 @@ export async function decideRun(
 ): Promise<RunDecision> {
   const hardFailures = findHardFailures(run, config);
   if (hardFailures.length) {
-    return { result: "fail", reason: hardFailures.map((f) => f.reason).join(" "), hardFailures, questions: [], councilCalls: 0 };
+    return { result: "fail", reason: hardFailures.map((f) => f.reason).join(" "), hardFailures, questions: [], councilCalls: 0, costUsd: 0 };
   }
   const found = findQuestions(run, config);
   let councilCalls = 0;
+  let costUsd = 0;
   const questions = await Promise.all(
     found.map(async (question) => {
       const seats = config.council.seats;
@@ -91,8 +94,9 @@ export async function decideRun(
       const raw = await council(question, run, seats).catch((error: Error): RawSeatAnswer[] => seats.map((seat) => ({ seat, answer: null, error: error.message })));
       // Exactly one answer per configured seat: a seat with no answer counts as a failed call, extra answers are ignored.
       const answers = seats.map((seat) => raw.find((r) => r.seat === seat) ?? { seat, answer: null, error: "no answer from this seat" });
+      costUsd += raw.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
       return resolveQuestion(question, answers.map((r) => checkSeat(r, question, run)), config);
     }),
   );
-  return { ...combine(questions), hardFailures, questions, councilCalls };
+  return { ...combine(questions), hardFailures, questions, councilCalls, costUsd };
 }

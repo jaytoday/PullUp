@@ -9,7 +9,22 @@
     "node": ">=24"
   },
   "scripts": {
-    "typecheck": "pnpm -r exec tsc --noEmit",
-    "test": "pnpm -r test"
+    "pullup": "tsx --env-file-if-exists=.env cli/pullup.ts",
+    "typecheck": "tsc --noEmit && pnpm -r exec tsc --noEmit",
+    "test": "pnpm -r test && vitest run --dir cli"
+  },
+  "bin": {
+    "pullup": "cli/pullup.ts"
+  },
+  "dependencies": {
+    "@pullup/engine": "workspace:*",
+    "@withai/client": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
   }
 }
