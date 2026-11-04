@@ -15,6 +15,20 @@
       "when": 1793817954519,
       "tag": "0001_blue_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793818239218,
+      "tag": "0002_outstanding_the_renegades",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793818609733,
+      "tag": "0003_sloppy_wraith",
+      "breakpoints": true
     }
   ]
 }

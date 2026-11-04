@@ -1,3 +1,4 @@
+export * from "./auth-schema";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /** Repositories PullUp has seen (created on the first webhook). `mode` is shadow until the owner turns it active. */
@@ -18,6 +19,8 @@ export const runs = sqliteTable(
     /** collecting → decided (pass / fail) or waiting (for a person); error when it could not be decided. */
     state: text("state", { enum: ["collecting", "decided", "waiting", "error"] }).notNull(),
     result: text("result", { enum: ["pass", "fail", "waiting"] }),
+    /** Why the run ended as it did, after any person's answer or no-answer option. */
+    reason: text("reason"),
     mode: text("mode", { enum: ["shadow", "active"] }).notNull(),
     /** The engine's full decision (questions, seats, quotes), as JSON. */
     decision: text("decision", { mode: "json" }),

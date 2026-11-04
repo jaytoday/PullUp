@@ -164,7 +164,7 @@ export async function finishRun(runId: string, deps: PipelineDeps): Promise<stri
     detailsUrl: process.env.PULLUP_URL ? `${process.env.PULLUP_URL.replace(/\/+$/, "")}/runs/${runId}` : undefined,
   });
   const state = settled.result === "waiting" ? "waiting" : "decided";
-  await db.update(runs).set({ state, result: settled.result, checkRun: sent, decidedAt: deps.now() }).where(eq(runs.id, runId));
+  await db.update(runs).set({ state, result: settled.result, reason: settled.reason, checkRun: sent, decidedAt: deps.now() }).where(eq(runs.id, runId));
   return state;
 }
 
