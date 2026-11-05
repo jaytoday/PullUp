@@ -61,7 +61,7 @@ export default defineExtension({
   config: {
     schema,
     fields: [
-      { key: "people", label: "GitHub login → WithAI person", help: "For example @octocat → octocat@example.com. Owners with no entry are skipped.", kind: "list", loosens: false },
+      { key: "people", label: "GitHub login → WithAI person", help: "For example @octocat → octocat@example.com. Owners with no entry are skipped.", kind: "map", loosens: false },
       { key: "maxPeople", label: "At most this many people per question", help: "Any of them may answer; the first answer counts.", kind: "number", loosens: false },
     ],
   },

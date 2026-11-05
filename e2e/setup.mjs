@@ -1,6 +1,7 @@
 /**
  * Walks the repo setup wizard: required fields block Continue, the backup is required for
- * "Ask a backup person", a looser setting needs "loosen" typed, and the file reflects the answers.
+ * "Ask a backup person", a preset adds extensions in Shadow mode, a looser setting needs "loosen"
+ * typed, and the file reflects the answers.
  *
  *   node e2e/setup.mjs   (dev server on PULLUP_E2E_URL or http://localhost:3500; `pnpm seed` first)
  */
@@ -41,6 +42,10 @@ check(await next().isDisabled(), "escalate without a backup: Continue is disable
 await page.getByPlaceholder("oncall@example.com").fill("oncall@example.com");
 await next().click();
 
+check((await page.getByRole("radio", { name: /Essentials/ }).getAttribute("aria-checked")) === "true", "Essentials is the default preset");
+await page.getByRole("radio", { name: /Security/ }).click();
+await next().click();
+
 await page.getByLabel("sensitive-path council may pass").click();
 check((await page.getByTestId("loosenings").textContent()).includes("The council may pass sensitive-path questions"), "a looser setting is listed");
 check(await next().isDisabled(), "looser setting: Continue disabled until confirmed");
@@ -50,7 +55,8 @@ await next().click();
 const file = JSON.parse(await page.getByTestId("config-file").textContent());
 check(JSON.stringify(file.requiredWorkflows) === '["ci","e2e"]', "file has the workflows");
 check(file.ask.to === "reviewer@example.com" && file.ask.toGithub === "reviewer" && file.ask.backup === "oncall@example.com" && file.ask.onNoAnswer === "escalate", "file has the people and the no-answer option");
-check(file.triggers["sensitive-path"].councilMayPass === true, "file has the loosened trigger");
+check(file.extensions.core.triggers["sensitive-path"].councilMayPass === true, "file has the loosened trigger");
+check(file.extensions["threat-model"].mode === "shadow" && file.extensions.codeowners.mode === "shadow", "the Security preset adds the threat model and code owners in Shadow mode");
 
 await page.getByRole("button", { name: "Back" }).click();
 check((await page.getByTestId("loosenings").getByRole("textbox").inputValue()) === "loosen", "going back keeps the answers");

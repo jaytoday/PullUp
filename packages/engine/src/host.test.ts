@@ -314,3 +314,13 @@ describe("describing extensions", () => {
     expect(list.find((e) => e.id === "core")!.defaultMode).toBe("active");
   });
 });
+
+describe("configInput", () => {
+  it("turns any fixture's parsed config back into a file that parses to the same config", async () => {
+    const { configInput } = await import("./config");
+    const { loadFixtures } = await import("./fixtures");
+    for (const f of loadFixtures(fileURLToPath(new URL("../../../fixtures", import.meta.url)))) {
+      expect(parseConfig(JSON.parse(JSON.stringify(configInput(f.config)))), f.name).toEqual(f.config);
+    }
+  });
+});

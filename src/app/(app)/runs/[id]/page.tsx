@@ -26,6 +26,12 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const working = run.lockedUntil !== null && run.lockedUntil.getTime() > Date.now();
   const hard = decision?.hardFailures.length ?? 0;
   const questions = decision?.questions ?? [];
+  const counted = questions.filter((q) => !q.question.shadow);
+  const shadow = questions.filter((q) => q.question.shadow);
+  // One small heading per extension that raised something.
+  const groups = [...new Set(counted.map((q) => q.question.extension))].map((e) => [e, counted.filter((q) => q.question.extension === e)] as const);
+  const extensionNotes = decision?.extensions?.notes ?? [];
+  const annotations = decision?.extensions?.annotations ?? [];
   const asked = Object.keys(asks).length;
   const seats = questions.flatMap((q) => q.seats);
   const answered = seats.filter((s) => !s.problems.some((p) => p.startsWith("call failed") || p.startsWith("answer has the wrong shape"))).length;
@@ -33,7 +39,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const steps: TimelineStep[] = [
     { label: "Collect", detail: run.state === "collecting" ? `Waiting for ${run.pending.join(", ") || "the required workflows"}` : "Job results, reruns, logs and the diff collected", state: run.state === "collecting" ? "current" : "done" },
     { label: "Hard failures", detail: hard ? `${hard} hard failure${hard > 1 ? "s" : ""}: fail with no AI call` : "None", state: decision ? "done" : "todo" },
-    { label: "Triggers", detail: hard ? "Not needed" : questions.length ? questions.map((q) => q.question.id).join(", ") : "None fired: pass with no AI call", state: !decision ? "todo" : hard ? "skipped" : "done" },
+    { label: "Checks", detail: hard ? "Not needed" : counted.length ? `${counted.map((q) => q.question.id).join(", ")}${shadow.length ? ` (and ${shadow.length} in Shadow)` : ""}` : shadow.length ? `Only Shadow questions (${shadow.length}): pass` : "Nothing tricky: pass with no AI call", state: !decision ? "todo" : hard ? "skipped" : "done" },
     { label: "Council", detail: run.councilCalls ? `${run.councilCalls} seat calls, ${dollars(run.costUsd)}` : "Not called", state: !decision ? "todo" : run.councilCalls ? "done" : "skipped" },
     { label: "Person", detail: asked ? settledBy : run.mode === "shadow" && run.result === "waiting" ? "Shadow mode: no one is asked" : "Not needed", state: !asked ? (run.mode === "shadow" && run.result === "waiting" ? "skipped" : decision ? "skipped" : "todo") : run.state === "waiting" ? "current" : "done" },
     { label: "Result", detail: decision ? `${run.reason ?? decision.reason} Settled by: ${settledBy}.` : "Not decided yet", state: run.state === "decided" ? "done" : run.state === "waiting" ? "current" : "todo" },
@@ -85,9 +91,56 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             {f.logExcerpt ? <LogTerminal title={`${f.workflow}${f.job ? ` / ${f.job}` : ""}: end of the log`} log={f.logExcerpt} /> : null}
           </section>
         ))}
-        {questions.map((q) => (
-          <QuestionCard key={q.question.id} q={q} ask={asks[q.question.id]} />
+        {groups.map(([extension, list]) => (
+          <section key={extension} className="space-y-3" data-testid={`extension-group-${extension}`}>
+            <h2 className="font-mono text-xs text-muted-foreground">{extension}</h2>
+            {list.map((q) => (
+              <QuestionCard key={q.question.id} q={q} ask={asks[q.question.id]} />
+            ))}
+          </section>
         ))}
+        {shadow.length ? (
+          <section className="space-y-2 rounded-lg bg-background p-4 ring ring-border" data-testid="would-ask">
+            <h2 className="text-sm font-medium text-foreground">Would ask (Shadow extensions, not counted)</h2>
+            <p className="text-xs text-muted-foreground">These extensions are trying out in Shadow mode: their questions went to the council so its answers can be measured, but they never change the result and no one is asked.</p>
+            <ul className="space-y-1 text-sm">
+              {shadow.map((q) => (
+                <li key={q.question.id} className="flex flex-wrap gap-x-2">
+                  <span className="font-mono text-xs text-muted-foreground">{q.question.id}</span>
+                  <span className="text-body">{q.question.summary}</span>
+                  <span className="text-xs text-muted-foreground">(council: {q.outcome === "ask" ? "would ask a person" : q.outcome})</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {extensionNotes.length || annotations.length ? (
+          <section className="space-y-2 rounded-lg bg-background p-4 ring ring-border" data-testid="extension-notes">
+            <h2 className="text-sm font-medium text-foreground">For the reviewer</h2>
+            <ul className="space-y-1 text-sm text-body">
+              {extensionNotes.map((n, i) => (
+                <li key={`n${i}`}>
+                  {n.link ? (
+                    <a href={n.link} className="text-primary underline-offset-2 hover:underline" target="_blank" rel="noreferrer">
+                      {n.text}
+                    </a>
+                  ) : (
+                    n.text
+                  )}{" "}
+                  <span className="font-mono text-xs text-muted-foreground">{n.extension}</span>
+                </li>
+              ))}
+              {annotations.map((a, i) => (
+                <li key={`a${i}`}>
+                  <span className="font-mono text-xs">
+                    {a.path}:{a.line}
+                  </span>{" "}
+                  {a.message} <span className="font-mono text-xs text-muted-foreground">{a.extension}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {run.notes.length ? (
           <ul className="space-y-1 text-xs text-muted-foreground">
             {run.notes.map((n) => (

@@ -22,7 +22,8 @@ export interface FieldSpec {
   key: string;
   label: string;
   help: string;
-  kind: "boolean" | "number" | "text" | "list" | "choice";
+  /** `list`: several strings; `map`: name → value pairs (for example GitHub login → person). */
+  kind: "boolean" | "number" | "text" | "list" | "choice" | "map";
   /** For `choice` (one of) and `list` (any of, when the values are fixed). */
   options?: readonly string[];
   /** True when changing it from its default lets PullUp pass more easily. */

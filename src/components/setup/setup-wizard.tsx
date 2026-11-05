@@ -23,6 +23,21 @@ const TRIGGER_LABEL: Record<TriggerId, string> = {
   "sensitive-path": "Sensitive paths (sign-in, migrations, payments, secrets, CI configuration)",
 };
 
+/**
+ * Starting sets of extensions. Extensions other than core start in Shadow mode,
+ * so turning a preset on never blocks a merge until the owner switches it to
+ * Active in Settings.
+ */
+const PRESETS = {
+  essentials: { label: "Essentials", description: "The core checks: flaky tests, weakened tests and changes to code that is hard to undo.", extensions: {} },
+  security: {
+    label: "Security",
+    description: "Essentials, plus the threat model (THREATS.md on the default branch) and asking code owners. Both start in Shadow mode.",
+    extensions: { "threat-model": { mode: "shadow" }, codeowners: { mode: "shadow" } },
+  },
+} as const;
+type Preset = keyof typeof PRESETS;
+
 function OptionSelect<T extends NoAnswerOption>({ value, onChange, options }: { value: T; onChange: (value: T) => void; options: readonly T[] }) {
   return (
     <Select value={value} onValueChange={(next) => onChange(next as T)}>
@@ -60,24 +75,26 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
     "sensitive-path": { enabled: true, councilMayPass: false },
   });
   const [passStrength, setPassStrength] = useState(4);
+  const [preset, setPreset] = useState<Preset>("essentials");
   const [confirm, setConfirm] = useState("");
 
+  const defaultTriggers = JSON.stringify(triggers) === JSON.stringify({ "flaky-test": { enabled: true, councilMayPass: true }, "weakened-tests": { enabled: true, councilMayPass: true }, "sensitive-path": { enabled: true, councilMayPass: false } });
   const raw = useMemo(
     () => ({
       requiredWorkflows: workflows.split(",").map((w) => w.trim()).filter(Boolean),
-      triggers,
+      extensions: { ...(defaultTriggers ? {} : { core: { triggers } }), ...PRESETS[preset].extensions },
       council: { seats: DEFAULT_SEATS, passStrength, needsPersonBlocksPass: true },
       ask: { to: to.trim(), ...(toGithub.trim() ? { toGithub: toGithub.trim().replace(/^@/, "") } : {}), ...(backup.trim() ? { backup: backup.trim() } : {}), deadlineMinutes: deadline, onNoAnswer, ...(onNoAnswer === "escalate" ? { onNoAnswerAfterBackup: after } : {}) },
     }),
-    [workflows, triggers, passStrength, to, toGithub, backup, deadline, onNoAnswer, after],
+    [workflows, triggers, defaultTriggers, preset, passStrength, to, toGithub, backup, deadline, onNoAnswer, after],
   );
   const parsed = configSchema.safeParse(raw);
   const loose = parsed.success ? loosenings(parsed.data) : [];
   const confirmed = !loose.length || confirm.trim().toLowerCase() === "loosen";
   // The file holds only what differs from the defaults the engine fills in, plus the required fields.
-  const file = JSON.stringify({ requiredWorkflows: raw.requiredWorkflows, ...(JSON.stringify(triggers) === JSON.stringify({ "flaky-test": { enabled: true, councilMayPass: true }, "weakened-tests": { enabled: true, councilMayPass: true }, "sensitive-path": { enabled: true, councilMayPass: false } }) ? {} : { triggers }), ...(passStrength !== 4 ? { council: { passStrength } } : {}), ask: raw.ask }, null, 2);
+  const file = JSON.stringify({ requiredWorkflows: raw.requiredWorkflows, ...(Object.keys(raw.extensions).length ? { extensions: raw.extensions } : {}), ...(passStrength !== 4 ? { council: { passStrength } } : {}), ask: raw.ask }, null, 2);
 
-  const canNext = [true, raw.requiredWorkflows.length > 0, raw.ask.to.length > 0 && (onNoAnswer !== "escalate" || !!backup.trim()), parsed.success && confirmed][step - 1] ?? true;
+  const canNext = [true, raw.requiredWorkflows.length > 0, raw.ask.to.length > 0 && (onNoAnswer !== "escalate" || !!backup.trim()), true, parsed.success && confirmed][step - 1] ?? true;
 
   return (
     <Stepper
@@ -141,6 +158,27 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
               </FormField>
             </div>
           ) : null}
+        </BlurFade>
+      </Step>
+      <Step title="What to look for">
+        <BlurFade className="space-y-3">
+          <p className="text-sm text-body">What should PullUp look for? You can switch each extension on, off or to Shadow later in Settings.</p>
+          <div role="radiogroup" aria-label="Preset" className="grid gap-2 sm:grid-cols-2">
+            {(Object.keys(PRESETS) as Preset[]).map((id) => (
+              <Button
+                key={id}
+                role="radio"
+                aria-checked={preset === id}
+                color={preset === id ? "primary" : "neutral"}
+                variant={preset === id ? "subtle" : "outline"}
+                className="h-auto flex-col items-start gap-1 whitespace-normal p-3 text-start"
+                onClick={() => setPreset(id)}
+              >
+                <span className="text-sm font-medium">{PRESETS[id].label}</span>
+                <span className="text-xs text-muted-foreground">{PRESETS[id].description}</span>
+              </Button>
+            ))}
+          </div>
         </BlurFade>
       </Step>
       <Step title="Rules">

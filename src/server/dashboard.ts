@@ -114,6 +114,25 @@ export async function questionAccuracy(extension?: string) {
   return [...byTrigger].map(([id, v]) => ({ id, ...v }));
 }
 
+/**
+ * Questions from Shadow extensions, per extension: what the council would have
+ * done (pass, fail or ask a person). No one is asked about them, so this is
+ * the measure to look at before switching an extension to Active.
+ */
+export async function shadowOutcomes() {
+  const all = await db.select().from(runs);
+  const byExtension = new Map<string, { extension: string; pass: number; fail: number; ask: number }>();
+  for (const run of all) {
+    for (const q of decisionOf(run)?.questions ?? []) {
+      if (!q.question.shadow) continue;
+      const row = byExtension.get(q.question.extension) ?? { extension: q.question.extension, pass: 0, fail: 0, ask: 0 };
+      row[q.outcome] += 1;
+      byExtension.set(q.question.extension, row);
+    }
+  }
+  return [...byExtension.values()];
+}
+
 export async function repoList() {
   const all = await db.select().from(repos).orderBy(repos.fullName);
   const latest = await Promise.all(all.map(async (r) => (await db.select().from(runs).where(eq(runs.repo, r.fullName)).orderBy(desc(runs.firstSeenAt)).limit(1))[0] ?? null));

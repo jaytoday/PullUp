@@ -1,8 +1,10 @@
 import { DashboardPanel, PageBody } from "@/components/app-shell/dashboard-panel";
 import { EmptyState } from "@/components/common/empty-state";
 import { RepoMode } from "@/components/settings/repo-mode";
+import { ExtensionsEditor } from "@/components/settings/extensions/extensions-editor";
 import { StopSwitch } from "@/components/settings/stop-switch";
 import { configOf, repoList } from "@/server/dashboard";
+import { extensionsEditor } from "@/server/extensions";
 import { getSetting } from "@/server/stores";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,7 @@ export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const [repos, stopped] = await Promise.all([repoList(), getSetting("stopped", false)]);
+  const editors = await Promise.all(repos.map((r) => extensionsEditor(r.fullName)));
   const forced = process.env.PULLUP_STOP === "1";
   return (
     <DashboardPanel title="Settings">
@@ -19,9 +22,17 @@ export default async function SettingsPage() {
           <p className="text-sm text-muted-foreground">Every repository starts in shadow mode: PullUp posts a neutral check with what it would decide. The rules themselves live in each repository&apos;s <code className="font-mono">.pullup/config.json</code> on its default branch (see Set up a repo).</p>
           {repos.length ? (
             <div className="divide-y overflow-hidden rounded-lg bg-background ring ring-border">
-              {repos.map((r) => (
+              {repos.map((r, i) => (
                 <div key={r.fullName}>
                   <RepoMode repo={r.fullName} mode={r.mode} />
+                  <section className="space-y-2 px-4 pb-3" aria-label={`${r.fullName} extensions`}>
+                    <h3 className="text-xs font-medium text-muted-foreground">Extensions</h3>
+                    {editors[i]!.committed ? (
+                      <ExtensionsEditor repo={r.fullName} extensions={editors[i]!.extensions} committed={editors[i]!.committed!} draft={editors[i]!.draft} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">PullUp shows this repository&apos;s extensions after it reads its config on the first run.</p>
+                    )}
+                  </section>
                   {r.latest && configOf(r.latest) ? (
                     <details className="px-4 pb-3 text-xs">
                       <summary className="cursor-pointer text-muted-foreground">Config used for the latest run</summary>

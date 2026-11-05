@@ -6,7 +6,7 @@
  *   pnpm seed            (uses .data/pullup.db, or PULLUP_DB_FILE)
  */
 import { readFileSync } from "node:fs";
-import { loadFixtures, type Recording, replayCouncil } from "@pullup/engine";
+import { configInput, loadFixtures, type Recording, replayCouncil } from "@pullup/engine";
 import { FakeGitHub } from "@pullup/github";
 import { db, migrateDb } from "@/lib/db/client";
 import { asks, deliveries, evidence, permitNonces, repos, runs, settings } from "@/lib/db/schema";
@@ -32,7 +32,8 @@ const councilFor = (fixture: string) => {
 };
 const HOUR = 3_600_000;
 const start = Date.now() - 20 * HOUR;
-const plan: { fixture: string; repo: string; mode: "shadow" | "active"; pull: number }[] = [
+// `shadow`: extensions to switch to Shadow mode for that run, to show the "would ask" group.
+const plan: { fixture: string; repo: string; mode: "shadow" | "active"; pull: number; shadow?: string[] }[] = [
   { fixture: "clean-pass", repo: "acme/shop", mode: "active", pull: 41 },
   { fixture: "hard-fail-repeat", repo: "acme/shop", mode: "active", pull: 42 },
   { fixture: "weakened-skip", repo: "acme/shop", mode: "active", pull: 43 },
@@ -42,6 +43,8 @@ const plan: { fixture: string; repo: string; mode: "shadow" | "active"; pull: nu
   { fixture: "flaky-rerun-pass", repo: "acme/docs", mode: "shadow", pull: 8 },
   { fixture: "snapshot-rewrite", repo: "acme/docs", mode: "shadow", pull: 9 },
   { fixture: "tests-added-only", repo: "acme/docs", mode: "shadow", pull: 10 },
+  { fixture: "threat-control-touched", repo: "acme/payments", mode: "active", pull: 3 },
+  { fixture: "threat-new-route", repo: "acme/payments", mode: "active", pull: 4, shadow: ["threat-model"] },
 ];
 for (const repo of new Set(plan.map((p) => p.repo))) await db.insert(repos).values({ fullName: repo, mode: plan.find((p) => p.repo === repo)!.mode, createdAt: new Date(start) });
 
@@ -52,7 +55,11 @@ for (const p of plan) {
   const gh = new FakeGitHub();
   // Fixtures share commit ids; each seeded run gets its own.
   f.run.headSha = `${f.run.headSha}${p.pull}`;
-  gh.config.set(p.repo, JSON.stringify({ ...f.config, ask: { ...f.config.ask, to: "reviewer@example.com", toGithub: "jaytoday-test", deadlineMinutes: 240 } }));
+  const file = configInput(f.config);
+  for (const id of p.shadow ?? []) file.extensions[id] = { ...file.extensions[id], mode: "shadow" };
+  gh.config.set(p.repo, JSON.stringify({ ...file, ask: { ...file.ask, to: "reviewer@example.com", toGithub: "jaytoday-test", deadlineMinutes: 240 } }));
+  gh.files.set(p.repo, Object.fromEntries(f.run.files.filter((x) => x.from === "default").map((x) => [x.path, x.text])));
+  gh.files.set(`${p.repo}@${f.run.headSha}`, Object.fromEntries(f.run.files.filter((x) => x.from === "head").map((x) => [x.path, x.text])));
   // Each fixture job becomes one workflow run with its attempts.
   const byWorkflow = new Map<string, typeof f.run.jobs>();
   for (const j of f.run.jobs) byWorkflow.set(j.workflow, [...(byWorkflow.get(j.workflow) ?? []), j]);

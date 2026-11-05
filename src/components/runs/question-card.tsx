@@ -20,6 +20,8 @@ export function QuestionCard({ q, ask }: { q: ResolvedQuestion; ask?: AskState }
           <p className="font-mono text-xs text-muted-foreground">{q.question.id}</p>
           <h3 className="font-medium text-foreground">{q.question.summary}</h3>
           <p className="text-sm text-muted-foreground">{q.question.prompt}</p>
+          {q.question.relaxedBy ? <p className="text-xs text-warning">Relaxed by {q.question.relaxedBy.extension}: {q.question.relaxedBy.why}</p> : null}
+          {q.question.askTo?.length ? <p className="text-xs text-muted-foreground">Asked: {q.question.askTo.join(", ")}</p> : null}
           </div>
         </div>
         <Badge color={q.outcome === "pass" ? "success" : q.outcome === "fail" ? "error" : "warning"} variant="subtle">

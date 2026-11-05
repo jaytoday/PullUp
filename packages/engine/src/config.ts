@@ -178,6 +178,19 @@ export function enabledExtensions(config: Config): string[] {
   return out;
 }
 
+/**
+ * A parsed config back in the shape of `.pullup/config.json` (with every
+ * default filled in): `parseConfig(configInput(c))` gives `c` again. The
+ * settings page edits this and shows it as the file to commit.
+ */
+export function configInput(config: Config): ConfigInput & { extensions: Record<string, Record<string, unknown>> } {
+  const { extensions, ...rest } = config;
+  return {
+    ...rest,
+    extensions: Object.fromEntries(Object.entries(extensions).map(([id, s]) => [id, { mode: s.mode, shadowCouncil: s.shadowCouncil, maxQuestions: s.maxQuestions, ...s.config }])),
+  };
+}
+
 export function extensionMode(config: Config, id: string): ExtensionMode {
   return config.extensions[id]?.mode ?? "off";
 }
