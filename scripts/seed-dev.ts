@@ -90,6 +90,15 @@ for (const p of plan) {
   }
 }
 
+// The daily threat model check for acme/payments: its map names src/deliveries.ts, which the default branch no longer has.
+{
+  const { checkThreatDrift } = await import("@/server/threat-drift");
+  const gh = new FakeGitHub();
+  const f = fixtures.find((x) => x.name === "threat-control-touched")!;
+  gh.files.set("acme/payments", { "THREATS.md": f.run.files[0]!.text, "src/webhook.ts": "export function verifySignature() {}" });
+  await checkThreatDrift(gh, "acme/payments", new Date());
+}
+
 const existing = await db.select().from((await import("@/lib/db/schema")).user);
 if (!existing.length) await auth.api.signUpEmail({ body: { email: "owner@example.com", password: "pullup-dev-password", name: "Owner" } });
 console.log(`Seeded ${plan.length} runs. Sign in as owner@example.com / pullup-dev-password.`);

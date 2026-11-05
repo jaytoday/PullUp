@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { asks, repos, runs } from "@/lib/db/schema";
 import { type AskClient, type AskDeps, ensureAsks, loadAsks, recordAnswer, recordGithubAnswer, tickAsks } from "./asking";
 import { evidenceStore, isStopped, nonceLedger } from "./stores";
+import { checkThreatDriftDaily } from "./threat-drift";
 
 /**
  * One commit, start to finish: read the config from the default branch,
@@ -177,11 +178,12 @@ export async function finishRun(runId: string, deps: PipelineDeps): Promise<stri
   return state;
 }
 
-/** The worker's minute: runs still collecting (decided without what is missing after an hour), then the asks' clocks and WithAI answers. */
+/** The worker's minute: runs still collecting (decided without what is missing after an hour), then the asks' clocks and WithAI answers, then (once a day) the threat model check. */
 export async function processOpenRuns(deps: PipelineDeps): Promise<number> {
   const open = await db.select({ id: runs.id }).from(runs).where(eq(runs.state, "collecting"));
   for (const r of open) await processRun(r.id, deps);
   for (const runId of await tickAsks(askDeps(deps))) await finishRun(runId, deps);
+  await checkThreatDriftDaily(deps.github, deps.now()).catch((err: Error) => console.error("pullup threat model check:", err.message));
   return open.length;
 }
 

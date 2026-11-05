@@ -39,6 +39,7 @@ const save = repo.getByRole("button", { name: "Save draft" });
 // The latest seeded run of acme/payments has threat-model in Shadow.
 check((await mode("core")) === "Active" && (await mode("threat-model")) === "Shadow" && (await mode("doc-links")) === "Off", "modes start from the committed config (the latest run's)");
 check(await save.isDisabled(), "nothing changed: Save draft is disabled");
+check((await page.getByTestId("threat-drift-acme/payments").textContent()).includes("T2: src/deliveries.ts does not exist."), "the daily threat model check's drift is shown");
 
 await ext("doc-links").getByRole("radio", { name: "Shadow" }).click();
 check((await mode("doc-links")) === "Shadow", "doc-links switched to Shadow");

@@ -210,7 +210,7 @@ Planned, in this order:
 - **`continuous-review`** (phase 5): needs new GitHub App events (`pull_request` closed, `push`) and
   an owner decision on where follow-ups appear. Without it, `inert`'s flag activation question does
   not list the reviews still owed behind that flag.
-- **The daily threat model check** (operator contract and code map drift on the default branch):
-  `codeMapProblems()` exists; the worker job and reading branch protection (needs the App's
-  Administration read permission) do not.
+- **The operator contract check**: reading branch protection needs the GitHub App's Administration
+  read permission. (The daily code map check on the default branch is built: the worker runs it once
+  a day for repositories with `threat-model` on, and Settings shows what it found.)
 - **The Continuous setup preset** waits for `inert` and `continuous-review`.
