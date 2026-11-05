@@ -1,0 +1,43 @@
+{
+  "description": "Inert check case 'leak-shared-tax' from the step-0 test (code/pullup scripts/inert-lint-test): not inert, so the claim should be disproved. The claim is in the pull request description.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "inert": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "1ne0006",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "diff --git a/src/checkout.ts b/src/checkout.ts\nindex 100ec56..3cc7636 100644\n--- a/src/checkout.ts\n+++ b/src/checkout.ts\n@@ -1,7 +1,8 @@\n import { total, type Line } from \"./pricing\";\n import { db } from \"./db\";\n+import { isEnabled } from \"./flags\";\n export async function checkout(userId: string, lines: Line[]) {\n   const cents = total(lines);\n-  await db.insert(\"orders\", { userId, cents });\n+  await db.insert(\"orders\", { userId, cents, ...(isEnabled(\"taxV2\") ? { taxVersion: 2 } : {}) });\n   return { cents };\n }\ndiff --git a/src/pricing.ts b/src/pricing.ts\nindex 0d4c7e7..8ca94b5 100644\n--- a/src/pricing.ts\n+++ b/src/pricing.ts\n@@ -3,7 +3,7 @@ export function subtotal(lines: Line[]): number {\n   return lines.reduce((sum, l) => sum + l.unitCents * l.qty, 0);\n }\n export function tax(cents: number): number {\n-  return Math.round(cents * 0.08);\n+  return Math.ceil(cents * 0.0825);\n }\n export function total(lines: Line[]): number {\n   const s = subtotal(lines);\n",
+    "pull": {
+      "number": 106,
+      "title": "leak-shared-tax",
+      "body": "PullUp-Inert: flag=taxV2",
+      "labels": [],
+      "author": "alice"
+    }
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": []
+  }
+}

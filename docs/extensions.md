@@ -14,6 +14,7 @@ and docs. Extensions are never loaded from a repository or the internet.
 | `repo-rules` | The repository's own rules: Gallant lint rule files in `.pullup/rules/` on the default branch, each checked per changed file with a cheap model screen. A file that could not be checked is a question (`failClosed`). | Off |
 | `threat-model` | Checks each change against the repository's threat model (`THREATS.md`): controls touched, code map drift, new entry points, edits that weaken the model. Plain code, no model calls. | Off |
 | `codeowners` | Asks the code owners of a question's files (from `CODEOWNERS`) instead of `ask.to`. | Off |
+| `inert` | Tries to disprove an author's claim (label `pullup:inert`, or `PullUp-Inert: flag=<name>` in the description) that a change is switched off behind a feature flag; asks a person whenever a change turns a flag on. | Off |
 | `doc-links` | Links design docs that mention a changed file and walkthrough specs the change edits. Notes only. | Off |
 
 `pnpm pullup extensions` and `GET /api/extensions` list them with every setting, its default and
@@ -144,6 +145,32 @@ Gallant matches file names only. Two PullUp-only fields: `pullupLevel` (p1 / p2,
 `pullupCouncilMayPass: false` (a person decides that rule). A rule that fails raises one question
 `repo-rules:<rule>` with the quoted lines and the rule text as the council's context.
 
+## The inert check
+
+"Inert" argues a change is safer, and model answers may only raise risk, so the author claims it and
+PullUp tries to disprove it:
+
+1. **Code first.** Any of these disproves the claim: a migration, dependency, CI or infrastructure
+   change; a flag added or changed to on in a flag file (`flagFiles`); an added line matching a
+   `startupPatterns` regular expression; new code under a negated flag check (`if (!isEnabled(...))`)
+   that was not there before (existing code newly wrapped in one, a kill switch, is fine, and so is
+   an early `return`); new code in a file with no flag check at all (a new file that only declares
+   functions is left to the screens).
+2. **One screen per changed code file**: "with every flag off, does anything differ?" A lean to
+   "yes" above `maxP` (default 0.3) disproves the claim.
+3. **Result**: a fact `{ kind: "inert", flags, status, reasons }` with `verified`, `disproved` or
+   `unclear` (some file was not checked), and a note. `askWhenDisproved` turns a disproved claim into
+   a question for a person. `relaxSensitiveWhenInert` (off, marked `loosens`) lets the council pass
+   the core sensitive path question alone when the claim is verified.
+
+Turning a flag on (an "on" line added in a flag file, or any change to a `rolloutFiles` file) is
+always a question only a person may pass, never relaxed, claim or not.
+
+The eight labeled cases of the earlier step-0 test are fixtures (`fixtures/inert-*.json`). Code alone
+disproves four of them whatever a model says, including new code under a negated gate, the case a
+model answering without reasoning missed. The kill switch is not disproved. The remaining cases
+depend on the screens; they have not been measured live yet.
+
 ## The threat model file
 
 `threat-model` reads a file in the layout of the Warden DNS resolver's public `SECURITY.md`:
@@ -180,8 +207,9 @@ against the code, so moving a control without updating the map fails the tests.
 
 Planned, in this order:
 
-- **`inert` and `continuous-review`** (phase 5): need new GitHub App events and an owner decision on
-  where follow-ups appear.
+- **`continuous-review`** (phase 5): needs new GitHub App events (`pull_request` closed, `push`) and
+  an owner decision on where follow-ups appear. Without it, `inert`'s flag activation question does
+  not list the reviews still owed behind that flag.
 - **The daily threat model check** (operator contract and code map drift on the default branch):
   `codeMapProblems()` exists; the worker job and reading branch protection (needs the App's
   Administration read permission) do not.

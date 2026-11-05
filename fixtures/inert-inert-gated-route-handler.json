@@ -1,0 +1,43 @@
+{
+  "description": "Inert check case 'inert-gated-route-handler' from the step-0 test (code/pullup scripts/inert-lint-test): switched off behind its flag, so the claim should hold. The claim is in the pull request description.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "inert": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "1ne0003",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "diff --git a/src/server.ts b/src/server.ts\nindex adae7e8..7b9327f 100644\n--- a/src/server.ts\n+++ b/src/server.ts\n@@ -1,4 +1,8 @@\n import express from \"express\";\n import { checkout } from \"./checkout\";\n+import { isEnabled } from \"./flags\";\n export const app = express();\n app.post(\"/checkout\", async (req, res) => res.json(await checkout(req.body.userId, req.body.lines)));\n+if (isEnabled(\"orderHistory\")) {\n+  app.get(\"/orders\", async (_req, res) => res.json([]));\n+}\n",
+    "pull": {
+      "number": 103,
+      "title": "inert-gated-route-handler",
+      "body": "PullUp-Inert: flag=orderHistory",
+      "labels": [],
+      "author": "alice"
+    }
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": []
+  }
+}

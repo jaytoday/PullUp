@@ -76,7 +76,7 @@ describe("extensions in the command line", () => {
     const text = extensions([]);
     expect(text).toContain("core@1.0.0 — Core checks (on unless switched off)");
     expect(text).toContain("threat-model.controlsCouncilMayPass (boolean, default false) [loosens]");
-    expect(JSON.parse(extensions(["--json"])).map((e: { id: string }) => e.id)).toEqual(["core", "repo-rules", "threat-model", "codeowners", "doc-links"]);
+    expect(JSON.parse(extensions(["--json"])).map((e: { id: string }) => e.id)).toEqual(["core", "repo-rules", "threat-model", "codeowners", "doc-links", "inert"]);
   });
 
   it("reads the threat model from the default branch, and --only runs one extension", async () => {

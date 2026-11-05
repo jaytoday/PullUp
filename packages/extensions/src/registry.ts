@@ -1,6 +1,7 @@
 import type { Extension } from "@pullup/sdk";
 import codeowners from "./codeowners";
 import core from "./core";
+import inert from "./inert";
 import docLinks from "./doc-links";
 import repoRules from "./repo-rules";
 import threatModel from "./threat-model";
@@ -10,7 +11,7 @@ import threatModel from "./threat-model";
  * does not say otherwise. Adding an extension is a folder in `src/` and one
  * line here.
  */
-export const BUNDLED: readonly Extension[] = [core, repoRules, threatModel, codeowners, docLinks];
+export const BUNDLED: readonly Extension[] = [core, repoRules, threatModel, codeowners, docLinks, inert];
 
 let registry: readonly Extension[] = BUNDLED;
 

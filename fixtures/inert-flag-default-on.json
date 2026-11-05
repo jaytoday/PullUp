@@ -1,0 +1,45 @@
+{
+  "description": "Inert check case 'flag-default-on' from the step-0 test (code/pullup scripts/inert-lint-test): not inert, so the claim should be disproved. The claim is in the pull request description.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "inert": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "1ne0001",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "diff --git a/src/flags.ts b/src/flags.ts\nindex 36e134e..2ad1040 100644\n--- a/src/flags.ts\n+++ b/src/flags.ts\n@@ -1,6 +1,6 @@\n // Feature flags. Everything defaults to off; ops turns flags on per environment.\n const defaults: Record<string, boolean> = {\n-  newSearch: false,\n+  newSearch: true,\n };\n export function isEnabled(name: string): boolean {\n   return process.env[`FLAG_${name.toUpperCase()}`] === \"1\" || defaults[name] === true;\n",
+    "pull": {
+      "number": 101,
+      "title": "flag-default-on",
+      "body": "PullUp-Inert: flag=newSearch",
+      "labels": [],
+      "author": "alice"
+    }
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": [
+      "inert:flag-activation"
+    ]
+  }
+}

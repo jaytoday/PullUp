@@ -1,0 +1,43 @@
+{
+  "description": "Inert check case 'inert-kill-switch' from the step-0 test (code/pullup scripts/inert-lint-test): switched off behind its flag, so the claim should hold. The claim is in the pull request description.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "inert": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "1ne0004",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "diff --git a/src/checkout.ts b/src/checkout.ts\nindex 100ec56..690b4e7 100644\n--- a/src/checkout.ts\n+++ b/src/checkout.ts\n@@ -1,7 +1,8 @@\n import { total, type Line } from \"./pricing\";\n import { db } from \"./db\";\n+import { isEnabled } from \"./flags\";\n export async function checkout(userId: string, lines: Line[]) {\n   const cents = total(lines);\n-  await db.insert(\"orders\", { userId, cents });\n+  if (!isEnabled(\"disableOrderWrites\")) await db.insert(\"orders\", { userId, cents });\n   return { cents };\n }\n",
+    "pull": {
+      "number": 104,
+      "title": "inert-kill-switch",
+      "body": "PullUp-Inert: flag=disableOrderWrites",
+      "labels": [],
+      "author": "alice"
+    }
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": []
+  }
+}

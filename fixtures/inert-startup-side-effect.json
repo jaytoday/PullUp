@@ -1,0 +1,43 @@
+{
+  "description": "Inert check case 'startup-side-effect' from the step-0 test (code/pullup scripts/inert-lint-test): not inert, so the claim should be disproved. The claim is in the pull request description.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "inert": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "1ne0007",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "diff --git a/src/server.ts b/src/server.ts\nindex adae7e8..42854fa 100644\n--- a/src/server.ts\n+++ b/src/server.ts\n@@ -1,4 +1,10 @@\n import express from \"express\";\n import { checkout } from \"./checkout\";\n+import { isEnabled } from \"./flags\";\n+import \"./warmup\";\n export const app = express();\n app.post(\"/checkout\", async (req, res) => res.json(await checkout(req.body.userId, req.body.lines)));\n+app.get(\"/search\", async (req, res) => {\n+  if (!isEnabled(\"newSearch\")) return res.status(404).end();\n+  res.json({ results: [] });\n+});\ndiff --git a/src/warmup.ts b/src/warmup.ts\nnew file mode 100644\nindex 0000000..02ccce4\n--- /dev/null\n+++ b/src/warmup.ts\n@@ -0,0 +1,4 @@\n+import { db } from \"./db\";\n+// Pre-computes the search index for the new search experience.\n+setInterval(() => { void db.update(\"search_index\", {}, { rebuiltAt: Date.now() }); }, 60_000);\n+export {};\n",
+    "pull": {
+      "number": 107,
+      "title": "startup-side-effect",
+      "body": "PullUp-Inert: flag=newSearch",
+      "labels": [],
+      "author": "alice"
+    }
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": []
+  }
+}
