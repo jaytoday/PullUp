@@ -1,9 +1,11 @@
 # PullUp's threat model
 
+([Back to the overview](README.md))
+
 PullUp is a security control in other teams' CI: a pull request should not be able to get past it
 by changing it, fooling it or overloading it. This page says what PullUp resists, what it leaves to
 other layers, what the operator must set up, and where each control lives in the code. It uses the
-layout PullUp's own `threat-model` extension reads, and PullUp's tests check the code map below
+layout PullUp's own [`threat-model` extension](extensions/threat-model.md) reads, and PullUp's tests check the code map below
 against the code (`packages/engine/src/threat-model-self.test.ts`), so moving a control without
 updating this page fails the build.
 
