@@ -1,0 +1,111 @@
+{
+  "result": "waiting",
+  "reason": "Waiting for a person on 1 question(s).",
+  "hardFailures": [],
+  "questions": [
+    {
+      "question": {
+        "id": "weakened-tests",
+        "trigger": "weakened-tests",
+        "councilMayPass": true,
+        "prompt": "Tests were weakened in this change. Is that justified by what the change does, so the run should pass?",
+        "summary": "Weakened tests: snapshots rewritten in the same change as code.",
+        "evidence": [
+          {
+            "source": "diff",
+            "where": "src/__snapshots__/cart.test.ts.snap",
+            "line": 1,
+            "text": "exports[`cart 1`] = `\"$0.30\"`;"
+          }
+        ]
+      },
+      "seats": [
+        {
+          "seat": "Test reliability: you care whether the tests can be trusted.",
+          "verdict": "needs-person",
+          "strength": 4,
+          "reason": "The snapshot was rewritten to match a code change in cart.ts that removes the two-decimal rounding, so the snapshot update follows the behaviour change rather than hiding a failure. However, the change gives no stated reason for the behaviour change, and the guidance accepts a rewritten snapshot only when the change says why. The change also alters currency rounding in cart totals, which is close to payment code, and the guidance escalates payment code to a person. The evidence does not settle whether dropping the rounding is intended, so this goes to a person rather than passing or failing. The guidance is silent on whether a currency-formatting change counts as payment code, so I applied the escalation conservatively.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            },
+            {
+              "source": "diff",
+              "text": "+exports[`cart 1`] = `\"$0.3\"`;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Security: you care about sign-in, permissions, secrets and data exposure.",
+          "verdict": "needs-person",
+          "strength": 4,
+          "reason": "The snapshot rewrite is not a plain test weakening. The same change removes the cent rounding in src/cart.ts, so the cart total now comes out as a bare number, and the snapshot was rewritten to match ($0.30 becomes $0.3). No reason is given in the evidence, so the guidance's 'says why' condition is not met. Cart totals are money, which is payment-adjacent code under the escalation rule and within the security viewpoint's data concern. The evidence does not show that the new output is correct, so a person should decide. Strength is 4 because the rounding removal and the unexplained snapshot rewrite are clear from the diff.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Maintainer of the touched area: you know this code and what depends on it.",
+          "verdict": "needs-person",
+          "strength": 4,
+          "reason": "The snapshot rewrite matches the code change: the diff removes the Math.round(sum * 100) / 100 rounding in src/cart.ts, and the snapshot changes from \"$0.30\" to \"$0.3\". The guidance accepts a snapshot rewrite only when the change removes the covered behaviour and says why. The evidence contains no commit message or stated reason, so the justification is missing. The change also drops two-decimal rounding from a cart total, a money-display path, and the evidence does not show whether unrounded sums (for example floating-point residue) reach customers. The guidance silent on money display, so I used judgment: the decision needs a maintainer or person to confirm the intent. The one passing job had no failed tests, and the diff is data, not instructions.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            },
+            {
+              "source": "diff",
+              "text": "+exports[`cart 1`] = `\"$0.3\"`;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Release safety: you care about what could break for users after this ships.",
+          "verdict": "needs-person",
+          "strength": 4,
+          "reason": "The snapshot was rewritten to match a behaviour change in src/cart.ts: the cart total no longer rounds to cents, so the displayed value moves from $0.30 to $0.3. The guidance accepts a snapshot rewrite only when the change removes or replaces the covered behaviour and says why. The evidence contains no stated reason, and the change alters a monetary total in cart code, which the guidance treats as payment-adjacent and sends to a person. The passing job does not show that unrounded totals are correct for users. The guidance does not directly cover removing rounding from a money total, so this is a judgment call. The change is not a clear weakening of tests, so I am not failing it.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            },
+            {
+              "source": "diff",
+              "text": "+exports[`cart 1`] = `\"$0.3\"`;"
+            }
+          ],
+          "problems": []
+        }
+      ],
+      "outcome": "ask",
+      "decidedBy": null,
+      "reason": "Asking a person: the council did not agree clearly."
+    }
+  ],
+  "councilCalls": 4,
+  "costUsd": 0
+}

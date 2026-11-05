@@ -36,8 +36,8 @@
   },
   "expect": {
     "hardFailure": false,
-    "triggers": [
-      "sensitive-path"
+    "questions": [
+      "core:sensitive-path"
     ]
   }
 }

@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { ciRunSchema, type ParsedCiRun } from "./ci";
-import { configSchema, type Config, TRIGGER_IDS } from "./config";
+import { ciRunSchema, type ParsedCiRun } from "@pullup/sdk";
+import { configSchema, type Config } from "./config";
 
 /**
  * Recorded CI results and diffs for offline tests and `pullup check --fixture`.
@@ -12,7 +12,8 @@ const fixtureSchema = z.object({
   description: z.string(),
   config: configSchema,
   run: ciRunSchema,
-  expect: z.object({ hardFailure: z.boolean(), triggers: z.array(z.enum(TRIGGER_IDS)) }),
+  /** `questions`: the ids of the questions raised, in order (`core:flaky-test`). */
+  expect: z.object({ hardFailure: z.boolean(), questions: z.array(z.string()) }),
 });
 
 export interface Fixture {

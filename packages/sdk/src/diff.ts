@@ -9,6 +9,12 @@ export interface DiffLine {
   newLine: number | null;
   /** Line number in the old file (removed and context lines). */
   oldLine: number | null;
+  /**
+   * The function heading git prints after the hunk header (`@@ -1 +1 @@ function verify(`),
+   * or null. It names the function the hunk is in, roughly: git finds it with a simple
+   * line pattern, not a parser.
+   */
+  section: string | null;
 }
 
 export interface DiffFile {
@@ -19,7 +25,7 @@ export interface DiffFile {
   lines: DiffLine[];
 }
 
-const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/;
 const stripPrefix = (p: string) => p.replace(/^[ab]\//, "");
 
 export function parseDiff(diff: string): DiffFile[] {
@@ -31,6 +37,7 @@ export function parseDiff(diff: string): DiffFile[] {
   // what tells a removed "-- comment" line apart from the next file's header.
   let oldLeft = 0;
   let newLeft = 0;
+  let section: string | null = null;
   const lines = diff.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
@@ -56,18 +63,19 @@ export function parseDiff(diff: string): DiffFile[] {
       oldLeft = Number(header[2] ?? 1);
       newLine = Number(header[3]);
       newLeft = Number(header[4] ?? 1);
+      section = header[5]?.trim() || null;
       continue;
     }
     if (!file || !inHunk) continue;
     if (line.startsWith("+")) {
-      file.lines.push({ kind: "add", text: line.slice(1), newLine: newLine++, oldLine: null });
+      file.lines.push({ kind: "add", text: line.slice(1), newLine: newLine++, oldLine: null, section });
       newLeft--;
     } else if (line.startsWith("-")) {
-      file.lines.push({ kind: "remove", text: line.slice(1), newLine: null, oldLine: oldLine++ });
+      file.lines.push({ kind: "remove", text: line.slice(1), newLine: null, oldLine: oldLine++, section });
       oldLeft--;
     } else if (line.startsWith(" ") || line === "") {
       // A context line; some tools drop the leading space of an empty one.
-      file.lines.push({ kind: "context", text: line.slice(1), newLine: newLine++, oldLine: oldLine++ });
+      file.lines.push({ kind: "context", text: line.slice(1), newLine: newLine++, oldLine: oldLine++, section });
       oldLeft--;
       newLeft--;
     }

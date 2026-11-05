@@ -1,0 +1,15 @@
+{
+  "result": "fail",
+  "reason": "Required workflow \"ci\" did not run.",
+  "hardFailures": [
+    {
+      "workflow": "ci",
+      "job": null,
+      "reason": "Required workflow \"ci\" did not run.",
+      "logExcerpt": ""
+    }
+  ],
+  "questions": [],
+  "councilCalls": 0,
+  "costUsd": 0
+}

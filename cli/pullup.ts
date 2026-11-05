@@ -92,7 +92,7 @@ export function formatDecision(input: CheckInput, decision: RunDecision, seconds
   const out: string[] = [...input.notes.map((n) => `note: ${n}`), `${input.run.repo} @ ${input.run.headSha.slice(0, 7)}`, ""];
   for (const f of decision.hardFailures) out.push(`hard failure: ${f.reason}`);
   for (const q of decision.questions) {
-    out.push(`question (${q.question.trigger}): ${q.question.prompt}`, `  ${q.question.summary}`);
+    out.push(`question (${q.question.id}${q.question.shadow ? ", shadow" : ""}): ${q.question.prompt}`, `  ${q.question.summary}`);
     for (const s of q.seats) {
       out.push(`  - ${s.seat.split(":")[0]}: ${s.verdict} (strength ${s.strength})${s.reason ? ` — ${s.reason}` : ""}`);
       for (const quote of s.validQuotes) out.push(`      quote (${quote.source}, checks out): "${quote.text}"`);

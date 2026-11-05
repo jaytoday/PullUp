@@ -1,5 +1,5 @@
 import type { AskState, Config, ResolvedQuestion, RunDecision } from "@pullup/engine";
-import { verifyChain } from "@pullup/engine";
+import { storedConfig, storedDecision, verifyChain } from "@pullup/engine";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, repos, runs } from "@/lib/db/schema";
@@ -10,8 +10,8 @@ import { evidenceChain, evidenceFor, isStopped } from "./stores";
 export type RunRow = typeof runs.$inferSelect;
 const DAY = 86_400_000;
 
-export const decisionOf = (run: RunRow) => run.decision as RunDecision | null;
-export const configOf = (run: RunRow) => run.config as Config | null;
+export const decisionOf = (run: RunRow): RunDecision | null => (run.decision ? storedDecision(run.decision) : null);
+export const configOf = (run: RunRow): Config | null => (run.config ? storedConfig(run.config) : null);
 
 /** Who settled the run: a hard failure, nothing tricky, the council, a person, or a no-answer option. */
 export function decidedBy(run: RunRow, runAsks: Record<string, AskState>): string {
@@ -93,11 +93,12 @@ export async function costPerDay(days = 14, now = new Date()) {
 }
 
 /**
- * Per trigger: of the questions a person answered, how often the council's
- * lean (most seats "pass" and no valid "fail" → pass, else fail) matched them.
+ * Per question kind (`core:flaky-test`, `threat-model:T3`): of the questions a
+ * person answered, how often the council's lean (most seats "pass" and no
+ * valid "fail" → pass, else fail) matched them. `extension` narrows it to one extension.
  */
-export async function triggerAccuracy() {
-  const answered = (await db.select().from(asks)).filter((a) => (a.state as AskState).answer);
+export async function questionAccuracy(extension?: string) {
+  const answered = (await db.select().from(asks)).filter((a) => (a.state as AskState).answer && (!extension || a.questionId.startsWith(`${extension}:`)));
   const byTrigger = new Map<string, { agreed: number; total: number }>();
   for (const a of answered) {
     const [run] = await db.select().from(runs).where(eq(runs.id, a.runId));
@@ -105,12 +106,12 @@ export async function triggerAccuracy() {
     if (!q) continue;
     const passes = q.seats.filter((s) => s.verdict === "pass").length;
     const lean = passes * 2 > q.seats.length && !q.seats.some((s) => s.verdict === "fail" && s.validQuotes.length) ? "pass" : "fail";
-    const t = byTrigger.get(q.question.trigger) ?? { agreed: 0, total: 0 };
+    const t = byTrigger.get(q.question.id) ?? { agreed: 0, total: 0 };
     t.total += 1;
     if (lean === (a.state as AskState).answer!.value) t.agreed += 1;
-    byTrigger.set(q.question.trigger, t);
+    byTrigger.set(q.question.id, t);
   }
-  return [...byTrigger].map(([trigger, v]) => ({ trigger, ...v }));
+  return [...byTrigger].map(([id, v]) => ({ id, ...v }));
 }
 
 export async function repoList() {

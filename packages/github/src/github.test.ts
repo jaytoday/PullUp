@@ -78,7 +78,7 @@ describe("test reports", () => {
     const run = { ...got.run, diff: got.run.diff ?? "" } as Parameters<typeof findHardFailures>[0];
     expect(run.jobs.find((j) => j.name === "test")!.attempts[0]!.failedTests).toEqual(["checkout.spec.ts > shows confirmation"]);
     expect(findHardFailures(run, known)).toEqual([]);
-    expect(findQuestions(run, known).map((q) => q.trigger)).toEqual(["flaky-test"]);
+    expect(findQuestions(run, known).map((q) => q.id)).toEqual(["core:flaky-test"]);
     expect(got.notes.join(" ")).not.toContain("pullup-reports");
     expect(got.rerunnable).toEqual([10]);
   });

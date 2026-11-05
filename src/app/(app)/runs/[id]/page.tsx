@@ -33,7 +33,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const steps: TimelineStep[] = [
     { label: "Collect", detail: run.state === "collecting" ? `Waiting for ${run.pending.join(", ") || "the required workflows"}` : "Job results, reruns, logs and the diff collected", state: run.state === "collecting" ? "current" : "done" },
     { label: "Hard failures", detail: hard ? `${hard} hard failure${hard > 1 ? "s" : ""}: fail with no AI call` : "None", state: decision ? "done" : "todo" },
-    { label: "Triggers", detail: hard ? "Not needed" : questions.length ? questions.map((q) => q.question.trigger).join(", ") : "None fired: pass with no AI call", state: !decision ? "todo" : hard ? "skipped" : "done" },
+    { label: "Triggers", detail: hard ? "Not needed" : questions.length ? questions.map((q) => q.question.id).join(", ") : "None fired: pass with no AI call", state: !decision ? "todo" : hard ? "skipped" : "done" },
     { label: "Council", detail: run.councilCalls ? `${run.councilCalls} seat calls, ${dollars(run.costUsd)}` : "Not called", state: !decision ? "todo" : run.councilCalls ? "done" : "skipped" },
     { label: "Person", detail: asked ? settledBy : run.mode === "shadow" && run.result === "waiting" ? "Shadow mode: no one is asked" : "Not needed", state: !asked ? (run.mode === "shadow" && run.result === "waiting" ? "skipped" : decision ? "skipped" : "todo") : run.state === "waiting" ? "current" : "done" },
     { label: "Result", detail: decision ? `${run.reason ?? decision.reason} Settled by: ${settledBy}.` : "Not decided yet", state: run.state === "decided" ? "done" : run.state === "waiting" ? "current" : "todo" },

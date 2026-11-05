@@ -30,12 +30,34 @@ export const jobSchema = z.object({
 });
 export type Job = z.infer<typeof jobSchema>;
 
+/** The pull request the commit belongs to, when there is one. */
+export const pullInfoSchema = z.object({
+  number: z.number().int(),
+  title: z.string().default(""),
+  body: z.string().default(""),
+  labels: z.array(z.string()).default([]),
+  /** GitHub login of the author. */
+  author: z.string().default(""),
+});
+export type PullInfo = z.infer<typeof pullInfoSchema>;
+
+/** A file read for an extension (see `Extension.reads`): from the default branch, or from the pull request's head commit. */
+export const readFileSchema = z.object({
+  path: z.string(),
+  text: z.string(),
+  from: z.enum(["default", "head"]),
+});
+export type ReadFile = z.infer<typeof readFileSchema>;
+
 export const ciRunSchema = z.object({
   repo: z.string(),
   headSha: z.string(),
   jobs: z.array(jobSchema),
   /** The pull request's unified diff against its base. */
   diff: z.string().default(""),
+  pull: pullInfoSchema.nullable().default(null),
+  /** Files extensions asked to read. A file that is not here was missing or could not be read: "no data", never "passed". */
+  files: z.array(readFileSchema).default([]),
 });
 export type CiRun = z.input<typeof ciRunSchema>;
 export type ParsedCiRun = z.infer<typeof ciRunSchema>;

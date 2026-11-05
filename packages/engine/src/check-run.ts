@@ -18,20 +18,37 @@ export interface CheckRunView {
 
 const WORD = { pass: "pass", fail: "fail", waiting: "ask a person" } as const;
 
+function questionLines(q: RunDecision["questions"][number]): string[] {
+  const lines = [`#### ${q.question.summary}`, `${q.question.prompt} \`${q.question.id}\``, ""];
+  if (q.question.relaxedBy) lines.push(`_Relaxed by ${q.question.relaxedBy.extension}: ${q.question.relaxedBy.why}_`, "");
+  lines.push(q.outcome === "ask" ? `**${q.reason}**` : `**${q.outcome === "pass" ? "Pass" : "Fail"}**: ${q.reason}`, "");
+  for (const s of q.seats) {
+    lines.push(`- ${s.seat.split(":")[0]}: ${s.verdict} (strength ${s.strength})${s.reason ? `. ${s.reason}` : ""}`);
+    for (const quote of s.validQuotes) lines.push(`  > \`${quote.text.replace(/`/g, "'")}\` (${quote.source})`);
+  }
+  lines.push("");
+  return lines;
+}
+
 export function checkRunView(decision: RunDecision, mode: CheckMode, notes: string[] = []): CheckRunView {
   const lines: string[] = [];
   if (mode === "shadow") lines.push("**Shadow mode**: PullUp records what it would decide and never blocks a merge.", "");
   lines.push(decision.reason, "");
   for (const f of decision.hardFailures) lines.push(`- Hard failure: ${f.reason}`);
-  for (const q of decision.questions) {
-    lines.push(`### ${q.question.summary}`, `${q.question.prompt}`, "", q.outcome === "ask" ? `**${q.reason}**` : `**${q.outcome === "pass" ? "Pass" : "Fail"}**: ${q.reason}`, "");
-    for (const s of q.seats) {
-      lines.push(`- ${s.seat.split(":")[0]}: ${s.verdict} (strength ${s.strength})${s.reason ? `. ${s.reason}` : ""}`);
-      for (const quote of s.validQuotes) lines.push(`  > \`${quote.text.replace(/`/g, "'")}\` (${quote.source})`);
-    }
+  const counted = decision.questions.filter((q) => !q.question.shadow);
+  const shadow = decision.questions.filter((q) => q.question.shadow);
+  // One small heading per extension that raised something.
+  for (const extension of [...new Set(counted.map((q) => q.question.extension))]) {
+    lines.push(`### ${extension}`, "");
+    for (const q of counted.filter((x) => x.question.extension === extension)) lines.push(...questionLines(q));
+  }
+  if (shadow.length) {
+    lines.push("### Would ask (Shadow extensions, not counted)", "");
+    for (const q of shadow) lines.push(`- \`${q.question.id}\`: ${q.question.summary} (council: ${q.outcome === "ask" ? "would ask a person" : q.outcome})`);
     lines.push("");
   }
   if (decision.councilCalls) lines.push(`Council: ${decision.councilCalls} calls.`);
+  for (const n of decision.extensions?.notes ?? []) lines.push(`- ${n.link ? `[${n.text}](${n.link})` : n.text} _(${n.extension})_`);
   for (const n of notes) lines.push(`_Note: ${n}_`);
   const summary = lines.join("\n").slice(0, 60_000);
   if (mode === "shadow") {

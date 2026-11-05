@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ciRunSchema } from "./ci";
+import { ciRunSchema } from "@pullup/sdk";
 import { checkSeat } from "./council";
 import { parseConfig } from "./config";
 import { loadFixtures } from "./fixtures";
 import { answer, startAsk } from "./no-answer";
 import { combine, decideRun, resolveQuestion, settle } from "./resolution";
 import { fixedCouncil, randomCouncil, seeded } from "./testing";
-import { findQuestions } from "./triggers";
+import { findQuestions } from "./host";
 
 const fixtures = loadFixtures(fileURLToPath(new URL("../../../fixtures", import.meta.url)));
 const PASS = { verdict: "pass", strength: 5, reason: "fine", quotes: [] };
@@ -22,7 +22,7 @@ describe("rules that must never break, over every fixture", () => {
   });
 
   it("no trigger fired → pass, and no council call is made", async () => {
-    for (const f of fixtures.filter((x) => !x.expect.hardFailure && x.expect.triggers.length === 0)) {
+    for (const f of fixtures.filter((x) => !x.expect.hardFailure && x.expect.questions.length === 0)) {
       const council = fixedCouncil({ verdict: "fail", strength: 5, reason: "x", quotes: [] });
       expect((await decideRun(f.run, f.config, council)).result, f.name).toBe("pass");
       expect(council.calls, f.name).toBe(0);
@@ -32,7 +32,7 @@ describe("rules that must never break, over every fixture", () => {
   it("whatever the council says: a person-decides trigger is never passed by it, and a fail without a valid quote never fails", async () => {
     const random = seeded(42);
     const seen = new Set<string>();
-    for (const f of fixtures.filter((x) => !x.expect.hardFailure && x.expect.triggers.length > 0)) {
+    for (const f of fixtures.filter((x) => !x.expect.hardFailure && x.expect.questions.length > 0)) {
       for (const needsPersonBlocksPass of [true, false]) {
         const config = { ...f.config, council: { ...f.config.council, needsPersonBlocksPass } };
         for (let i = 0; i < 150; i++) {
@@ -139,7 +139,7 @@ describe("resolution rule", () => {
     const { state } = startAsk(question!, config, 0);
     for (const value of ["pass", "fail"] as const) {
       const answered = answer(state, { value, by: "sam", isAdmin: false }, 1).state;
-      expect(combine(settle(decision.questions, { "flaky-test": answered })).result).toBe(value);
+      expect(combine(settle(decision.questions, { "core:flaky-test": answered })).result).toBe(value);
     }
   });
 

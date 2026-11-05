@@ -1,15 +1,16 @@
 import type { CheckedSeat } from "./council";
+import type { Question } from "@pullup/sdk";
 import type { Config, NoAnswerOption } from "./config";
-import type { Question } from "./question";
 
 /**
  * Asking a person, and what happens when no one answers. Pure: the time is
  * always passed in, so tests use a fake clock and the worker uses `Date.now()`.
  *
- * At the deadline the configured option (per trigger, else `ask.onNoAnswer`):
+ * At the deadline the configured option (`ask.perExtension` for the question id,
+ * then for its extension, then the extension's own option, else `ask.onNoAnswer`):
  * - `fail`: the question fails with "no answer from <name>";
  * - `follow-council`: pass if most seats said "pass", otherwise fail. It never
- *   passes a trigger set to "a person decides": that would be the council passing it;
+ *   passes a question set to "a person decides": that would be the council passing it;
  * - `pass`: the question passes, marked "passed without an answer";
  * - `escalate`: ask `ask.backup` with a fresh deadline; if that also goes
  *   unanswered, `ask.onNoAnswerAfterBackup` applies.
@@ -35,10 +36,22 @@ export type AskAction = { kind: "remind"; to: string } | { kind: "ask"; to: stri
 
 const minutes = (n: number) => n * 60_000;
 
+/** Who is asked first: the people an extension named for this question (for example its code owners), else `ask.to`. */
+export function firstAsked(question: Question, config: Config): string[] {
+  return question.askTo?.length ? question.askTo : [config.ask.to];
+}
+
+/** The no-answer option for a question. `escalate` without a backup falls back to `fail`. */
+export function noAnswerOption(question: Question, config: Config): NoAnswerOption {
+  const option = config.ask.perExtension[question.id] ?? config.ask.perExtension[question.extension] ?? question.onNoAnswer ?? config.ask.onNoAnswer;
+  return option === "escalate" && !config.ask.backup ? "fail" : option;
+}
+
 export function startAsk(question: Question, config: Config, now: number): { state: AskState; actions: AskAction[] } {
   const deadline = now + minutes(config.ask.deadlineMinutes);
-  const state: AskState = { questionId: question.id, stage: "primary", asked: [config.ask.to], askedAt: now, deadline, remindedAt: null, answer: null, noAnswer: null };
-  return { state, actions: [{ kind: "ask", to: config.ask.to, deadline }] };
+  const to = firstAsked(question, config);
+  const state: AskState = { questionId: question.id, stage: "primary", asked: to, askedAt: now, deadline, remindedAt: null, answer: null, noAnswer: null };
+  return { state, actions: to.map((person) => ({ kind: "ask", to: person, deadline })) };
 }
 
 function councilLean(seats: CheckedSeat[], question: Question): PersonAnswer {
@@ -59,7 +72,7 @@ export function tick(state: AskState, question: Question, seats: CheckedSeat[], 
     }
     return { state, actions: [] };
   }
-  const option = state.stage === "backup" ? config.ask.onNoAnswerAfterBackup : (config.ask.perTrigger[question.trigger] ?? config.ask.onNoAnswer);
+  const option = state.stage === "backup" ? config.ask.onNoAnswerAfterBackup : noAnswerOption(question, config);
   if (option === "escalate") {
     const backup = config.ask.backup!;
     const deadline = now + minutes(config.ask.deadlineMinutes);

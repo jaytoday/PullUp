@@ -12,12 +12,12 @@ const OUTCOME: Record<string, string> = { pass: "Passed", fail: "Failed", ask: "
  */
 export function QuestionCard({ q, ask }: { q: ResolvedQuestion; ask?: AskState }) {
   return (
-    <section className="space-y-4 rounded-lg bg-background p-4 ring ring-border" data-testid={`question-${q.question.trigger}`}>
+    <section className="space-y-4 rounded-lg bg-background p-4 ring ring-border" data-testid={`question-${q.question.id}`}>
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 gap-3">
           <QuestionStatus outcome={q.outcome} />
           <div className="min-w-0">
-          <p className="font-mono text-xs text-muted-foreground">{q.question.trigger}</p>
+          <p className="font-mono text-xs text-muted-foreground">{q.question.id}</p>
           <h3 className="font-medium text-foreground">{q.question.summary}</h3>
           <p className="text-sm text-muted-foreground">{q.question.prompt}</p>
           </div>

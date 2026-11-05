@@ -31,8 +31,8 @@
   },
   "expect": {
     "hardFailure": false,
-    "triggers": [
-      "weakened-tests"
+    "questions": [
+      "core:weakened-tests"
     ]
   }
 }

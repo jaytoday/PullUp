@@ -25,7 +25,9 @@
   "dependencies": {
     "@libsql/client": "^0.17.3",
     "@pullup/engine": "workspace:*",
+    "@pullup/extensions": "workspace:^",
     "@pullup/github": "workspace:*",
+    "@pullup/sdk": "workspace:^",
     "@withai/client": "workspace:*",
     "better-auth": "^1.6.18",
     "canvas-confetti": "^1.9.4",

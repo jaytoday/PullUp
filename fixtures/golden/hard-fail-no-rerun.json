@@ -1,0 +1,15 @@
+{
+  "result": "fail",
+  "reason": "test failed: cart.test.ts > rounds totals.",
+  "hardFailures": [
+    {
+      "workflow": "ci",
+      "job": "test",
+      "logExcerpt": "expected 0.3",
+      "reason": "test failed: cart.test.ts > rounds totals."
+    }
+  ],
+  "questions": [],
+  "councilCalls": 0,
+  "costUsd": 0
+}

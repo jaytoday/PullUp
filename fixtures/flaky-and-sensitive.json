@@ -38,9 +38,9 @@
   },
   "expect": {
     "hardFailure": false,
-    "triggers": [
-      "flaky-test",
-      "sensitive-path"
+    "questions": [
+      "core:flaky-test",
+      "core:sensitive-path"
     ]
   }
 }

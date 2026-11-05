@@ -40,6 +40,6 @@
   },
   "expect": {
     "hardFailure": false,
-    "triggers": []
+    "questions": []
   }
 }

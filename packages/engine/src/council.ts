@@ -1,7 +1,5 @@
 import { z } from "zod";
-import type { ParsedCiRun } from "./ci";
-import { parseDiff } from "./diff";
-import type { Question } from "./question";
+import { type ParsedCiRun, parseDiff, type Question } from "@pullup/sdk";
 
 /**
  * The council's answers are never trusted as given. Each seat's answer must

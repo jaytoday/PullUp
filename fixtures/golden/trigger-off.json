@@ -1,0 +1,8 @@
+{
+  "result": "pass",
+  "reason": "Nothing tricky: every check passed and no trigger fired.",
+  "hardFailures": [],
+  "questions": [],
+  "councilCalls": 0,
+  "costUsd": 0
+}

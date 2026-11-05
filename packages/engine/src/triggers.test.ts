@@ -1,10 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ciRunSchema } from "./ci";
+import { ciRunSchema } from "@pullup/sdk";
 import { parseConfig } from "./config";
-import { parseDiff } from "./diff";
+import { parseDiff } from "@pullup/sdk";
 import { loadFixtures } from "./fixtures";
-import { findQuestions } from "./triggers";
+import { findQuestions } from "./host";
 
 const fixtures = loadFixtures(fileURLToPath(new URL("../../../fixtures", import.meta.url)));
 
@@ -12,7 +12,7 @@ describe("triggers over every fixture", () => {
   for (const f of fixtures) {
     it(`${f.name}: ${f.description}`, () => {
       const questions = findQuestions(f.run, f.config);
-      expect(questions.map((q) => q.trigger)).toEqual(f.expect.triggers);
+      expect(questions.map((q) => q.id)).toEqual(f.expect.questions);
     });
   }
 
@@ -31,7 +31,7 @@ describe("trigger details", () => {
   it("a job that failed then passed on a rerun is a flaky-test question even with no log or test names", () => {
     const run = ciRunSchema.parse({ repo: "a/b", headSha: "s", jobs: [{ workflow: "ci", name: "test", attempts: [{ conclusion: "failure" }, { conclusion: "success" }] }] });
     const [q] = findQuestions(run, parseConfig({ requiredWorkflows: ["ci"], ask: { to: "x" } }));
-    expect(q).toMatchObject({ trigger: "flaky-test", summary: "A job failed and then passed on a rerun.", evidence: [] });
+    expect(q).toMatchObject({ id: "core:flaky-test", summary: "A job failed and then passed on a rerun.", evidence: [] });
   });
 
   const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" } });
@@ -39,7 +39,7 @@ describe("trigger details", () => {
 
   it("a sensitive path is never council-passable by default, but the repo may change that", () => {
     const diff = "--- a/db/migrations/1.sql\n+++ b/db/migrations/1.sql\n@@ -1 +1 @@\n-a\n+b\n";
-    expect(findQuestions(run(diff), config)[0]).toMatchObject({ trigger: "sensitive-path", councilMayPass: false });
+    expect(findQuestions(run(diff), config)[0]).toMatchObject({ id: "core:sensitive-path", councilMayPass: false });
     const loosened = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "sam" }, triggers: { "sensitive-path": { councilMayPass: true } } });
     expect(findQuestions(run(diff), loosened)[0]?.councilMayPass).toBe(true);
   });
@@ -66,10 +66,15 @@ describe("parseDiff", () => {
     ]);
     expect(files[0]!.lines.map((l) => l.newLine)).toEqual([1, 2]);
     expect(files[2]!.lines).toEqual([
-      { kind: "context", text: "keep", newLine: 5, oldLine: 5 },
-      { kind: "remove", text: "y", newLine: null, oldLine: 6 },
-      { kind: "add", text: "z", newLine: 6, oldLine: null },
+      { kind: "context", text: "keep", newLine: 5, oldLine: 5, section: null },
+      { kind: "remove", text: "y", newLine: null, oldLine: 6, section: null },
+      { kind: "add", text: "z", newLine: 6, oldLine: null, section: null },
     ]);
+  });
+
+  it("keeps the function heading git prints after the hunk header", () => {
+    const [file] = parseDiff("--- a/w.ts\n+++ b/w.ts\n@@ -3,1 +3,1 @@ export function verifySignature(body: string) {\n-  return a == b;\n+  return safeEqual(a, b);\n");
+    expect(file!.lines.map((l) => l.section)).toEqual(["export function verifySignature(body: string) {", "export function verifySignature(body: string) {"]);
   });
 
   it("a removed '-- ' line followed by an added '++ ' line stays inside the hunk", () => {

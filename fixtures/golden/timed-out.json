@@ -1,0 +1,15 @@
+{
+  "result": "fail",
+  "reason": "test ended timed_out.",
+  "hardFailures": [
+    {
+      "workflow": "ci",
+      "job": "test",
+      "logExcerpt": "The job running on runner x has exceeded the maximum execution time",
+      "reason": "test ended timed_out."
+    }
+  ],
+  "questions": [],
+  "councilCalls": 0,
+  "costUsd": 0
+}

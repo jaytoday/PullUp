@@ -34,7 +34,7 @@ describe("pullup check", () => {
     const { text, decision } = await check(["--fixture", "fixtures/sensitive-auth.json", "--replay", "fixtures/recorded/sensitive-auth.json"], NO_WITHAI);
     expect(decision.councilCalls).toBe(4);
     expect(decision.questions[0]!.seats.some((s) => s.problems.includes("call failed: no recorded answer for this question"))).toBe(false);
-    expect(text).toContain("question (sensitive-path)");
+    expect(text).toContain("question (core:sensitive-path)");
     expect(text).toMatch(/RESULT: (PASS|FAIL|WAITING)/);
   });
 
@@ -55,7 +55,7 @@ describe("pullup check", () => {
   it("on a local branch, reads config from the default branch and ignores the branch's own", async () => {
     const dir = repoWithBranch();
     const { text, decision } = await check(["--base", "main"], NO_WITHAI, dir);
-    expect(decision.questions.map((q) => q.question.trigger)).toEqual(["sensitive-path"]);
+    expect(decision.questions.map((q) => q.question.id)).toEqual(["core:sensitive-path"]);
     expect(decision.result).toBe("waiting");
     expect(text).toContain("would ask owner@example.com");
     expect(text).toContain("differs from main; it is ignored");

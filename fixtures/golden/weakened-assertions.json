@@ -1,0 +1,107 @@
+{
+  "result": "fail",
+  "reason": "Test reliability found a problem: The change removes an assertion, expect(total([{ price: 1, qty: 2 }])).toBe(2), from src/cart.test.ts. The guidance accepts removing a test only when the change removes or replaces the behaviour it covered and says why. The evidence gives no stated reason, and no replacement test appears in the diff. The same change also drops the Math.round(sum * 100) / 100 rounding in src/cart.ts, so the behaviour changed rather than being cleanly removed. The only job log shows a success with no failed tests, which does not justify the weakening. The guidance does not address a commit message, so I treated the lack of any explanation as the deciding gap. Because the weakened test hides a behaviour change, the run should fail.",
+  "hardFailures": [],
+  "questions": [
+    {
+      "question": {
+        "id": "weakened-tests",
+        "trigger": "weakened-tests",
+        "councilMayPass": true,
+        "prompt": "Tests were weakened in this change. Is that justified by what the change does, so the run should pass?",
+        "summary": "Weakened tests: assertions removed.",
+        "evidence": [
+          {
+            "source": "diff",
+            "where": "src/cart.test.ts",
+            "line": 10,
+            "text": "  expect(total([{ price: 1, qty: 2 }])).toBe(2);"
+          }
+        ]
+      },
+      "seats": [
+        {
+          "seat": "Test reliability: you care whether the tests can be trusted.",
+          "verdict": "fail",
+          "strength": 4,
+          "reason": "The change removes an assertion, expect(total([{ price: 1, qty: 2 }])).toBe(2), from src/cart.test.ts. The guidance accepts removing a test only when the change removes or replaces the behaviour it covered and says why. The evidence gives no stated reason, and no replacement test appears in the diff. The same change also drops the Math.round(sum * 100) / 100 rounding in src/cart.ts, so the behaviour changed rather than being cleanly removed. The only job log shows a success with no failed tests, which does not justify the weakening. The guidance does not address a commit message, so I treated the lack of any explanation as the deciding gap. Because the weakened test hides a behaviour change, the run should fail.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  expect(total([{ price: 1, qty: 2 }])).toBe(2);"
+            },
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Security: you care about sign-in, permissions, secrets and data exposure.",
+          "verdict": "needs-person",
+          "strength": 4,
+          "reason": "The change removes the assertion expect(total([{ price: 1, qty: 2 }])).toBe(2) and also removes Math.round rounding from total() in cart.ts. The guidance accepts a test removal only when the change removes the behaviour it covered and says why. No commit message or explanation is in the evidence, so the justification is missing. The rounding removal changes monetary totals, which is payment-adjacent and under the security viewpoint should go to a person. The removed assertion itself still holds after the change (2 is returned), so the test is not clearly hiding a failure, but no test now covers the rounding behaviour. I did not fail the run because the guidance's escalation rule for payment code and unexplained evidence applies. Quoted evidence supports these points.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  expect(total([{ price: 1, qty: 2 }])).toBe(2);"
+            },
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            },
+            {
+              "source": "diff",
+              "text": "+  return sum;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Maintainer of the touched area: you know this code and what depends on it.",
+          "verdict": "fail",
+          "strength": 4,
+          "reason": "The diff removes the assertion expect(total([{ price: 1, qty: 2 }])).toBe(2) from src/cart.test.ts, which is a weakened test under the guidance. The change also replaces the rounding in src/cart.ts (Math.round(sum * 100) / 100) with a plain return sum, a behaviour change in cart totals. Nothing in the evidence says why the assertion was removed or that the rounding behaviour was intentionally replaced, so the guidance says it hides a problem and should fail. The evidence does not show a replacement test, and no commit message was provided. The job passed, but a passing run does not cover the removed assertion. The guidance does not address money-rounding changes directly, so this relies on the weakened-tests rule and the general standard of an unexplained change. I rate the strength 4 rather than 5 because the change could be a deliberate simplification the maintainer already knows about, and the evidence gives no way to confirm that.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "  expect(total([{ price: 1, qty: 2 }])).toBe(2);"
+            },
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            }
+          ],
+          "problems": []
+        },
+        {
+          "seat": "Release safety: you care about what could break for users after this ships.",
+          "verdict": "fail",
+          "strength": 4,
+          "reason": "The change removes the assertion that total([{price:1,qty:2}]) equals 2 and does not say why. The same change also removes Math.round(sum*100)/100 from cart.ts, which alters how totals are computed for users. The removed test does not directly cover rounding, and the change gives no reason, so under the weakened-tests rule the removal hides a behaviour change and should fail. The cart total is close to payment code, so a person may also need to review it.",
+          "validQuotes": [
+            {
+              "source": "diff",
+              "text": "-  expect(total([{ price: 1, qty: 2 }])).toBe(2);"
+            },
+            {
+              "source": "diff",
+              "text": "-  return Math.round(sum * 100) / 100;"
+            }
+          ],
+          "problems": []
+        }
+      ],
+      "outcome": "fail",
+      "decidedBy": "council",
+      "reason": "Test reliability found a problem: The change removes an assertion, expect(total([{ price: 1, qty: 2 }])).toBe(2), from src/cart.test.ts. The guidance accepts removing a test only when the change removes or replaces the behaviour it covered and says why. The evidence gives no stated reason, and no replacement test appears in the diff. The same change also drops the Math.round(sum * 100) / 100 rounding in src/cart.ts, so the behaviour changed rather than being cleanly removed. The only job log shows a success with no failed tests, which does not justify the weakening. The guidance does not address a commit message, so I treated the lack of any explanation as the deciding gap. Because the weakened test hides a behaviour change, the run should fail."
+    }
+  ],
+  "councilCalls": 4,
+  "costUsd": 0
+}

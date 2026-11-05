@@ -1,0 +1,15 @@
+{
+  "result": "fail",
+  "reason": "build failed.",
+  "hardFailures": [
+    {
+      "workflow": "ci",
+      "job": "build",
+      "logExcerpt": "src/cart.ts(12,3): error TS2304: Cannot find name 'sum'.",
+      "reason": "build failed."
+    }
+  ],
+  "questions": [],
+  "councilCalls": 0,
+  "costUsd": 0
+}

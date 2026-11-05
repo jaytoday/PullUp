@@ -1,0 +1,24 @@
+{
+  "name": "@pullup/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PullUp's extension interface and the shared types extensions read: the CI run, the parsed diff, path globs and questions. Pure: no network, no clock.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

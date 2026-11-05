@@ -71,7 +71,7 @@ describe("asking a person (active mode)", () => {
     expect(state).toBe("waiting");
     expect(s.withai.questions).toHaveLength(1);
     const input = s.withai.questions[0]!.input;
-    expect(input).toMatchObject({ to: { email: "owner@example.com" }, options: [{ id: "pass" }, { id: "fail" }], skillId: "skill-1", case: { repo, headSha: "s1", pull: 7, trigger: "sensitive-path" } });
+    expect(input).toMatchObject({ to: { email: "owner@example.com" }, options: [{ id: "pass" }, { id: "fail" }], skillId: "skill-1", case: { repo, headSha: "s1", pull: 7, extension: "core", questionId: "core:sensitive-path" } });
     // WithAI keeps the question open a week past PullUp's deadline, for late answers.
     expect(Date.parse(input.deadline!)).toBe(T0 + 60 * MIN + 7 * 86_400_000);
     expect(input.details).toContain("src/auth/session.ts");

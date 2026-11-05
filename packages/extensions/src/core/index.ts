@@ -1,23 +1,59 @@
-import { type Config, councilMayPass, type TriggerId, triggerEnabled } from "./config";
-import { attemptPassed, type ParsedCiRun } from "./ci";
-import { type DiffFile, parseDiff } from "./diff";
-import { matchesAny, SENSITIVE_CATEGORIES, SNAPSHOT_GLOBS, type SensitiveCategory, TEST_GLOBS } from "./paths";
-import type { Evidence, Question } from "./question";
+import { attemptPassed, type DiffFile, defineExtension, type Evidence, matchesAny, type QuestionDraft, type RunContext, SENSITIVE_CATEGORIES, type SensitiveCategory, SNAPSHOT_GLOBS, TEST_GLOBS } from "@pullup/sdk";
+import { z } from "zod";
 
 /**
- * Code decides what is tricky, never the council. Each trigger looks at the
- * collected run and returns at most one question with its evidence, or null.
- * No trigger fired → the run passes with no WithAI call.
+ * PullUp's three built-in triggers: a flaky test, weakened tests and a change
+ * to a sensitive path. Code decides what is tricky, never the council: each
+ * trigger looks at the collected run and raises at most one question with its
+ * evidence. Moved here unchanged from the engine's `triggers.ts`.
  */
 
-type Draft = Omit<Question, "id" | "trigger" | "councilMayPass">;
-type Detector = (run: ParsedCiRun, files: DiffFile[], config: Config) => Draft | null;
+export const TRIGGER_IDS = ["flaky-test", "weakened-tests", "sensitive-path"] as const;
+export type TriggerId = (typeof TRIGGER_IDS)[number];
+
+/** Whether the council may pass each trigger's question on its own, by default. */
+export const COUNCIL_MAY_PASS_DEFAULT: Record<TriggerId, boolean> = {
+  "flaky-test": true,
+  "weakened-tests": true,
+  "sensitive-path": false,
+};
+
+const trigger = (id: TriggerId) => {
+  const defaults = { enabled: true, councilMayPass: COUNCIL_MAY_PASS_DEFAULT[id] };
+  return z.object({ enabled: z.boolean().default(true), councilMayPass: z.boolean().default(defaults.councilMayPass) }).default(defaults);
+};
+
+const sensitiveCategoryIds = Object.keys(SENSITIVE_CATEGORIES) as [SensitiveCategory, ...SensitiveCategory[]];
+
+const schema = z.object({
+  /** Per trigger: switch it off, or change whether the council may pass it alone. */
+  triggers: z
+    .object({ "flaky-test": trigger("flaky-test"), "weakened-tests": trigger("weakened-tests"), "sensitive-path": trigger("sensitive-path") })
+    .strict()
+    .default({
+      "flaky-test": { enabled: true, councilMayPass: true },
+      "weakened-tests": { enabled: true, councilMayPass: true },
+      "sensitive-path": { enabled: true, councilMayPass: false },
+    }),
+  sensitivePaths: z
+    .object({
+      /** Categories to leave out (all are on by default). */
+      off: z.array(z.enum(sensitiveCategoryIds)).default([]),
+      /** More globs that count as sensitive. */
+      extraGlobs: z.array(z.string().min(1)).default([]),
+    })
+    .strict()
+    .default({ off: [], extraGlobs: [] }),
+});
+export type CoreConfig = z.infer<typeof schema>;
+
+type Detector = (ctx: RunContext<CoreConfig>) => Omit<QuestionDraft, "key" | "councilMayPass"> | null;
 
 const MAX_EVIDENCE = 12;
 
-const flakyTest: Detector = (run, _files, config) => {
-  const required = new Set(config.requiredWorkflows);
-  const known = new Set(config.flaky.knownTests);
+const flakyTest: Detector = ({ run, shared }) => {
+  const required = new Set(shared.requiredWorkflows);
+  const known = new Set(shared.knownFlakyTests);
   const evidence: Evidence[] = [];
   const tests = new Set<string>();
   let flakyJobs = 0;
@@ -48,7 +84,7 @@ const flakyTest: Detector = (run, _files, config) => {
 const SKIP_ADDED = /\b(?:it|test|describe)\.(?:skip|only|todo)\(|\bx(?:it|describe)\(|@(?:Ignore|Disabled)\b|pytest\.mark\.skip|\bt\.Skip\(/;
 const ASSERTION = /\b(?:expect|assert\w*)\s*\(|\bassert\s|\.should\b|\bt\.(?:Error|Fatal)/;
 
-const weakenedTests: Detector = (_run, files) => {
+const weakenedTests: Detector = ({ diff: files }) => {
   const evidence: Evidence[] = [];
   const reasons = new Set<string>();
   const changesCode = files.some((f) => !matchesAny(f.path, TEST_GLOBS) && !matchesAny(f.path, SNAPSHOT_GLOBS));
@@ -89,7 +125,7 @@ const weakenedTests: Detector = (_run, files) => {
   };
 };
 
-const sensitivePath: Detector = (_run, files, config) => {
+const sensitivePath: Detector = ({ diff: files, config }) => {
   const off = new Set<SensitiveCategory>(config.sensitivePaths.off);
   const groups = Object.entries(SENSITIVE_CATEGORIES)
     .filter(([id]) => !off.has(id as SensitiveCategory))
@@ -125,14 +161,49 @@ const DETECTORS: Record<TriggerId, Detector> = {
   "sensitive-path": sensitivePath,
 };
 
-/** Every question the run raises, in trigger order. Empty means nothing tricky. */
-export function findQuestions(run: ParsedCiRun, config: Config): Question[] {
-  const files = parseDiff(run.diff);
-  const questions: Question[] = [];
-  for (const [trigger, detect] of Object.entries(DETECTORS) as [TriggerId, Detector][]) {
-    if (!triggerEnabled(config, trigger)) continue;
-    const draft = detect(run, files, config);
-    if (draft) questions.push({ id: trigger, trigger, councilMayPass: councilMayPass(config, trigger), ...draft });
-  }
-  return questions;
-}
+const TRIGGER_LABEL: Record<TriggerId, string> = { "flaky-test": "Flaky test", "weakened-tests": "Weakened tests", "sensitive-path": "Sensitive path" };
+
+export default defineExtension({
+  id: "core",
+  version: "1.0.0",
+  title: "Core checks",
+  summary: "Asks about a test that passed only on a rerun, tests that were weakened, and changes to code that is hard to undo.",
+  defaultMode: "active",
+  config: {
+    schema,
+    fields: [
+      ...TRIGGER_IDS.flatMap((id) => [
+        { key: `triggers.${id}.enabled`, label: `${TRIGGER_LABEL[id]}: on`, help: `Raise a question when the ${TRIGGER_LABEL[id].toLowerCase()} check fires.`, kind: "boolean" as const, loosens: true },
+        {
+          key: `triggers.${id}.councilMayPass`,
+          label: `${TRIGGER_LABEL[id]}: the council may pass it alone`,
+          help: COUNCIL_MAY_PASS_DEFAULT[id] ? "On by default." : "Off by default: a person decides.",
+          kind: "boolean" as const,
+          loosens: !COUNCIL_MAY_PASS_DEFAULT[id],
+        },
+      ]),
+      { key: "sensitivePaths.off", label: "Sensitive path categories switched off", help: "Changes to these no longer count as sensitive.", kind: "list", options: sensitiveCategoryIds, loosens: true },
+      { key: "sensitivePaths.extraGlobs", label: "More sensitive paths", help: "Globs (for example `src/billing/**`) that also count as sensitive.", kind: "list", loosens: false },
+    ],
+  },
+  loosenings(config) {
+    const out: string[] = [];
+    for (const id of TRIGGER_IDS) {
+      const t = config.triggers[id];
+      if (!t.enabled) out.push(`The ${id} trigger is switched off.`);
+      else if (t.councilMayPass && !COUNCIL_MAY_PASS_DEFAULT[id]) out.push(`The council may pass ${id} questions without a person.`);
+    }
+    if (config.sensitivePaths.off.length) out.push(`Sensitive path categories switched off: ${config.sensitivePaths.off.join(", ")}.`);
+    return out;
+  },
+  detect(ctx) {
+    const questions: QuestionDraft[] = [];
+    for (const id of TRIGGER_IDS) {
+      const t = ctx.config.triggers[id];
+      if (!t.enabled) continue;
+      const draft = DETECTORS[id](ctx);
+      if (draft) questions.push({ key: id, councilMayPass: t.councilMayPass, ...draft });
+    }
+    return { questions };
+  },
+});

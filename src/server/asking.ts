@@ -1,4 +1,4 @@
-import { type AskAction, type AskState, answer, appendEvidence, type Config, type PersonAnswer, personForGithubLogin, type ResolvedQuestion, startAsk, tick } from "@pullup/engine";
+import { type AskAction, type AskState, answer, appendEvidence, type Config, type PersonAnswer, personForGithubLogin, type ResolvedQuestion, startAsk, storedConfig, storedDecision, tick } from "@pullup/engine";
 import { sendComment, type SenderDeps } from "@pullup/github";
 import type { CreateQuestionInput, PersonQuestion } from "@withai/client";
 import { and, desc, eq } from "drizzle-orm";
@@ -73,7 +73,7 @@ async function act(run: Run, row: AskRow, q: ResolvedQuestion, config: Config, a
             to: recipient(action.to),
             deadline: new Date(action.deadline + LATE_ANSWER_DAYS * 86_400_000).toISOString(),
             ...(skillId ? { skillId } : {}),
-            case: { repo: run.repo, headSha: run.headSha, pull: run.pull, trigger: q.question.trigger, question: q.question.summary },
+            case: { repo: run.repo, headSha: run.headSha, pull: run.pull, extension: q.question.extension, questionId: q.question.id, question: q.question.summary },
             ...(process.env.PULLUP_URL ? { webhookUrl: `${process.env.PULLUP_URL.replace(/\/+$/, "")}/api/withai/webhook` } : {}),
           });
           withai.push({ id: sent.id, to: action.to, open: true });
@@ -114,13 +114,14 @@ async function saveWithai(row: AskRow, withai: AskRow["withai"]) {
   await db.update(asks).set({ withai }).where(sameAsk(row));
 }
 
-const questionsOf = (run: Run) => ((run.decision as { questions?: ResolvedQuestion[] } | null)?.questions ?? []);
+const questionsOf = (run: Run): ResolvedQuestion[] => (run.decision ? storedDecision(run.decision).questions : []);
+const configOf = (run: Run): Config => storedConfig(run.config);
 
-/** Start an ask for each of the run's questions that needs a person and has none yet. */
+/** Start an ask for each of the run's questions that needs a person and has none yet. Shadow questions are never asked. */
 export async function ensureAsks(run: Run, deps: AskDeps): Promise<void> {
-  const config = run.config as Config;
+  const config = configOf(run);
   const existing = new Set((await db.select().from(asks).where(eq(asks.runId, run.id))).map((a) => a.questionId));
-  for (const q of questionsOf(run).filter((x) => x.outcome === "ask" && !existing.has(x.question.id))) {
+  for (const q of questionsOf(run).filter((x) => x.outcome === "ask" && !x.question.shadow && !existing.has(x.question.id))) {
     const now = deps.now();
     const { state, actions } = startAsk(q.question, config, now.getTime());
     const [row] = await db.insert(asks).values({ runId: run.id, questionId: q.question.id, state, updatedAt: now }).onConflictDoNothing().returning();
@@ -139,7 +140,7 @@ export async function loadAsks(runId: string): Promise<Record<string, AskState>>
  * Returns how many questions took the answer, and why not when none did.
  */
 export async function recordAnswer(run: Run, input: { value: PersonAnswer; by: string; isAdmin: boolean; reason: string; via: string; questionId?: string }, deps: AskDeps): Promise<{ accepted: number; why?: string }> {
-  const config = run.config as Config;
+  const config = configOf(run);
   const rows = (await db.select().from(asks).where(and(eq(asks.runId, run.id), eq(asks.open, true)))).filter((r) => !input.questionId || r.questionId === input.questionId);
   if (!rows.length) return { accepted: 0, why: "Nothing is waiting for an answer on this run." };
   let accepted = 0;
@@ -166,7 +167,7 @@ export async function recordAnswer(run: Run, input: { value: PersonAnswer; by: s
 
 /** A GitHub user pressed Pass / Fail or commented `/pullup`: map them to the person asked, or check they are a repo admin. */
 export async function recordGithubAnswer(run: Run, login: string, value: PersonAnswer, reason: string, via: string, deps: AskDeps & { permission: (repo: string, login: string) => Promise<string> }) {
-  const by = personForGithubLogin(run.config as Config, login);
+  const by = personForGithubLogin(configOf(run), login);
   const isAdmin = by.startsWith("github:") ? (await deps.permission(run.repo, login)) === "admin" : false;
   return recordAnswer(run, { value, by, isAdmin, reason, via }, deps);
 }
@@ -207,11 +208,11 @@ export async function tickAsks(deps: AskDeps): Promise<Set<string>> {
     const q = questionsOf(run).find((x) => x.question.id === row.questionId);
     if (!q || state.noAnswer) continue;
     const now = deps.now();
-    const next = tick(state, q.question, q.seats, run.config as Config, now.getTime());
+    const next = tick(state, q.question, q.seats, configOf(run), now.getTime());
     if (next.state === state) continue;
     // An answer that arrived in between wins; the clock looks again next minute.
     if (!(await saveState(fresh, next.state, now))) continue;
-    await saveWithai(fresh, await act(run, fresh, q, run.config as Config, next.actions, deps));
+    await saveWithai(fresh, await act(run, fresh, q, configOf(run), next.actions, deps));
     if (next.state.noAnswer) changed.add(run.id);
   }
   return changed;

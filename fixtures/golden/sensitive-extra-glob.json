@@ -1,0 +1,71 @@
+{
+  "result": "waiting",
+  "reason": "Waiting for a person on 1 question(s).",
+  "hardFailures": [],
+  "questions": [
+    {
+      "question": {
+        "id": "sensitive-path",
+        "trigger": "sensitive-path",
+        "councilMayPass": false,
+        "prompt": "This change touches code that is hard to undo. Is it safe to pass?",
+        "summary": "Repository's sensitive paths: src/pricing/rates.ts.",
+        "evidence": [
+          {
+            "source": "diff",
+            "where": "src/pricing/rates.ts",
+            "line": 3,
+            "text": "export const VAT = 0.2;"
+          }
+        ]
+      },
+      "seats": [
+        {
+          "seat": "Test reliability: you care whether the tests can be trusted.",
+          "verdict": "needs-person",
+          "strength": 0,
+          "reason": "",
+          "validQuotes": [],
+          "problems": [
+            "call failed: no recorded answer for this question"
+          ]
+        },
+        {
+          "seat": "Security: you care about sign-in, permissions, secrets and data exposure.",
+          "verdict": "needs-person",
+          "strength": 0,
+          "reason": "",
+          "validQuotes": [],
+          "problems": [
+            "call failed: no recorded answer for this question"
+          ]
+        },
+        {
+          "seat": "Maintainer of the touched area: you know this code and what depends on it.",
+          "verdict": "needs-person",
+          "strength": 0,
+          "reason": "",
+          "validQuotes": [],
+          "problems": [
+            "call failed: no recorded answer for this question"
+          ]
+        },
+        {
+          "seat": "Release safety: you care about what could break for users after this ships.",
+          "verdict": "needs-person",
+          "strength": 0,
+          "reason": "",
+          "validQuotes": [],
+          "problems": [
+            "call failed: no recorded answer for this question"
+          ]
+        }
+      ],
+      "outcome": "ask",
+      "decidedBy": null,
+      "reason": "Asking a person: the council did not agree clearly."
+    }
+  ],
+  "councilCalls": 4,
+  "costUsd": 0
+}

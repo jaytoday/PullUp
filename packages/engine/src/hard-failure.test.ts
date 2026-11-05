@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ciRunSchema } from "./ci";
+import { ciRunSchema } from "@pullup/sdk";
 import { parseConfig } from "./config";
 import { loadFixtures } from "./fixtures";
 import { findHardFailures } from "./hard-failure";

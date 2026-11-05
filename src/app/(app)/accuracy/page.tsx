@@ -1,25 +1,25 @@
 import { DashboardPanel, PageBody } from "@/components/app-shell/dashboard-panel";
 import { AgreementTile } from "@/components/accuracy/agreement-tile";
 import { EmptyState } from "@/components/common/empty-state";
-import { costPerDay, triggerAccuracy } from "@/server/dashboard";
+import { costPerDay, questionAccuracy } from "@/server/dashboard";
 import { dollars } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Accuracy" };
 
 export default async function AccuracyPage() {
-  const [accuracy, cost] = await Promise.all([triggerAccuracy(), costPerDay()]);
+  const [accuracy, cost] = await Promise.all([questionAccuracy(), costPerDay()]);
   const maxCost = Math.max(...cost.map((d) => d.cost), 0.0001);
   return (
     <DashboardPanel title="Accuracy and cost">
       <PageBody>
         <section className="space-y-2">
           <h2 className="text-sm font-medium text-foreground">How often the council agreed with the person</h2>
-          <p className="text-sm text-muted-foreground">Per trigger, for questions a person answered: the council&apos;s lean (most seats said pass and no fail held up → pass, otherwise fail) against the person&apos;s answer.</p>
+          <p className="text-sm text-muted-foreground">Per kind of question, for questions a person answered: the council&apos;s lean (most seats said pass and no fail held up → pass, otherwise fail) against the person&apos;s answer.</p>
           {accuracy.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="accuracy">
               {accuracy.map((a) => (
-                <AgreementTile key={a.trigger} {...a} />
+                <AgreementTile key={a.id} {...a} />
               ))}
             </div>
           ) : (

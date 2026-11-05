@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, settle, withaiCouncil } from "@pullup/engine";
+import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, settle, storedDecision, withaiCouncil } from "@pullup/engine";
 import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, sendRerun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
@@ -122,8 +122,8 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
       return "collecting";
     }
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);
-    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council);
-    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ trigger: q.question.trigger, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd }, deps.now());
+    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council, { now: now.getTime() });
+    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ id: q.question.id, shadow: q.question.shadow, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd, extensions: decision.extensions && { compositionHash: decision.extensions.compositionHash, outputs: decision.extensions.outputs, relaxations: decision.extensions.relaxations } }, deps.now());
     await db
       .update(runs)
       .set({ mode, decision, config, notes: collected.notes, pending: [], councilCalls: decision.councilCalls, costUsd: decision.costUsd, error: null })
@@ -147,11 +147,11 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
 export async function finishRun(runId: string, deps: PipelineDeps): Promise<string> {
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
   if (!run?.decision) return "missing";
-  const decision = run.decision as RunDecision;
+  const decision = storedDecision(run.decision);
   const questions = settle(decision.questions, await loadAsks(runId));
   const settled: RunDecision = decision.hardFailures.length ? decision : { ...decision, ...combine(questions), questions };
   const view = checkRunView(settled, run.mode, run.notes);
-  const waitingFor = questions.find((q) => q.outcome === "ask");
+  const waitingFor = questions.find((q) => q.outcome === "ask" && !q.question.shadow);
   const active = run.mode === "active" && settled.result === "waiting";
   const sent = await sendCheckRun(senderDeps(deps), runId, {
     repo: run.repo,

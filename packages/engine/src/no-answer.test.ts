@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ciRunSchema } from "./ci";
+import { ciRunSchema } from "@pullup/sdk";
 import { checkSeat } from "./council";
 import { type ConfigInput, NO_ANSWER_OPTIONS, parseConfig } from "./config";
 import { answer, askOutcome, startAsk, tick } from "./no-answer";
-import { findQuestions } from "./triggers";
+import { findQuestions } from "./host";
 
 const MIN = 60_000;
 const flakyRun = ciRunSchema.parse({ repo: "a/b", headSha: "x", jobs: [{ workflow: "ci", name: "t", attempts: [{ conclusion: "failure", failedTests: ["a"], logExcerpt: "Timeout 5000ms exceeded" }, { conclusion: "success" }] }] });

@@ -38,8 +38,8 @@
   },
   "expect": {
     "hardFailure": false,
-    "triggers": [
-      "flaky-test"
+    "questions": [
+      "core:flaky-test"
     ]
   }
 }
