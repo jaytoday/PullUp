@@ -18,7 +18,7 @@ export function decidedBy(run: RunRow, runAsks: Record<string, AskState>): strin
   const d = decisionOf(run);
   if (!d) return run.state === "error" ? "error" : "collecting";
   if (d.hardFailures.length) return "hard failure";
-  if (!d.questions.length) return "nothing tricky";
+  if (!d.questions.some((q) => !q.question.shadow)) return d.questions.length ? "nothing tricky (Shadow questions only)" : "nothing tricky";
   const states = Object.values(runAsks);
   if (states.some((s) => s.answer)) return "a person";
   if (states.some((s) => s.noAnswer)) return `no answer (${states.find((s) => s.noAnswer)!.noAnswer!.option})`;
@@ -35,7 +35,7 @@ export async function overview(now = new Date()) {
   const waiting = await db.select().from(runs).where(eq(runs.state, "waiting"));
   // Repositories where the council (not a person or a rule) has passed a run.
   const councilPasses = (await db.select().from(runs).where(eq(runs.result, "pass")))
-    .filter((r) => r.mode === "active" && decisionOf(r)?.questions.some((q) => q.decidedBy === "council" && q.outcome === "pass"))
+    .filter((r) => r.mode === "active" && decisionOf(r)?.questions.some((q) => !q.question.shadow && q.decidedBy === "council" && q.outcome === "pass"))
     .map((r) => r.repo);
   return {
     councilPassRepos: [...new Set(councilPasses)],

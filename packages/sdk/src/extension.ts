@@ -84,7 +84,15 @@ export const detectionSchema = z.object({
 export type Detection = z.input<typeof detectionSchema>;
 
 /** Help for the reviewer that never changes the run's result. */
-export const noteSchema = z.object({ text: z.string().min(1).max(1000), link: z.string().url().optional() });
+export const noteSchema = z.object({
+  text: z.string().min(1).max(1000),
+  /** Shown as a link on the run page and the check run: web addresses only. */
+  link: z
+    .string()
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), "a note's link must start with http:// or https://")
+    .optional(),
+});
 export type Note = z.infer<typeof noteSchema>;
 
 export interface FactReader {

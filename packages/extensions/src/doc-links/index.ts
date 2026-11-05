@@ -39,7 +39,8 @@ export default defineExtension({
   notes({ config, diff, files, run }) {
     if (!HEX_SHA.test(run.headSha)) return [];
     const notes: Note[] = [];
-    const changed = diff.filter((f) => f.status !== "deleted").map((f) => f.path);
+    // Changed paths are written by the author and end up in Markdown, so only plain ones are named.
+    const changed = diff.filter((f) => f.status !== "deleted").map((f) => f.path).filter((p) => /^[A-Za-z0-9._/-]+$/.test(p));
     const docs = files
       .filter((f) => SAFE_PATH.test(f.path))
       .map((f) => ({ path: f.path, mentions: changed.filter((c) => c !== f.path && f.text.includes(c)) }))

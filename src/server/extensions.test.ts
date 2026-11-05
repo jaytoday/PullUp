@@ -2,6 +2,7 @@ import { configInput, parseConfig } from "@pullup/engine";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, migrateDb } from "@/lib/db/client";
 import { runs, settings } from "@/lib/db/schema";
+import { decidedBy } from "./dashboard";
 import { discardDraft, extensionsEditor, saveDraft } from "./extensions";
 
 const repo = "acme/shop";
@@ -32,5 +33,14 @@ describe("extension settings drafts", () => {
 
   it("refuses to save before PullUp has read the repository's config", async () => {
     await expect(saveDraft("acme/other", {}, "")).rejects.toThrow(/has not read/);
+  });
+});
+
+describe("who settled a run", () => {
+  it("a run with only Shadow questions was settled by nothing tricky, not the council", () => {
+    const q = (shadow: boolean) => ({ question: { id: "x:q", extension: "x", key: "q", prompt: "p", summary: "s", evidence: [], councilMayPass: true, shadow }, seats: [], outcome: "ask", decidedBy: null, reason: "" });
+    const row = (shadow: boolean) => ({ state: "decided", result: "pass", mode: "active", decision: { result: "pass", reason: "", hardFailures: [], questions: [q(shadow)], councilCalls: 0, costUsd: 0, extensions: null } }) as never;
+    expect(decidedBy(row(true), {})).toBe("nothing tricky (Shadow questions only)");
+    expect(decidedBy(row(false), {})).toBe("the council");
   });
 });

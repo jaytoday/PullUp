@@ -335,3 +335,18 @@ describe("configInput", () => {
     }
   });
 });
+
+describe("review fixes", () => {
+  it("a note's link must be a web address", () => {
+    const noter = defineExtension({ ...asker, id: "noter", detect: undefined, notes: () => [{ text: "x", link: "javascript:alert(1)" }] });
+    use(noter);
+    const { notes } = runExtensions(run(), parseConfig({ ...base, extensions: { noter: { mode: "active" } } }), { now: 0 });
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ extension: "noter", text: expect.stringMatching(/could not write its notes:[\s\S]*http:\/\/ or https:\/\//) });
+  });
+
+  it("a no-answer override for an extension that does not exist is a config error", () => {
+    expect(() => parseConfig({ ...base, ask: { to: "x", perExtension: { "threat-modle": "pass" } } })).toThrow(/ask\.perExtension: no bundled extension is called .*threat-modle/);
+    expect(() => parseConfig({ ...base, ask: { to: "x", perExtension: { "core:flaky-test": "pass", "threat-model": "fail" } } })).not.toThrow();
+  });
+});

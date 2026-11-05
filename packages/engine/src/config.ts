@@ -139,6 +139,10 @@ export const configSchema = rawConfigSchema.transform((raw, ctx) => {
     if (!host.success || !parsed.success) continue;
     extensions[id] = { mode: host.data.mode ?? extension.defaultMode ?? (id in sections ? "shadow" : "off"), shadowCouncil: host.data.shadowCouncil, maxQuestions: host.data.maxQuestions, config: parsed.data };
   }
+  // A no-answer override must name a bundled extension (`threat-model`) or one of its questions (`core:flaky-test`).
+  for (const key of Object.keys(ask.perExtension)) {
+    if (!extensionById(key.split(":")[0]!)) ctx.addIssue({ code: "custom", message: `ask.perExtension: no bundled extension is called "${key.split(":")[0]}".`, path: ["ask", "perExtension", key] });
+  }
   const cycle = needsCycle(Object.keys(extensions).filter((id) => extensions[id]!.mode !== "off"));
   if (cycle) ctx.addIssue({ code: "custom", message: `Extensions need each other in a circle: ${cycle.join(" → ")}.`, path: ["extensions"] });
   return { ...rest, ask, extensions };

@@ -22,6 +22,12 @@ describe("doc-links", () => {
     ]);
   });
 
+  it("never names a changed path with Markdown characters in it", () => {
+    const odd = "--- a/src/[x](https:/evil.example).ts\n+++ b/src/[x](https:/evil.example).ts\n@@ -1 +1 @@\n-a\n+b\n";
+    const doc = [{ path: "docs/designs/a.md", text: "See src/[x](https:/evil.example).ts", from: "head" as const }];
+    expect(docLinks.notes!(testContext(config, { headSha: SHA, diff: odd, files: doc }))).toEqual([]);
+  });
+
   it("links nothing when the head commit is not a real commit id", () => {
     expect(docLinks.notes!(testContext(config, { headSha: "localsha", diff, files }))).toEqual([]);
   });
