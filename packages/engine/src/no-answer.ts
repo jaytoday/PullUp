@@ -65,11 +65,13 @@ function councilLean(seats: CheckedSeat[], question: Question): PersonAnswer {
 /** Move a waiting question along: a reminder at half time, then the no-answer option at the deadline. */
 export function tick(state: AskState, question: Question, seats: CheckedSeat[], config: Config, now: number): { state: AskState; actions: AskAction[] } {
   if (state.answer || state.noAnswer) return { state, actions: [] };
-  const current = state.asked[state.asked.length - 1]!;
+  // Everyone asked at this stage: all of the first people (for example several code owners), or the backup.
+  const waitingOn = state.stage === "backup" ? [state.asked[state.asked.length - 1]!] : state.asked;
+  const current = waitingOn.join(" or ");
   if (now < state.deadline) {
     const half = state.askedAt + (state.deadline - state.askedAt) / 2;
     if (config.ask.remind && state.remindedAt === null && now >= half) {
-      return { state: { ...state, remindedAt: now }, actions: [{ kind: "remind", to: current }] };
+      return { state: { ...state, remindedAt: now }, actions: waitingOn.map((to) => ({ kind: "remind" as const, to })) };
     }
     return { state, actions: [] };
   }
@@ -114,7 +116,8 @@ export function answer(
 export function askOutcome(state: AskState): { outcome: PersonAnswer | "ask"; decidedBy: "person" | "no-answer" | null; reason: string } {
   if (state.answer) return { outcome: state.answer.value, decidedBy: "person", reason: `${state.answer.by} answered "${state.answer.value}".${state.answer.reason ? ` ${state.answer.reason}` : ""}` };
   if (state.noAnswer) return { outcome: state.noAnswer.outcome, decidedBy: "no-answer", reason: state.noAnswer.reason };
-  return { outcome: "ask", decidedBy: null, reason: `Waiting for ${state.asked[state.asked.length - 1]}.` };
+  const waitingOn = state.stage === "backup" ? [state.asked[state.asked.length - 1]!] : state.asked;
+  return { outcome: "ask", decidedBy: null, reason: `Waiting for ${waitingOn.join(" or ")}.` };
 }
 
 /** Who a GitHub user is for answering: the person asked (by their configured login, or an extension's mapping such as code owners), or just that login. */

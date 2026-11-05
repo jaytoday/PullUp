@@ -111,3 +111,25 @@ describe("answers", () => {
     expect(tick(answered, question, checked, config(), 500 * MIN)).toEqual({ state: answered, actions: [] });
   });
 });
+
+describe("several people asked (for example code owners)", () => {
+  it("asks each, reminds each, and names them all; any of them may answer", async () => {
+    const { parseConfig } = await import("./config");
+    const { startAsk, tick, answer, askOutcome } = await import("./no-answer");
+    const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "fallback@example.com", deadlineMinutes: 60 } });
+    const question = { id: "core:sensitive-path", extension: "core", key: "sensitive-path", prompt: "p", summary: "s", evidence: [], councilMayPass: false, shadow: false, askTo: ["a@example.com", "b@example.com"] };
+    const started = startAsk(question, config, 0);
+    expect(started.actions).toEqual([
+      { kind: "ask", to: "a@example.com", deadline: 3_600_000 },
+      { kind: "ask", to: "b@example.com", deadline: 3_600_000 },
+    ]);
+    expect(askOutcome(started.state).reason).toBe("Waiting for a@example.com or b@example.com.");
+    expect(tick(started.state, question, [], config, 1_800_000).actions).toEqual([
+      { kind: "remind", to: "a@example.com" },
+      { kind: "remind", to: "b@example.com" },
+    ]);
+    expect(tick(started.state, question, [], config, 3_600_000).state.noAnswer!.reason).toBe("No answer from a@example.com or b@example.com.");
+    expect(answer(started.state, { value: "pass", by: "b@example.com", isAdmin: false }, 1).accepted).toBe(true);
+    expect(answer(started.state, { value: "pass", by: "fallback@example.com", isAdmin: false }, 1).accepted).toBe(false);
+  });
+});
