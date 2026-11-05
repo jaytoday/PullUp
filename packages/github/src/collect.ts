@@ -16,6 +16,8 @@ export type Collected =
       state: "ready";
       run: CiRun;
       notes: string[];
+      /** Which file reads failed (the files from that side are missing from the run). */
+      readFailed: ("default" | "head")[];
       /** Required workflow runs on their first attempt with a failed job: what a rerun would cover. */
       rerunnable: number[];
     }
@@ -75,12 +77,13 @@ export async function collectRun(api: GitHubApi, input: { repo: string; headSha:
   const diff = pull === null ? "" : await api.pullDiff(repo, pull);
   const pullInfo = pull === null ? null : await api.pullInfo(repo, pull).catch(() => null);
   if (pull !== null && !pullInfo) notes.push("Could not read the pull request's title, body and labels; extensions that use them saw none.");
-  const files = await readExtensionFiles(api, repo, headSha, config, notes);
-  return { state: "ready", run: { repo, headSha, jobs, diff, pull: pullInfo, files }, notes, rerunnable };
+  const readFailed: ("default" | "head")[] = [];
+  const files = await readExtensionFiles(api, repo, headSha, config, notes, readFailed);
+  return { state: "ready", run: { repo, headSha, jobs, diff, pull: pullInfo, files }, notes, readFailed, rerunnable };
 }
 
 /** Every file the enabled extensions asked for, one read per side (default branch, head commit). A failed read is a note: the files are "no data". */
-async function readExtensionFiles(api: GitHubApi, repo: string, headSha: string, config: Config, notes: string[]): Promise<ReadFile[]> {
+async function readExtensionFiles(api: GitHubApi, repo: string, headSha: string, config: Config, notes: string[], failed: ("default" | "head")[]): Promise<ReadFile[]> {
   const requests = fileRequests(config);
   const files: ReadFile[] = [];
   for (const from of ["default", "head"] as const) {
@@ -90,6 +93,7 @@ async function readExtensionFiles(api: GitHubApi, repo: string, headSha: string,
       const read = await api.readFiles(repo, from === "default" ? { defaultBranch: true } : { sha: headSha }, globs);
       files.push(...read.map((f) => ({ ...f, from })));
     } catch (err) {
+      failed.push(from);
       notes.push(`Could not read the files extensions asked for on the ${from === "default" ? "default branch" : "head commit"} (${(err as Error).message}); those checks had no data.`);
     }
   }

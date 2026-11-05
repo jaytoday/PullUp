@@ -224,3 +224,24 @@ describe("extensions on a live repository", () => {
     expect(check(s.gh).annotations![0]).toMatchObject({ level: "notice", message: expect.stringMatching(/^\(Shadow\) /) });
   });
 });
+
+describe("extension files on the default branch", () => {
+  it("a failed read uses the last good copy and says so", async () => {
+    const THREATS = "## In scope\n| ID | Threat | Control | Code |\n| --- | --- | --- | --- |\n| T1 | Stolen session | Short sessions | `src/auth/session.ts` |\n";
+    const s = setup();
+    s.gh.config.set(repo, JSON.stringify({ requiredWorkflows: ["ci"], ask: { to: "owner@example.com" }, extensions: { "threat-model": { mode: "active" } } }));
+    s.gh.files.set(repo, { "THREATS.md": THREATS });
+    await start(s);
+    // The next commit: GitHub refuses the read.
+    s.gh.readFiles = async () => {
+      throw new Error("rate limited");
+    };
+    s.gh.runs.push({ repo, headSha: "s2", id: 11, name: "ci", status: "completed", conclusion: "success", runAttempt: 1, createdAt: new Date(T0).toISOString() });
+    s.gh.jobsByAttempt.set("11/1", [{ id: 2, name: "test", conclusion: "success" }]);
+    const id = await noteWorkflowFinished(repo, "s2", 7, new Date(T0));
+    await processRun(id, s.deps);
+    const run = await runRow(id);
+    expect(run.notes.join(" ")).toMatch(/Used the copy of the default branch's extension files read at/);
+    expect((run.decision as { questions: { question: { id: string } }[] }).questions.map((q) => q.question.id)).toContain("threat-model:T1");
+  });
+});

@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, type Screener, settle, storedDecision, withaiCouncil, withaiScreener } from "@pullup/engine";
+import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type ReadFile, type RunDecision, type Screener, settle, storedDecision, withaiCouncil, withaiScreener } from "@pullup/engine";
 import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, sendRerun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, repos, runs } from "@/lib/db/schema";
 import { type AskClient, type AskDeps, ensureAsks, loadAsks, recordAnswer, recordGithubAnswer, tickAsks } from "./asking";
-import { evidenceStore, isStopped, nonceLedger } from "./stores";
+import { evidenceStore, getSetting, isStopped, nonceLedger, setSetting } from "./stores";
 import { checkThreatDriftDaily } from "./threat-drift";
 
 /**
@@ -124,6 +124,17 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
       for (const workflowRunId of collected.rerunnable) await sendRerun(senderDeps(deps), runId, { repo: run.repo, workflowRunId });
       await db.update(runs).set({ rerunRequested: true, pending: ["rerun of failed jobs"] }).where(eq(runs.id, runId));
       return "collecting";
+    }
+    // Default-branch files for extensions: keep the last good copy, and use it (saying so) when a read fails.
+    const filesKey = `extension-files:${run.repo}`;
+    if (collected.readFailed.includes("default")) {
+      const last = await getSetting<{ at: string; files: ReadFile[] } | null>(filesKey, null);
+      if (last) {
+        collected.run.files = [...(collected.run.files ?? []), ...last.files];
+        collected.notes.push(`Used the copy of the default branch's extension files read at ${last.at}.`);
+      }
+    } else if (collected.run.files?.length) {
+      await setSetting(filesKey, { at: now.toISOString(), files: collected.run.files.filter((f) => f.from === "default") });
     }
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);
     const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council, { now: now.getTime(), screener: deps.screener ?? null });
