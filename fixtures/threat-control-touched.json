@@ -1,0 +1,50 @@
+{
+  "description": "A change inside verifySignature, the control for T1: a person decides whether it weakens the control.",
+  "config": {
+    "requiredWorkflows": [
+      "ci"
+    ],
+    "ask": {
+      "to": "reviewer@example.com"
+    },
+    "extensions": {
+      "threat-model": {
+        "mode": "active"
+      }
+    }
+  },
+  "run": {
+    "repo": "acme/shop",
+    "headSha": "tthreat",
+    "jobs": [
+      {
+        "workflow": "ci",
+        "name": "test",
+        "attempts": [
+          {
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "diff": "--- a/src/webhook.ts\n+++ b/src/webhook.ts\n@@ -10,1 +10,1 @@ export function verifySignature(secret: string, body: string, header: string) {\n-  return timingSafeEqual(Buffer.from(expected), Buffer.from(header));\n+  return expected === header;\n",
+    "files": [
+      {
+        "path": "THREATS.md",
+        "text": "# Threat model\n\n## In scope\n\n| ID | Threat | Control | Code |\n| --- | --- | --- | --- |\n| T1 | Forged webhook | Signature check with a constant-time compare | `src/webhook.ts` \u2192 `verifySignature` |\n| T2 | Replayed delivery | Each delivery id is recorded once | `src/deliveries.ts` |\n\n## Out of scope\n\n- ARP spoofing: handled by the network layer.\n\n## Operator contract\n\n- `branch-protection-requires: PullUp` \u2014 Branch protection requires the PullUp check.\n\n## Entry points\n\n- `src/app/api/**/route.ts`, `fetch(`\n",
+        "from": "default"
+      },
+      {
+        "path": "THREATS.md",
+        "text": "# Threat model\n\n## In scope\n\n| ID | Threat | Control | Code |\n| --- | --- | --- | --- |\n| T1 | Forged webhook | Signature check with a constant-time compare | `src/webhook.ts` \u2192 `verifySignature` |\n| T2 | Replayed delivery | Each delivery id is recorded once | `src/deliveries.ts` |\n\n## Out of scope\n\n- ARP spoofing: handled by the network layer.\n\n## Operator contract\n\n- `branch-protection-requires: PullUp` \u2014 Branch protection requires the PullUp check.\n\n## Entry points\n\n- `src/app/api/**/route.ts`, `fetch(`\n",
+        "from": "head"
+      }
+    ]
+  },
+  "expect": {
+    "hardFailure": false,
+    "questions": [
+      "threat-model:T1"
+    ]
+  }
+}

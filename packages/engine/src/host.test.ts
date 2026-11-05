@@ -80,7 +80,7 @@ describe("the host", () => {
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
       const raw = JSON.parse(readFileSync(`${dir}/${file}`, "utf8"));
       const { triggers, sensitivePaths, ...rest } = raw.config;
-      const moved = { ...rest, extensions: { core: { ...(triggers ? { triggers } : {}), ...(sensitivePaths ? { sensitivePaths } : {}) } } };
+      const moved = { ...rest, extensions: { core: { ...(triggers ? { triggers } : {}), ...(sensitivePaths ? { sensitivePaths } : {}) }, ...rest.extensions } };
       const council = () => fixedCouncil({ verdict: "pass", strength: 5, reason: "ok", quotes: [] });
       const r = ciRunSchema.parse(raw.run);
       expect(await decideRun(r, parseConfig(moved), council(), { now: 0 }), file).toEqual(await decideRun(r, parseConfig(raw.config), council(), { now: 0 }));
@@ -282,5 +282,23 @@ describe("runs stored before extensions", () => {
     const decision = storedDecision({ result: "pass", reason: "", hardFailures: [], councilCalls: 0, costUsd: 0, questions: [{ question: { id: "flaky-test", trigger: "flaky-test", prompt: "p", summary: "s", evidence: [], councilMayPass: true }, seats: [], outcome: "pass", decidedBy: "council", reason: "" }] });
     expect(decision.questions[0]!.question).toEqual({ id: "core:flaky-test", extension: "core", key: "flaky-test", shadow: false, prompt: "p", summary: "s", evidence: [], councilMayPass: true });
     expect(decision.extensions).toBeNull();
+  });
+});
+
+describe("every bundled extension", () => {
+  it("notes never change a result, on any fixture, with every bundled extension on", async () => {
+    const dir = fileURLToPath(new URL("../../../fixtures", import.meta.url));
+    const { loadFixtures } = await import("./fixtures");
+    for (const f of loadFixtures(dir)) {
+      const all = { ...Object.fromEntries(BUNDLED.map((e) => [e.id, { mode: "active" }])), ...f.config.extensions };
+      const config = parseConfig({ ...f.config, extensions: Object.fromEntries(Object.entries(all).map(([id, s]) => [id, "config" in s ? { mode: s.mode, ...s.config } : s])) });
+      const council = () => fixedCouncil({ verdict: "needs-person", strength: 3, reason: "", quotes: [] });
+      const withNotes = await decideRun(f.run, config, council(), { now: 0 });
+      restore = replaceExtensionsForTest(BUNDLED.map((e) => ({ ...e, notes: undefined })));
+      const without = await decideRun(f.run, config, council(), { now: 0 });
+      restore();
+      restore = null;
+      expect([withNotes.result, withNotes.reason, withNotes.questions], f.name).toEqual([without.result, without.reason, without.questions]);
+    }
   });
 });

@@ -1,12 +1,15 @@
 import type { Extension } from "@pullup/sdk";
+import codeowners from "./codeowners";
 import core from "./core";
+import docLinks from "./doc-links";
+import threatModel from "./threat-model";
 
 /**
  * Every bundled extension, in the order they run when the repository's config
  * does not say otherwise. Adding an extension is a folder in `src/` and one
  * line here.
  */
-export const BUNDLED: readonly Extension[] = [core];
+export const BUNDLED: readonly Extension[] = [core, threatModel, codeowners, docLinks];
 
 let registry: readonly Extension[] = BUNDLED;
 

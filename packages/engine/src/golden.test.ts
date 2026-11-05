@@ -25,7 +25,8 @@ function asBefore(decision: RunDecision) {
 }
 
 describe("golden: the core extension decides exactly as the triggers did", () => {
-  for (const f of loadFixtures(root)) {
+  // Only the fixtures that existed before the move have a golden file.
+  for (const f of loadFixtures(root).filter((x) => existsSync(`${root}/golden/${x.name}.json`))) {
     it(f.name, async () => {
       const recorded = `${root}/recorded/${f.name}.json`;
       const recording: Recording = existsSync(recorded) ? JSON.parse(readFileSync(recorded, "utf8")) : {};
