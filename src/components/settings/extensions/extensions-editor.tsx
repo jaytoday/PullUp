@@ -107,7 +107,7 @@ export function ExtensionsEditor({ repo, extensions, committed, draft }: { repo:
                     </Button>
                   ))}
                 </div>
-                <Button size="xs" color="neutral" variant="outline" icon="i-lucide-settings-2" disabled={!e.fields.length} onClick={() => setEditing(e.id)} aria-label={`${e.title} settings`}>
+                <Button size="xs" color="neutral" variant="outline" icon="i-lucide-sliders-horizontal" disabled={!e.fields.length} onClick={() => setEditing(e.id)} aria-label={`${e.title} settings`}>
                   Settings
                 </Button>
               </div>

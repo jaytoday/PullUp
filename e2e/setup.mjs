@@ -42,8 +42,8 @@ check(await next().isDisabled(), "escalate without a backup: Continue is disable
 await page.getByPlaceholder("oncall@example.com").fill("oncall@example.com");
 await next().click();
 
-check((await page.getByRole("radio", { name: /Essentials/ }).getAttribute("aria-checked")) === "true", "Essentials is the default preset");
-await page.getByRole("radio", { name: /Security/ }).click();
+check((await page.getByRole("radio", { name: /^Essentials/ }).getAttribute("aria-checked")) === "true", "Essentials is the default preset");
+await page.getByRole("radio", { name: /^Security/ }).click();
 await next().click();
 
 await page.getByLabel("sensitive-path council may pass").click();

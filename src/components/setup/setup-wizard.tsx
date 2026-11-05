@@ -171,7 +171,7 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
                 aria-checked={preset === id}
                 color={preset === id ? "primary" : "neutral"}
                 variant={preset === id ? "subtle" : "outline"}
-                className="h-auto flex-col items-start gap-1 whitespace-normal p-3 text-start"
+                className="h-auto flex-col items-start justify-start gap-1 whitespace-normal p-3 text-start"
                 onClick={() => setPreset(id)}
               >
                 <span className="text-sm font-medium">{PRESETS[id].label}</span>
