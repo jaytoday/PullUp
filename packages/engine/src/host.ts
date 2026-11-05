@@ -18,10 +18,13 @@ import {
   questionDraftSchema,
   type RelaxKind,
   type RunContext,
+  type ScreenAnswer,
+  screenRequestSchema,
 } from "@pullup/sdk";
 import { z } from "zod";
 import { canonicalJson, sha256 } from "./canonical";
 import { type Config, enabledExtensions, type ExtensionSettings } from "./config";
+import type { PlannedScreen } from "./screens";
 
 /**
  * The extension host. It runs every enabled extension over a run, in order,
@@ -72,6 +75,8 @@ export interface HostResult {
   relaxations: RelaxRecord[];
   outputs: ExtensionOutput[];
   compositionHash: string;
+  /** Every screen asked for this run and its checked answer. */
+  screens: Stamped<ScreenAnswer>[];
 }
 
 export interface HostOptions {
@@ -79,6 +84,10 @@ export interface HostOptions {
   now: number;
   /** Run only these extensions (`pullup check --only`). */
   only?: string[];
+  /** Checked answers to the extensions' screens (from `planScreens` and `askScreens`), by extension. */
+  screens?: Map<string, ScreenAnswer[]>;
+  /** Extensions whose `screens` failed while planning: each raises an error question. */
+  planErrors?: Map<string, string>;
 }
 
 /** Question keys the host uses itself. */
@@ -99,7 +108,7 @@ export function neverRelaxed(question: Question): string | null {
 }
 
 /** What one extension may see of the run. */
-function contextFor(extension: Extension, settings: ExtensionSettings, run: ParsedCiRun, config: Config, diff: RunContext<unknown>["diff"], facts: Stamped<Fact>[], now: number): RunContext<Record<string, unknown>> {
+function contextFor(extension: Extension, settings: ExtensionSettings, run: ParsedCiRun, config: Config, diff: RunContext<unknown>["diff"], facts: Stamped<Fact>[], now: number, screens: ScreenAnswer[] = []): RunContext<Record<string, unknown>> {
   const requests = extension.reads?.(settings.config) ?? [];
   const needs = new Set(extension.needs ?? []);
   return {
@@ -110,9 +119,38 @@ function contextFor(extension: Extension, settings: ExtensionSettings, run: Pars
     pull: run.pull,
     files: run.files.filter((f) => requests.some((r) => r.from === f.from && matchesAny(f.path, r.globs))),
     facts: { get: (kind) => facts.filter((f) => f.kind === kind && needs.has(f.extension)) },
+    screens,
     shared: { requiredWorkflows: config.requiredWorkflows, knownFlakyTests: config.flaky.knownTests },
     now,
   };
+}
+
+/**
+ * The screens every enabled extension wants for this run, in run order (the
+ * host asks them before detection). An extension whose `screens` throws or
+ * returns a bad shape is listed in `errors`, and raises an error question.
+ */
+export function planScreens(original: ParsedCiRun, config: Config, options: HostOptions): { planned: PlannedScreen[]; errors: Map<string, string> } {
+  const run = frozenCopy(ciRunSchema.parse(original));
+  const diff = frozenCopy(parseDiff(run.diff));
+  const planned: PlannedScreen[] = [];
+  const errors = new Map<string, string>();
+  for (const id of enabledExtensions(config).filter((x) => !options.only || options.only.includes(x))) {
+    const extension = extensionById(id)!;
+    if (!extension.screens) continue;
+    try {
+      const requests = z.array(screenRequestSchema).max(200).parse(extension.screens(contextFor(extension, config.extensions[id]!, run, config, diff, [], options.now)));
+      const keys = new Set<string>();
+      for (const r of requests) {
+        if (keys.has(r.key)) throw new Error(`screen key ${r.key} is used twice`);
+        keys.add(r.key);
+        planned.push({ ...r, extension: id, id: `${id}:${r.key}` });
+      }
+    } catch (err) {
+      errors.set(id, (err as Error).message.split("\n")[0]!.slice(0, 300));
+    }
+  }
+  return { planned, errors };
 }
 
 /** Every file request of the enabled extensions, so collection can read them all in one pass. */
@@ -190,18 +228,22 @@ export function runExtensions(original: ParsedCiRun, config: Config, options: Ho
   const ids = enabledExtensions(config).filter((id) => !options.only || options.only.includes(id));
   const run = frozenCopy(ciRunSchema.parse(original));
   const diff = frozenCopy(parseDiff(run.diff));
-  const result: HostResult = { questions: [], facts: [], notes: [], annotations: [], relaxations: [], outputs: [], compositionHash: compositionHash(config) };
+  const result: HostResult = { questions: [], facts: [], notes: [], annotations: [], relaxations: [], outputs: [], compositionHash: compositionHash(config), screens: [] };
   const proposals: { extension: string; question: string; kind: RelaxKind; why: string }[] = [];
   const contexts = new Map<string, RunContext<Record<string, unknown>>>();
 
   for (const id of ids) {
     const extension = extensionById(id)!;
     const settings = config.extensions[id]!;
-    const ctx = contextFor(extension, settings, run, config, diff, result.facts, options.now);
+    const answers = frozenCopy(options.screens?.get(id) ?? []);
+    result.screens.push(...answers.map((a) => ({ ...a, extension: id })));
+    const ctx = contextFor(extension, settings, run, config, diff, result.facts, options.now, answers);
     contexts.set(id, ctx);
     let detection: z.infer<typeof detectionSchema>;
     let error: string | null = null;
     try {
+      const planError = options.planErrors?.get(id);
+      if (planError) throw new Error(`could not plan its screens: ${planError}`);
       const raw: Detection = extension.detect?.(ctx) ?? {};
       const parsed = detectionSchema.safeParse(raw);
       if (!parsed.success) throw new Error(`returned a bad shape: ${parsed.error.issues[0]?.message ?? "unknown"} at ${parsed.error.issues[0]?.path.join(".")}`);

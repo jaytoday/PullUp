@@ -11,6 +11,7 @@ and docs. Extensions are never loaded from a repository or the internet.
 | Id | What it does | Default |
 | --- | --- | --- |
 | `core` | The three built-in checks: a test that passed only on a rerun, weakened tests, changes to sensitive paths. | Active (on unless switched off) |
+| `repo-rules` | The repository's own rules: Gallant lint rule files in `.pullup/rules/` on the default branch, each checked per changed file with a cheap model screen. A file that could not be checked is a question (`failClosed`). | Off |
 | `threat-model` | Checks each change against the repository's threat model (`THREATS.md`): controls touched, code map drift, new entry points, edits that weaken the model. Plain code, no model calls. | Off |
 | `codeowners` | Asks the code owners of a question's files (from `CODEOWNERS`) instead of `ask.to`. | Off |
 | `doc-links` | Links design docs that mention a changed file and walkthrough specs the change edits. Notes only. | Off |
@@ -119,6 +120,30 @@ Optional parts: `notes` (reviewer help), `recipients` (who to ask about a questi
 tests next to it (`test-context.ts` builds a run context), and fixtures in `fixtures/` (the fixture
 test checks the question ids in `expect.questions`).
 
+## Screens: cheap model checks
+
+An extension that needs a model's judgment (for example `repo-rules`: "does this change break rule
+X?") never calls the model. It returns screen requests from `screens(ctx)`; the host asks them through
+WithAI `apply` on the cheap tier, one call each, in parallel, at most `screens.maxPerRun` (default 20)
+per run, and hands back checked answers in `ctx.screens`. An answer counts only if it is one of the
+screen's options and, when it reports a problem, quotes a changed line that really is in the file. A
+failed call, a bad answer, a problem with no valid quote or a screen over the limit comes back as
+`not-checked`, which the extension must turn into a note or a question. `pullup check --record` and
+`--replay` cover screens as well as the council's seats.
+
+Measured live (2026-11-05, WithAI's cheap tier): a `no-debug` rule on an added `console.log` was
+answered "yes" (0.95) with the exact line, and the council then failed the run with checked quotes
+(about 10 seconds in all); a clean change was answered "no" three times out of three.
+
+## Repository rules
+
+`repo-rules` reads Gallant's rule format unchanged (`appliesTo` file-name globs, `type` noul /
+choice / score, `criteria`, `violation`, `minConfidence`), so the same folder works for a developer
+running Gallant before a push. A glob with a folder part (`**/*.ts`) is refused with the reason, since
+Gallant matches file names only. Two PullUp-only fields: `pullupLevel` (p1 / p2, a label) and
+`pullupCouncilMayPass: false` (a person decides that rule). A rule that fails raises one question
+`repo-rules:<rule>` with the quoted lines and the rule text as the council's context.
+
 ## The threat model file
 
 `threat-model` reads a file in the layout of the Warden DNS resolver's public `SECURITY.md`:
@@ -155,8 +180,6 @@ against the code, so moving a control without updating the map fails the tests.
 
 Planned, in this order:
 
-- **Screens and `repo-rules`** (phase 4): cheap model checks asked by the host, and Markdown rule
-  files in the Gallant format.
 - **`inert` and `continuous-review`** (phase 5): need new GitHub App events and an owner decision on
   where follow-ups appear.
 - **The daily threat model check** (operator contract and code map drift on the default branch):

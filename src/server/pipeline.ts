@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, settle, storedDecision, withaiCouncil } from "@pullup/engine";
+import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type RunDecision, type Screener, settle, storedDecision, withaiCouncil, withaiScreener } from "@pullup/engine";
 import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, sendRerun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
@@ -26,6 +26,8 @@ const LOCK_MS = 5 * 60_000;
 export interface PipelineDeps {
   github: GitHubApi;
   council: Council;
+  /** Extensions' cheap model checks; null when WithAI is not configured (they are then "not checked"). */
+  screener?: Screener | null;
   /** WithAI's ask-a-person calls; null when WithAI is not configured. */
   withai: AskClient | null;
   now: () => Date;
@@ -53,7 +55,8 @@ export function liveDeps(): PipelineDeps {
     if (!client) throw new Error("WithAI is not configured (WITHAI_URL, WITHAI_TOKEN)");
     return withaiCouncil({ client, skill: { id: await ciPolicySkill(client) } })(question, run, seats);
   };
-  return { github: octokitApi((repo) => repoOctokit(repo)), council, withai: client, now: () => new Date() };
+  const screener: Screener | null = client ? async (screen, run) => withaiScreener({ client, skill: { id: await ciPolicySkill(client) } })(screen, run) : null;
+  return { github: octokitApi((repo) => repoOctokit(repo)), council, screener, withai: client, now: () => new Date() };
 }
 
 export function senderDeps(deps: PipelineDeps): SenderDeps {
@@ -122,8 +125,8 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
       return "collecting";
     }
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);
-    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council, { now: now.getTime() });
-    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ id: q.question.id, shadow: q.question.shadow, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd, extensions: decision.extensions && { compositionHash: decision.extensions.compositionHash, outputs: decision.extensions.outputs, relaxations: decision.extensions.relaxations } }, deps.now());
+    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council, { now: now.getTime(), screener: deps.screener ?? null });
+    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ id: q.question.id, shadow: q.question.shadow, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd, extensions: decision.extensions && { compositionHash: decision.extensions.compositionHash, outputs: decision.extensions.outputs, relaxations: decision.extensions.relaxations, screens: decision.extensions.screens.map((s) => ({ id: `${s.extension}:${s.key}`, status: s.status, result: s.result, why: s.why })) } }, deps.now());
     await db
       .update(runs)
       .set({ mode, decision, config, notes: collected.notes, pending: [], councilCalls: decision.councilCalls, costUsd: decision.costUsd, error: null })

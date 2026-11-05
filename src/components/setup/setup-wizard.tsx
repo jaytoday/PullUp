@@ -32,8 +32,8 @@ const PRESETS = {
   essentials: { label: "Essentials", description: "The core checks: flaky tests, weakened tests and changes to code that is hard to undo.", extensions: {} },
   security: {
     label: "Security",
-    description: "Essentials, plus the threat model (THREATS.md on the default branch) and asking code owners. Both start in Shadow mode.",
-    extensions: { "threat-model": { mode: "shadow" }, codeowners: { mode: "shadow" } },
+    description: "Essentials, plus your repository's rules (.pullup/rules), the threat model (THREATS.md) and asking code owners. These start in Shadow mode.",
+    extensions: { "repo-rules": { mode: "shadow" }, "threat-model": { mode: "shadow" }, codeowners: { mode: "shadow" } },
   },
 } as const;
 type Preset = keyof typeof PRESETS;

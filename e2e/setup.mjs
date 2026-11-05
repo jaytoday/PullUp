@@ -56,7 +56,7 @@ const file = JSON.parse(await page.getByTestId("config-file").textContent());
 check(JSON.stringify(file.requiredWorkflows) === '["ci","e2e"]', "file has the workflows");
 check(file.ask.to === "reviewer@example.com" && file.ask.toGithub === "reviewer" && file.ask.backup === "oncall@example.com" && file.ask.onNoAnswer === "escalate", "file has the people and the no-answer option");
 check(file.extensions.core.triggers["sensitive-path"].councilMayPass === true, "file has the loosened trigger");
-check(file.extensions["threat-model"].mode === "shadow" && file.extensions.codeowners.mode === "shadow", "the Security preset adds the threat model and code owners in Shadow mode");
+check(["repo-rules", "threat-model", "codeowners"].every((id) => file.extensions[id].mode === "shadow"), "the Security preset adds repository rules, the threat model and code owners in Shadow mode");
 
 await page.getByRole("button", { name: "Back" }).click();
 check((await page.getByTestId("loosenings").getByRole("textbox").inputValue()) === "loosen", "going back keeps the answers");

@@ -16,6 +16,10 @@ import {
   type Recording,
   recordingCouncil,
   replayCouncil,
+  recordingScreener,
+  replayScreener,
+  type Screener,
+  withaiScreener,
   type RunDecision,
   withaiCouncil,
   type Config,
@@ -102,13 +106,13 @@ export function fixtureRun(file: string): CheckInput {
   return { run: ciRunSchema.parse(raw.run), config: parseConfig(raw.config), notes: [`Fixture: ${file}`] };
 }
 
-async function liveCouncil(env: NodeJS.ProcessEnv): Promise<Council> {
+async function liveWithai(env: NodeJS.ProcessEnv): Promise<{ council: Council; screener: Screener }> {
   const baseUrl = env.WITHAI_URL?.trim();
   const token = env.WITHAI_TOKEN?.trim();
   if (!baseUrl || !token) throw new Error("Set WITHAI_URL and WITHAI_TOKEN for a live council, or pass --replay with recorded answers.");
   const client = new WithAIClient({ baseUrl, token });
   const id = env.PULLUP_SKILL_ID?.trim() || (await client.createSkill({ template: "ci-policy" })).skill.id;
-  return withaiCouncil({ client, skill: { id } });
+  return { council: withaiCouncil({ client, skill: { id } }), screener: withaiScreener({ client, skill: { id } }) };
 }
 
 export function formatDecision(input: CheckInput, decision: RunDecision, seconds: number): string {
@@ -127,6 +131,7 @@ export function formatDecision(input: CheckInput, decision: RunDecision, seconds
   const ext = decision.extensions;
   for (const n of ext?.notes ?? []) out.push(`note (${n.extension}): ${n.text}${n.link ? ` ${n.link}` : ""}`);
   for (const a of ext?.annotations ?? []) out.push(`annotation (${a.extension}): ${a.path}:${a.line} ${a.message}`);
+  for (const s of ext?.screens ?? []) out.push(`screen (${s.extension}:${s.key}): ${s.status === "answered" ? `${s.result} (${s.confidence})` : `not checked, ${s.why}`}`);
   for (const r of ext?.relaxations ?? []) if (!r.applied) out.push(`relaxation refused (${r.extension} → ${r.question}): ${r.refused}`);
   if (ext) out.push(`extensions: ${ext.outputs.map((o) => `${o.id}@${o.version} (${o.mode})${o.error ? ` FAILED: ${o.error}` : ""}`).join(", ")}`);
   out.push("", `RESULT: ${decision.result.toUpperCase()} — ${decision.reason}`);
@@ -143,17 +148,16 @@ export async function check(argv: string[], env: NodeJS.ProcessEnv = process.env
   const input = values.fixture ? fixtureRun(values.fixture) : localRun(cwd, values.base ?? "main", values.jobs);
   const recording: Recording = {};
   // Built lazily and once: a run with a hard failure or no question never needs WithAI.
-  let live: Promise<Council> | undefined;
-  const council: Council = values.replay
-    ? replayCouncil(JSON.parse(readFileSync(values.replay, "utf8")) as Recording)
-    : async (q, run, seats) => {
-        live ??= liveCouncil(env).then((c) => (values.record ? recordingCouncil(c, recording) : c));
-        return (await live)(q, run, seats);
-      };
+  let live: Promise<{ council: Council; screener: Screener }> | undefined;
+  const connect = () =>
+    (live ??= liveWithai(env).then((w) => (values.record ? { council: recordingCouncil(w.council, recording), screener: recordingScreener(w.screener, recording) } : w)));
+  const replayed = values.replay ? (JSON.parse(readFileSync(values.replay, "utf8")) as Recording) : null;
+  const council: Council = replayed ? replayCouncil(replayed) : async (q, run, seats) => (await connect()).council(q, run, seats);
+  const screener: Screener = replayed ? replayScreener(replayed) : async (s, run) => (await connect()).screener(s, run);
   const started = performance.now();
   const unknown = (values.only ?? []).filter((id) => !(id in input.config.extensions) || input.config.extensions[id]!.mode === "off");
   if (unknown.length) throw new Error(`--only: not switched on in this config: ${unknown.join(", ")}`);
-  const decision = await decideRun(input.run, input.config, council, { now: Date.now(), only: values.only });
+  const decision = await decideRun(input.run, input.config, council, { now: Date.now(), only: values.only, screener });
   if (values.record) writeFileSync(values.record, `${JSON.stringify(recording, null, 2)}\n`);
   const seconds = (performance.now() - started) / 1000;
   return { text: values.json ? JSON.stringify(decision, null, 2) : formatDecision(input, decision, seconds), decision };

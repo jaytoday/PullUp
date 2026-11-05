@@ -1,5 +1,5 @@
 import type { Question } from "@pullup/sdk";
-import { type Config, parseConfig } from "./config";
+import { type Config, configInput, parseConfig } from "./config";
 import type { RunDecision } from "./resolution";
 
 /**
@@ -13,7 +13,8 @@ import type { RunDecision } from "./resolution";
 export function storedConfig(raw: unknown): Config {
   const old = raw as Record<string, unknown>;
   // A config parsed before extensions always had `triggers` (default {}); one parsed since never has it.
-  return "triggers" in old ? parseConfig(old) : (raw as Config);
+  // Either way it is parsed again, so settings added later get their defaults.
+  return "triggers" in old ? parseConfig(old) : parseConfig(configInput(raw as Config));
 }
 
 export function storedQuestion(raw: Question | (Omit<Question, "extension" | "key" | "shadow"> & { trigger: string })): Question {

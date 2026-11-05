@@ -76,7 +76,7 @@ describe("extensions in the command line", () => {
     const text = extensions([]);
     expect(text).toContain("core@1.0.0 — Core checks (on unless switched off)");
     expect(text).toContain("threat-model.controlsCouncilMayPass (boolean, default false) [loosens]");
-    expect(JSON.parse(extensions(["--json"])).map((e: { id: string }) => e.id)).toEqual(["core", "threat-model", "codeowners", "doc-links"]);
+    expect(JSON.parse(extensions(["--json"])).map((e: { id: string }) => e.id)).toEqual(["core", "repo-rules", "threat-model", "codeowners", "doc-links"]);
   });
 
   it("reads the threat model from the default branch, and --only runs one extension", async () => {
@@ -95,5 +95,13 @@ describe("extensions in the command line", () => {
     const one = await check(["--base", "main", "--only", "threat-model"], NO_WITHAI, dir);
     expect(one.decision.questions.map((q) => q.question.id)).toEqual(["threat-model:T1"]);
     await expect(check(["--base", "main", "--only", "doc-links"], NO_WITHAI, dir)).rejects.toThrow("not switched on");
+  });
+});
+
+describe("screens in the command line", () => {
+  it("replays recorded screen answers and council answers with no WithAI call: the repository rule fails", async () => {
+    const { decision, text } = await check(["--fixture", "fixtures/rule-no-debug.json", "--replay", "fixtures/recorded/rule-no-debug.json"], NO_WITHAI);
+    expect(decision.questions.map((q) => [q.question.id, q.outcome])).toEqual([["repo-rules:no-debug", "fail"]]);
+    expect(text).toContain("screen (repo-rules:no-debug:0): yes (0.95)");
   });
 });

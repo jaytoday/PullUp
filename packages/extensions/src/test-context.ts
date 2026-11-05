@@ -1,7 +1,7 @@
-import { ciRunSchema, type CiRun, parseDiff, type ReadFile, type RunContext } from "@pullup/sdk";
+import { ciRunSchema, type CiRun, parseDiff, type ReadFile, type RunContext, type ScreenAnswer } from "@pullup/sdk";
 
 /** A run context for testing one extension on its own, as the host would build it. */
-export function testContext<C>(config: C, run: Partial<CiRun> & { files?: ReadFile[] } = {}): RunContext<C> {
+export function testContext<C>(config: C, run: Partial<CiRun> & { files?: ReadFile[] } = {}, screens: ScreenAnswer[] = []): RunContext<C> {
   const parsed = ciRunSchema.parse({ repo: "acme/shop", headSha: "h", jobs: [], ...run });
   return {
     config,
@@ -11,6 +11,7 @@ export function testContext<C>(config: C, run: Partial<CiRun> & { files?: ReadFi
     pull: parsed.pull,
     files: parsed.files,
     facts: { get: () => [] },
+    screens,
     shared: { requiredWorkflows: ["ci"], knownFlakyTests: [] },
     now: 0,
   };

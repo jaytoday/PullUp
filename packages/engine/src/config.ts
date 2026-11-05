@@ -78,6 +78,13 @@ const rawConfigSchema = z.object({
     })
     .default({ seats: DEFAULT_SEATS, passStrength: 4, needsPersonBlocksPass: true, maxQuestionsPerRun: 6 }),
   ask: askSchema,
+  /** Cheap model checks extensions ask for (see the engine's screens.ts). */
+  screens: z
+    .object({
+      /** At most this many screen calls per run; the rest are "not checked". */
+      maxPerRun: z.number().int().min(0).max(200).default(20),
+    })
+    .default({ maxPerRun: 20 }),
   /** One section per bundled extension, keyed by its id. `core` runs unless switched off; the others only when listed. */
   extensions: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
 });

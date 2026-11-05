@@ -2,7 +2,8 @@ import type { ParsedCiRun, Question } from "@pullup/sdk";
 import { checkSeat, type CheckedSeat, type Council, type RawSeatAnswer } from "./council";
 import type { Config } from "./config";
 import { findHardFailures, type HardFailure } from "./hard-failure";
-import { type HostResult, runExtensions } from "./host";
+import { type HostResult, planScreens, runExtensions } from "./host";
+import { askScreens, type Screener } from "./screens";
 import { askOutcome, type AskState } from "./no-answer";
 
 /**
@@ -60,7 +61,7 @@ export interface RunDecision {
   /** What the council calls cost, in US dollars. */
   costUsd: number;
   /** What each extension added (facts, notes, annotations, relaxations) and the composition hash. Null on a hard failure. */
-  extensions: Omit<HostResult, "questions"> | null;
+  extensions: (Omit<HostResult, "questions"> & { screenCalls: number }) | null;
 }
 
 /** Apply each waiting question's ask state: a person's answer or the no-answer outcome replaces "ask". */
@@ -89,15 +90,18 @@ export async function decideRun(
   run: ParsedCiRun,
   config: Config,
   council: Council,
-  options: { now?: number; only?: string[] } = {},
+  options: { now?: number; only?: string[]; screener?: Screener | null } = {},
 ): Promise<RunDecision> {
   const hardFailures = findHardFailures(run, config);
   if (hardFailures.length) {
     return { result: "fail", reason: hardFailures.map((f) => f.reason).join(" "), hardFailures, questions: [], councilCalls: 0, costUsd: 0, extensions: null };
   }
-  const { questions: found, ...extensions } = runExtensions(run, config, { now: options.now ?? Date.now(), only: options.only });
+  const now = options.now ?? Date.now();
+  const { planned, errors } = planScreens(run, config, { now, only: options.only });
+  const screened = planned.length ? await askScreens(planned, run, options.screener ?? null, config.screens.maxPerRun) : { answers: new Map(), calls: 0, costUsd: 0 };
+  const { questions: found, ...extensions } = runExtensions(run, config, { now, only: options.only, screens: screened.answers, planErrors: errors });
   let councilCalls = 0;
-  let costUsd = 0;
+  let costUsd = screened.costUsd;
   const questions = await Promise.all(
     found.map(async (question) => {
       if (question.skipCouncil) return resolveQuestion(question, [], config);
@@ -110,5 +114,5 @@ export async function decideRun(
       return resolveQuestion(question, answers.map((r) => checkSeat(r, question, run)), config);
     }),
   );
-  return { ...combine(questions), hardFailures, questions, councilCalls, costUsd, extensions };
+  return { ...combine(questions), hardFailures, questions, councilCalls, costUsd, extensions: { ...extensions, screenCalls: screened.calls } };
 }

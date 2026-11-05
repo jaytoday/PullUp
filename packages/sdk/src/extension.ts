@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ParsedCiRun, PullInfo, ReadFile } from "./ci";
 import type { DiffFile } from "./diff";
 import { NO_ANSWER_OPTIONS, type Question, RELAX_KINDS, type RelaxKind } from "./question";
+import type { ScreenAnswer, ScreenRequest } from "./screen";
 
 /**
  * The extension interface. An extension is a TypeScript module bundled with
@@ -102,6 +103,8 @@ export interface RunContext<C> {
   /** Files from this extension's `reads` that were found. A missing file is "no data", never "passed". */
   files: ReadFile[];
   facts: FactReader;
+  /** Answers to this extension's `screens`, checked by the host. Empty in `screens` itself. */
+  screens: ScreenAnswer[];
   /** Settings every extension may read. */
   shared: { requiredWorkflows: string[]; knownFlakyTests: string[] };
   /** Milliseconds since 1970, passed in by the host (extensions never read the clock). */
@@ -132,6 +135,8 @@ export interface Extension<S extends AnyObjectSchema = AnyObjectSchema> {
   reads?(config: z.infer<S>): FileRequest[];
   /** Extensions whose facts this one reads; they run first. */
   needs?: string[];
+  /** Cheap model questions for the host to ask before `detect` (see `screen.ts`). */
+  screens?(ctx: RunContext<z.infer<S>>): ScreenRequest[];
   detect?(ctx: RunContext<z.infer<S>>): Detection;
   notes?(ctx: RunContext<z.infer<S>>): Note[];
   /** Who to ask about a question (WithAI people: member id, email or phone); null to leave it to the next extension or `ask.to`. */

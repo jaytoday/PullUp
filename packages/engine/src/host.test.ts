@@ -119,6 +119,14 @@ describe("the host", () => {
     ]);
   });
 
+  it("an extension whose screens cannot be planned raises a question only a person may pass", async () => {
+    const planner = defineExtension({ ...asker, id: "planner", screens: () => { throw new Error("bad plan"); } });
+    use(planner);
+    const decision = await decideRun(run(), parseConfig({ ...base, extensions: { planner: { mode: "active" } } }), fixedCouncil({ verdict: "pass", strength: 5, reason: "", quotes: [] }), { now: 0 });
+    expect(decision.questions.map((q) => [q.question.id, q.question.councilMayPass, q.outcome])).toEqual([["planner:extension-error", false, "ask"]]);
+    expect(decision.questions[0]!.question.summary).toContain("could not plan its screens: bad plan");
+  });
+
   it("Shadow questions are shown and sent to the council but never change the result", async () => {
     use(asker);
     const council = fixedCouncil({ verdict: "needs-person", strength: 3, reason: "unsure", quotes: [] });
@@ -278,7 +286,9 @@ describe("runs stored before extensions", () => {
     const config = storedConfig(oldConfig);
     expect((config.extensions.core!.config as { triggers: Record<string, { councilMayPass: boolean }> }).triggers["sensitive-path"]!.councilMayPass).toBe(true);
     expect(config.ask.perExtension).toEqual({ "core:flaky-test": "pass" });
-    expect(storedConfig(config)).toBe(config);
+    expect(storedConfig(config)).toEqual(config);
+    const { screens: _, ...older } = config;
+    expect(storedConfig(older).screens).toEqual({ maxPerRun: 20 });
     const decision = storedDecision({ result: "pass", reason: "", hardFailures: [], councilCalls: 0, costUsd: 0, questions: [{ question: { id: "flaky-test", trigger: "flaky-test", prompt: "p", summary: "s", evidence: [], councilMayPass: true }, seats: [], outcome: "pass", decidedBy: "council", reason: "" }] });
     expect(decision.questions[0]!.question).toEqual({ id: "core:flaky-test", extension: "core", key: "flaky-test", shadow: false, prompt: "p", summary: "s", evidence: [], councilMayPass: true });
     expect(decision.extensions).toBeNull();
@@ -307,6 +317,7 @@ describe("describing extensions", () => {
   it("gives every bundled extension's settings, defaults and a JSON Schema of its config", () => {
     const list = describeExtensions();
     expect(list.map((e) => e.id)).toEqual(BUNDLED.map((e) => e.id));
+    expect(list.find((e) => e.id === "repo-rules")!.defaults).toEqual({ dir: ".pullup/rules", failClosed: true, councilMayPass: true });
     const threat = list.find((e) => e.id === "threat-model")!;
     expect(threat).toMatchObject({ defaultMode: "off", defaults: { path: "THREATS.md", controlsCouncilMayPass: false } });
     expect(threat.fields.find((f) => f.key === "controlsCouncilMayPass")!.loosens).toBe(true);

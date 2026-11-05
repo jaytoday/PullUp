@@ -1,0 +1,85 @@
+{
+  "r1c2d3e/screen/repo-rules:no-debug:0": [
+    {
+      "seat": "repo-rules:no-debug:0",
+      "answer": {
+        "result": "yes",
+        "confidence": 0.95,
+        "reason": "The rule asks whether the file leaves debugging code such as console.log or debugger behind. The change adds line 2, which is a new console.log call, marked with a + in the diff. That is debugging code left in the file, so the rule is broken. The quote is the added line's content without the line number and the + marker. Confidence is high because the match is direct, though the guidance has no CI-policy wording for this check, so I applied the question as written.",
+        "quotes": [
+          {
+            "text": "console.log(total);"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4800
+    }
+  ],
+  "r1c2d3e/repo-rules:no-debug": [
+    {
+      "seat": "Test reliability: you care whether the tests can be trusted.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The guidance does not cover repository rules directly, so I applied sound judgment. The no-debug.md rule asks whether the file leaves debugging code such as console.log behind. The diff adds a console.log call to src/cart.ts, so the rule is broken and the run should not pass anyway. The job itself succeeded with no failed tests, so the failure rests on the rule violation, not on test reliability. Strength is 4 rather than 5 because the rule text comes from the repo-rules context and the guidance is silent on it.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+console.log(total);"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 3977
+    },
+    {
+      "seat": "Security: you care about sign-in, permissions, secrets and data exposure.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The added line in src/cart.ts is a new debugging call that the no-debug.md rule prohibits, so the run should not pass. The guidance has no dedicated section on repository rules, so this rests on sound judgment: the rule is a plain yes/no question and the diff answers it directly. The CI job passed with no failed tests and an empty log, so the only issue is the rule violation. The security viewpoint adds no sign-in, permission, secret or migration concern here. The quote is the exact added line from the diff.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+console.log(total);"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4560
+    },
+    {
+      "seat": "Maintainer of the touched area: you know this code and what depends on it.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The guidance has no specific section for repository rules, so I used sound judgment. The repo rule no-debug.md asks whether the file leaves debugging code such as console.log behind. The diff adds a console.log call in src/cart.ts, and the test job passed without any failed tests, so passing tests do not offset the rule violation. The change should not pass as is. Strength is 4 rather than 5 because the rule text is short and I cannot confirm from the evidence whether this console.log is intentional.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+console.log(total);"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4679
+    },
+    {
+      "seat": "Release safety: you care about what could break for users after this ships.",
+      "answer": {
+        "verdict": "fail",
+        "strength": 4,
+        "reason": "The repository rule no-debug.md asks whether the file leaves debugging code such as console.log behind. The change adds a console.log call on line 2 of src/cart.ts, so the rule is broken and the run should not pass. The guidance does not cover repository rules directly, so this verdict rests on the rule text and the diff rather than a specific policy section. Strength is 4 rather than 5 because the rule is a simple pattern check and the reviewer could still choose to accept a temporary debug line. The job passed with no failed tests, but that does not address the rule.",
+        "quotes": [
+          {
+            "source": "diff",
+            "text": "+console.log(total);"
+          }
+        ]
+      },
+      "costUsd": 0,
+      "durationMs": 4037
+    }
+  ]
+}
