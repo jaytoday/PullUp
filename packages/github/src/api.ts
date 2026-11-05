@@ -1,4 +1,5 @@
 import type { Octokit } from "@octokit/rest";
+import { matchesAny, type PullInfo } from "@pullup/engine";
 import { strFromU8, unzipSync } from "fflate";
 
 /**
@@ -34,6 +35,8 @@ export interface CheckRunCall {
   detailsUrl?: string;
   /** Buttons on the check run (GitHub "requested actions"); pressing one sends a `check_run` webhook. */
   actions?: { label: string; identifier: string; description: string }[];
+  /** File and line findings from extensions, at most 50 (GitHub's limit per call). */
+  annotations?: { path: string; line: number; level: "notice" | "warning" | "failure"; message: string }[];
 }
 
 export interface RerunCall {
@@ -65,7 +68,17 @@ export interface GitHubApi {
   rerunFailedJobs(call: RerunCall): Promise<number>;
   /** "admin", "write", "read" or "none". */
   permission(repo: string, login: string): Promise<string>;
+  /** The pull request's title, body, labels and author, for extensions. */
+  pullInfo(repo: string, pull: number): Promise<PullInfo>;
+  /**
+   * Text files matching any of `globs` at `ref` (the default branch, or a commit),
+   * at most `READ_LIMITS.files` files of `READ_LIMITS.fileBytes` each. Larger or
+   * binary files are left out (to an extension, "no data").
+   */
+  readFiles(repo: string, ref: { defaultBranch: true } | { sha: string }, globs: string[]): Promise<{ path: string; text: string }[]>;
 }
+
+export const READ_LIMITS = { files: 40, fileBytes: 200_000 };
 
 const split = (repo: string) => {
   const [owner, name] = repo.split("/") as [string, string];
@@ -92,7 +105,11 @@ export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubA
     status: c.status,
     ...(c.conclusion ? { conclusion: c.conclusion } : {}),
     ...(c.detailsUrl ? { details_url: c.detailsUrl } : {}),
-    output: { title: c.title, summary: c.summary },
+    output: {
+      title: c.title,
+      summary: c.summary,
+      ...(c.annotations?.length ? { annotations: c.annotations.slice(0, 50).map((a) => ({ path: a.path, start_line: a.line, end_line: a.line, annotation_level: a.level, message: a.message })) } : {}),
+    },
     actions: c.actions ?? [],
   });
   return {
@@ -163,6 +180,24 @@ export function octokitApi(octokit: (repo: string) => Promise<Octokit>): GitHubA
       const gh = await octokit(call.repo);
       await gh.rest.actions.reRunWorkflowFailedJobs({ ...split(call.repo), run_id: call.workflowRunId });
       return call.workflowRunId;
+    },
+    async pullInfo(repo, pull) {
+      const gh = await octokit(repo);
+      const { data } = await gh.rest.pulls.get({ ...split(repo), pull_number: pull });
+      return { number: pull, title: data.title, body: data.body ?? "", labels: data.labels.map((l) => l.name ?? "").filter(Boolean), author: data.user?.login ?? "" };
+    },
+    async readFiles(repo, ref, globs) {
+      const gh = await octokit(repo);
+      const sha = "sha" in ref ? ref.sha : (await gh.rest.repos.get(split(repo))).data.default_branch;
+      const { data: tree } = await gh.rest.git.getTree({ ...split(repo), tree_sha: sha, recursive: "true" });
+      const wanted = tree.tree.filter((e) => e.type === "blob" && e.path && (e.size ?? 0) <= READ_LIMITS.fileBytes && matchesAny(e.path, globs)).slice(0, READ_LIMITS.files);
+      const out: { path: string; text: string }[] = [];
+      for (const entry of wanted) {
+        const { data } = await gh.rest.git.getBlob({ ...split(repo), file_sha: entry.sha! });
+        const text = Buffer.from(data.content, "base64").toString("utf8");
+        if (!text.includes("\u0000")) out.push({ path: entry.path!, text });
+      }
+      return out;
     },
     async permission(repo, login) {
       const gh = await octokit(repo);

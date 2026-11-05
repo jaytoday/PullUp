@@ -5,7 +5,7 @@ import { FakeGitHub } from "@pullup/github";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, migrateDb } from "@/lib/db/client";
-import { deliveries, evidence, runs, settings } from "@/lib/db/schema";
+import { asks, deliveries, evidence, repos, runs, settings } from "@/lib/db/schema";
 import { COLLECT_WAIT_MS, noteWorkflowFinished, type PipelineDeps, processRun } from "./pipeline";
 import { evidenceChain, evidenceFor } from "./stores";
 
@@ -29,7 +29,7 @@ const deps = (gh: FakeGitHub, council = fixedCouncil(PASS), now = T0): PipelineD
 
 beforeAll(migrateDb);
 beforeEach(async () => {
-  for (const t of [runs, evidence, deliveries, settings]) await db.delete(t);
+  for (const t of [asks, runs, repos, evidence, deliveries, settings]) await db.delete(t);
 });
 
 describe("the pipeline (shadow mode)", () => {

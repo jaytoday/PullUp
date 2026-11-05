@@ -180,3 +180,47 @@ describe("/pullup comments", () => {
     expect(parsePullupCommand("/pullup passed")).toBeNull();
   });
 });
+
+describe("extensions on a live repository", () => {
+  const THREATS = "## In scope\n| ID | Threat | Control | Code |\n| --- | --- | --- | --- |\n| T1 | Stolen session | Sessions expire after a day | `src/auth/session.ts` |\n";
+
+  it("threat model and code owners: the control question goes to the file's owner, with an annotation, and the owner's GitHub button counts", async () => {
+    const s = setup();
+    s.gh.config.set(
+      repo,
+      JSON.stringify({
+        requiredWorkflows: ["ci"],
+        ask: { to: "owner@example.com", deadlineMinutes: 60 },
+        extensions: { "threat-model": { mode: "active" }, codeowners: { mode: "active", people: { "@alice": "alice@example.com" } }, "doc-links": { mode: "shadow" } },
+      }),
+    );
+    s.gh.files.set(repo, { "THREATS.md": THREATS, ".github/CODEOWNERS": "/src/auth/ @alice\n" });
+    s.gh.files.set(`${repo}@s1`, { "THREATS.md": THREATS });
+    const { id, state } = await start(s);
+    expect(state).toBe("waiting");
+    const run = await runRow(id);
+    const asked = (await db.select().from(asks).where(eq(asks.runId, id))).map((a) => a.questionId).sort();
+    expect(asked).toEqual(["core:sensitive-path", "threat-model:T1"]);
+    expect(s.withai.questions.map((q) => [q.input.to, (q.input.case as { questionId: string }).questionId])).toEqual([
+      [{ email: "alice@example.com" }, "core:sensitive-path"],
+      [{ email: "alice@example.com" }, "threat-model:T1"],
+    ]);
+    expect(check(s.gh).annotations).toEqual([{ path: "src/auth/session.ts", line: 1, level: "warning", message: "This code implements the control for T1 (Stolen session): Sessions expire after a day [threat-model]" }]);
+    expect(check(s.gh).summary).toContain("### threat-model");
+    // Alice answers with her GitHub login: it counts as alice@example.com, who was asked.
+    expect(await answerFromGithub(run, "alice", "pass", "", "check-run-button", s.deps)).toEqual({ accepted: 2 });
+    expect(check(s.gh)).toMatchObject({ conclusion: "success" });
+  });
+
+  it("a Shadow extension's questions are shown but never asked and never hold the check", async () => {
+    const s = setup();
+    s.gh.config.set(repo, JSON.stringify({ requiredWorkflows: ["ci"], ask: { to: "owner@example.com" }, extensions: { core: { mode: "shadow" }, "threat-model": { mode: "shadow" } } }));
+    s.gh.files.set(repo, { "THREATS.md": THREATS });
+    const { id, state } = await start(s);
+    expect(state).toBe("decided");
+    expect(await db.select().from(asks).where(eq(asks.runId, id))).toEqual([]);
+    expect(check(s.gh)).toMatchObject({ conclusion: "success" });
+    expect(check(s.gh).summary).toContain("Would ask (Shadow extensions, not counted)");
+    expect(check(s.gh).annotations![0]).toMatchObject({ level: "notice", message: expect.stringMatching(/^\(Shadow\) /) });
+  });
+});

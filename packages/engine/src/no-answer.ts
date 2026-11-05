@@ -1,6 +1,7 @@
 import type { CheckedSeat } from "./council";
 import type { Question } from "@pullup/sdk";
-import type { Config, NoAnswerOption } from "./config";
+import { extensionById } from "@pullup/extensions";
+import { type Config, enabledExtensions, type NoAnswerOption } from "./config";
 
 /**
  * Asking a person, and what happens when no one answers. Pure: the time is
@@ -116,10 +117,14 @@ export function askOutcome(state: AskState): { outcome: PersonAnswer | "ask"; de
   return { outcome: "ask", decidedBy: null, reason: `Waiting for ${state.asked[state.asked.length - 1]}.` };
 }
 
-/** Who a GitHub user is for answering: the person asked (by their configured login), or just that login. */
+/** Who a GitHub user is for answering: the person asked (by their configured login, or an extension's mapping such as code owners), or just that login. */
 export function personForGithubLogin(config: Config, login: string): string {
   const l = login.toLowerCase();
   if (config.ask.toGithub?.toLowerCase() === l) return config.ask.to;
   if (config.ask.backup && config.ask.backupGithub?.toLowerCase() === l) return config.ask.backup;
+  for (const id of enabledExtensions(config)) {
+    const person = extensionById(id)?.personForLogin?.(config.extensions[id]!.config, login);
+    if (person) return person;
+  }
   return `github:${login}`;
 }

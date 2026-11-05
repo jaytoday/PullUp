@@ -48,6 +48,38 @@ describe("collecting a commit's CI", () => {
     expect(gh.calls).not.toContain("pullDiff");
   });
 
+  it("reads the pull request's details and the files enabled extensions ask for, from the default branch and the head commit", async () => {
+    const gh = github();
+    gh.pulls.set(`${repo}#7`, { number: 7, title: "Faster checkout", body: "PullUp-Inert: flag=newCheckout", labels: ["pullup:inert"], author: "alice" });
+    gh.files.set(repo, { "THREATS.md": "default model", ".github/CODEOWNERS": "* @alice", "src/a.ts": "x" });
+    gh.files.set(`${repo}@s1`, { "THREATS.md": "head model" });
+    const withExtensions = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a" }, extensions: { "threat-model": {}, codeowners: {} } });
+    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: withExtensions });
+    if (got.state !== "ready") throw new Error("not ready");
+    expect(got.run.pull).toEqual({ number: 7, title: "Faster checkout", body: "PullUp-Inert: flag=newCheckout", labels: ["pullup:inert"], author: "alice" });
+    expect(got.run.files).toEqual([
+      { path: "THREATS.md", text: "default model", from: "default" },
+      { path: ".github/CODEOWNERS", text: "* @alice", from: "default" },
+      { path: "THREATS.md", text: "head model", from: "head" },
+    ]);
+    // With only core on, nothing extra is read.
+    const plain = new FakeGitHub();
+    Object.assign(plain, { runs: gh.runs, jobsByAttempt: gh.jobsByAttempt });
+    await collectRun(plain, { repo, headSha: "s1", pull: null, config });
+    expect(plain.calls).not.toContain("readFiles");
+  });
+
+  it("a failed file read is a note, and the files are left out (no data, never a pass)", async () => {
+    const gh = github();
+    gh.readFiles = async () => {
+      throw new Error("rate limited");
+    };
+    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a" }, extensions: { "threat-model": {} } }) });
+    if (got.state !== "ready") throw new Error("not ready");
+    expect(got.run.files).toEqual([]);
+    expect(got.notes.join(" ")).toContain("Could not read the files extensions asked for on the default branch (rate limited)");
+  });
+
   it("trims GitHub's timestamps and keeps the end of a log", () => {
     const log = Array.from({ length: 100 }, (_, i) => `2026-11-04T10:00:00.1234567Z line ${i}`).join("\n");
     const tail = logTail(log);

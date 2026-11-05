@@ -69,3 +69,31 @@ describe("pullup check", () => {
     await expect(check(["--base", "main"], NO_WITHAI, dir)).rejects.toThrow("No .pullup/config.json on main");
   });
 });
+
+describe("extensions in the command line", () => {
+  it("pullup extensions lists every bundled extension with its settings", async () => {
+    const { extensions } = await import("./pullup");
+    const text = extensions([]);
+    expect(text).toContain("core@1.0.0 — Core checks (on unless switched off)");
+    expect(text).toContain("threat-model.controlsCouncilMayPass (boolean, default false) [loosens]");
+    expect(JSON.parse(extensions(["--json"])).map((e: { id: string }) => e.id)).toEqual(["core", "threat-model", "codeowners", "doc-links"]);
+  });
+
+  it("reads the threat model from the default branch, and --only runs one extension", async () => {
+    const dir = repoWithBranch();
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, stdio: "ignore" });
+    git("checkout", "-q", "main");
+    writeFileSync(join(dir, ".pullup/config.json"), JSON.stringify({ requiredWorkflows: ["ci"], ask: { to: "owner@example.com" }, extensions: { "threat-model": { mode: "active" } } }));
+    writeFileSync(join(dir, "THREATS.md"), "## In scope\n| ID | Threat | Control | Code |\n| --- | --- | --- | --- |\n| T1 | Stolen session | Short sessions | `src/auth/session.ts` |\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "threat model");
+    git("checkout", "-q", "change");
+    git("rebase", "-q", "-X", "theirs", "main");
+    const all = await check(["--base", "main"], NO_WITHAI, dir);
+    expect(all.decision.questions.map((q) => q.question.id)).toEqual(["core:sensitive-path", "threat-model:T1"]);
+    expect(all.text).toContain("extensions: core@1.0.0 (active), threat-model@1.0.0 (active)");
+    const one = await check(["--base", "main", "--only", "threat-model"], NO_WITHAI, dir);
+    expect(one.decision.questions.map((q) => q.question.id)).toEqual(["threat-model:T1"]);
+    await expect(check(["--base", "main", "--only", "doc-links"], NO_WITHAI, dir)).rejects.toThrow("not switched on");
+  });
+});

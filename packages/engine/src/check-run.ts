@@ -14,6 +14,8 @@ export interface CheckRunView {
   conclusion: "success" | "failure" | "neutral" | null;
   title: string;
   summary: string;
+  /** Extensions' file and line findings; a Shadow extension's are notices marked "(Shadow)". */
+  annotations: { path: string; line: number; level: "notice" | "warning" | "failure"; message: string }[];
 }
 
 const WORD = { pass: "pass", fail: "fail", waiting: "ask a person" } as const;
@@ -51,9 +53,14 @@ export function checkRunView(decision: RunDecision, mode: CheckMode, notes: stri
   for (const n of decision.extensions?.notes ?? []) lines.push(`- ${n.link ? `[${n.text}](${n.link})` : n.text} _(${n.extension})_`);
   for (const n of notes) lines.push(`_Note: ${n}_`);
   const summary = lines.join("\n").slice(0, 60_000);
+  const shadowExtensions = new Set((decision.extensions?.outputs ?? []).filter((o) => o.mode === "shadow").map((o) => o.id));
+  const annotations = (decision.extensions?.annotations ?? []).slice(0, 50).map((a) => {
+    const quiet = mode === "shadow" || shadowExtensions.has(a.extension);
+    return { path: a.path, line: a.line, level: quiet ? ("notice" as const) : a.level, message: `${quiet ? "(Shadow) " : ""}${a.message} [${a.extension}]` };
+  });
   if (mode === "shadow") {
-    return { status: "completed", conclusion: "neutral", title: `Shadow: would ${WORD[decision.result]}`, summary };
+    return { status: "completed", conclusion: "neutral", title: `Shadow: would ${WORD[decision.result]}`, summary, annotations };
   }
-  if (decision.result === "waiting") return { status: "in_progress", conclusion: null, title: "Waiting for a person", summary };
-  return { status: "completed", conclusion: decision.result === "pass" ? "success" : "failure", title: decision.result === "pass" ? "Passed" : "Failed", summary };
+  if (decision.result === "waiting") return { status: "in_progress", conclusion: null, title: "Waiting for a person", summary, annotations };
+  return { status: "completed", conclusion: decision.result === "pass" ? "success" : "failure", title: decision.result === "pass" ? "Passed" : "Failed", summary, annotations };
 }

@@ -135,6 +135,8 @@ export interface Extension<S extends AnyObjectSchema = AnyObjectSchema> {
   notes?(ctx: RunContext<z.infer<S>>): Note[];
   /** Who to ask about a question (WithAI people: member id, email or phone); null to leave it to the next extension or `ask.to`. */
   recipients?(ctx: RunContext<z.infer<S>>, question: Question): string[] | null;
+  /** The WithAI person a GitHub login stands for (so their Pass / Fail button or `/pullup` comment counts as theirs), or null. */
+  personForLogin?(config: z.infer<S>, login: string): string | null;
 }
 
 /** Typing helper: `export default defineExtension({ ... })`. */

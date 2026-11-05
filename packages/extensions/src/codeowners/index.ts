@@ -73,6 +73,9 @@ export default defineExtension({
     const unmapped = [...new Set(parseCodeowners(file.text).flatMap((r) => r.owners))].filter((o) => !o.includes("@", 1) && !mapped.has(norm(o)));
     return unmapped.length ? [{ text: `Code owners with no WithAI person in codeowners.people (questions for their files go to ask.to): ${unmapped.slice(0, 8).join(", ")}.` }] : [];
   },
+  personForLogin(config, login) {
+    return Object.entries(config.people).find(([l]) => norm(l) === norm(login))?.[1] ?? null;
+  },
   recipients({ files, config }, question) {
     const file = codeownersFile(files);
     if (!file) return null;

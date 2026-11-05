@@ -1,3 +1,4 @@
+import { matchesAny, type PullInfo } from "@pullup/engine";
 import type { CheckRunCall, CommentCall, GitHubApi, JobInfo, RerunCall, WorkflowRunInfo } from "./api";
 
 /** An in-memory GitHub for tests: set the repository's state, then read what PullUp sent. */
@@ -19,6 +20,10 @@ export class FakeGitHub implements GitHubApi {
   /** Every call, by name, in order. */
   calls: string[] = [];
   failWrites = false;
+  /** Pull request title, body, labels and author per `${repo}#${pull}`. */
+  pulls = new Map<string, PullInfo>();
+  /** Files per repository on the default branch, and per `${repo}@${sha}` on a commit. */
+  files = new Map<string, Record<string, string>>();
 
   async defaultBranchConfig(repo: string) {
     this.calls.push("defaultBranchConfig");
@@ -84,6 +89,17 @@ export class FakeGitHub implements GitHubApi {
     if (this.failWrites) throw new Error("Resource not accessible by integration");
     this.reruns.push(call);
     return call.workflowRunId;
+  }
+  async pullInfo(repo: string, pull: number) {
+    this.calls.push("pullInfo");
+    return this.pulls.get(`${repo}#${pull}`) ?? { number: pull, title: "", body: "", labels: [], author: "" };
+  }
+  async readFiles(repo: string, ref: { defaultBranch: true } | { sha: string }, globs: string[]) {
+    this.calls.push("readFiles");
+    const tree = this.files.get("sha" in ref ? `${repo}@${ref.sha}` : repo) ?? {};
+    return Object.entries(tree)
+      .filter(([path]) => matchesAny(path, globs))
+      .map(([path, text]) => ({ path, text }));
   }
   async permission(_repo: string, login: string) {
     this.calls.push("permission");

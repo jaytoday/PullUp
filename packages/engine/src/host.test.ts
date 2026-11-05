@@ -5,7 +5,7 @@ import { ciRunSchema, defineExtension, type Extension } from "@pullup/sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { enabledExtensions, loosenings, parseConfig } from "./config";
-import { compositionHash, neverRelaxed, runExtensions } from "./host";
+import { compositionHash, describeExtensions, neverRelaxed, runExtensions } from "./host";
 import { decideRun } from "./resolution";
 import { fixedCouncil, seeded } from "./testing";
 
@@ -300,5 +300,17 @@ describe("every bundled extension", () => {
       restore = null;
       expect([withNotes.result, withNotes.reason, withNotes.questions], f.name).toEqual([without.result, without.reason, without.questions]);
     }
+  });
+});
+
+describe("describing extensions", () => {
+  it("gives every bundled extension's settings, defaults and a JSON Schema of its config", () => {
+    const list = describeExtensions();
+    expect(list.map((e) => e.id)).toEqual(BUNDLED.map((e) => e.id));
+    const threat = list.find((e) => e.id === "threat-model")!;
+    expect(threat).toMatchObject({ defaultMode: "off", defaults: { path: "THREATS.md", controlsCouncilMayPass: false } });
+    expect(threat.fields.find((f) => f.key === "controlsCouncilMayPass")!.loosens).toBe(true);
+    expect(threat.configSchema).toMatchObject({ type: "object", properties: { path: { type: "string" } } });
+    expect(list.find((e) => e.id === "core")!.defaultMode).toBe("active");
   });
 });

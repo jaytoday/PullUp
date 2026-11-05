@@ -44,3 +44,11 @@ describe("CODEOWNERS", () => {
     expect(codeowners.notes!(testContext(config))).toEqual([{ text: "No CODEOWNERS file on the default branch: questions go to ask.to." }]);
   });
 });
+
+describe("answering from GitHub", () => {
+  it("a mapped login stands for its WithAI person, with or without @ and in any case", () => {
+    expect(codeowners.personForLogin!(config, "Alice")).toBe("alice@example.com");
+    expect(codeowners.personForLogin!(config, "bob")).toBe("member_bob");
+    expect(codeowners.personForLogin!(config, "mallory")).toBeNull();
+  });
+});
