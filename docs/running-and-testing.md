@@ -16,7 +16,12 @@ pnpm dev           # http://localhost:3500
 After `pnpm seed`, sign in as `owner@example.com` / `pullup-dev-password`.
 
 Without `WITHAI_URL` and `WITHAI_TOKEN`, the council and screens are not available: questions go to a
-person, and screens come back "not checked" (never a pass).
+person, and screens come back "not checked" (never a pass). The token's scopes and the client copy are
+described in [The WithAI connection](withai-connection.md).
+
+Two operator scripts: `pnpm tsx scripts/finish-run.ts <runId>` settles a run again and re-posts its check
+(after fixing a refused check run); `pnpm tsx scripts/verify-chain.ts <owner/repo>` checks a repository's
+evidence chain.
 
 ## Connecting GitHub
 

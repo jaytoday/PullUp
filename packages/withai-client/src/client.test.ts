@@ -86,3 +86,29 @@ describe("WithAIClient", () => {
     expect(lastIds).toEqual([null, "r:1"]);
   });
 });
+
+describe("outcomes and profiles", () => {
+  it("posts an outcome to the run's outcomes and returns it", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const client = new WithAIClient({
+      baseUrl: "https://withai.test",
+      token: "wai_x",
+      fetch: (async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ outcome: { id: "o1", outcome: "correct" } }), { status: 200 });
+      }) as typeof fetch,
+    });
+    const outcome = await client.recordOutcome("run 1", { outcome: "correct", key: "trade-7" });
+    expect(outcome).toMatchObject({ id: "o1" });
+    expect(calls[0]!.url).toBe("https://withai.test/api/v1/runs/run%201/outcomes");
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ outcome: "correct", key: "trade-7" });
+  });
+
+  it("accepts a well-formed profile on apply and rejects a bad name", async () => {
+    const { applySchema } = await import("./schemas");
+    const base = { request: "Enter?", answer: { type: "verdict", question: "Go?" } };
+    expect(applySchema.safeParse({ ...base, profile: { name: "theory-seat", version: 1 } }).success).toBe(true);
+    expect(applySchema.safeParse({ ...base, profile: { name: "Theory Seat", version: 1 } }).success).toBe(false);
+    expect(applySchema.safeParse({ ...base, profile: { name: "theory-seat", version: 0 } }).success).toBe(false);
+  });
+});

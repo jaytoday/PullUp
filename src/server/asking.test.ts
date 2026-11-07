@@ -1,6 +1,6 @@
 import { fixedCouncil } from "@pullup/engine/testing";
 import { FakeGitHub } from "@pullup/github";
-import type { CreateQuestionInput, PersonQuestion } from "@withai/client";
+import type { CreateQuestionInput, PersonQuestion, RecordOutcomeInput } from "@withai/client";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, migrateDb } from "@/lib/db/client";
@@ -30,6 +30,13 @@ class FakeWithAI implements AskClient {
     const q = this.questions.find((x) => x.id === id)!;
     if (q.status === "open") q.status = "cancelled";
     return q;
+  }
+  outcomes: { runId: string; input: RecordOutcomeInput }[] = [];
+  failOutcomes = false;
+  async recordOutcome(runId: string, input: RecordOutcomeInput) {
+    if (this.failOutcomes) throw new Error("WithAI is down");
+    this.outcomes.push({ runId, input });
+    return {};
   }
 }
 
@@ -89,6 +96,28 @@ describe("asking a person (active mode)", () => {
     expect(await answerFromGithub(await runRow(id), "owner", "fail", "", "comment", s.deps)).toEqual({ accepted: 0, why: "Nothing is waiting for an answer on this run." });
     expect(check(s.gh).conclusion).toBe("success");
     expect((await evidenceFor(id)).map((e) => e.kind)).toContain("answered");
+  });
+
+  it("reports each seat's outcome to WithAI once the person decides, and a failed report changes nothing", async () => {
+    const s = setup();
+    // Seats that reached WithAI carry its run id: two defer, one says pass.
+    s.deps.council = async (_q, _r, seats) =>
+      seats.map((seat, i) => ({ seat, runId: `wr-${i}`, answer: i === 0 ? { verdict: "pass", strength: 3, reason: "fine", quotes: [] } : NEEDS_PERSON }));
+    const { run } = await start(s);
+    expect(await answerFromGithub(run, "owner", "fail", "too long", "check-run-button", s.deps)).toEqual({ accepted: 1 });
+    const reported = s.withai.outcomes.map((o) => [o.runId, o.input.outcome]);
+    expect(reported[0]).toEqual(["wr-0", "incorrect"]);
+    expect(reported.length).toBeGreaterThan(1);
+    expect(reported.slice(1).every(([, outcome]) => outcome === "partial")).toBe(true);
+    expect(s.withai.outcomes[0]!.input.key).toMatch(/^person:/);
+
+    const t = setup();
+    t.withai.failOutcomes = true;
+    t.deps.council = s.deps.council;
+    for (const table of [runs, evidence, deliveries, settings, asks, repos]) await db.delete(table);
+    const second = await start(t);
+    expect(await answerFromGithub(second.run, "owner", "pass", "", "check-run-button", t.deps)).toEqual({ accepted: 1 });
+    expect(check(t.gh).conclusion).toBe("success");
   });
 
   it("two answers at the same moment: exactly one is accepted", async () => {

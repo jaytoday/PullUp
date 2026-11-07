@@ -27,6 +27,8 @@ export interface RawSeatAnswer {
   /** What the call cost and took, when it reached WithAI. */
   costUsd?: number;
   durationMs?: number;
+  /** WithAI's run for this call, so its outcome can be reported once a person decides. */
+  runId?: string;
 }
 
 /** A seat's answer after the checks; `verdict` is what the resolution rule uses. */
@@ -38,6 +40,8 @@ export interface CheckedSeat {
   validQuotes: SeatAnswer["quotes"];
   /** Why the answer was downgraded or a quote dropped, if it was. */
   problems: string[];
+  /** WithAI's run for this seat's call (absent for recorded or failed calls). */
+  runId?: string;
 }
 
 /** One seat call per seat viewpoint for one question. Real (WithAI) or recorded. */
@@ -60,6 +64,10 @@ function quoteChecksOut(quote: SeatAnswer["quotes"][number], question: Question,
 }
 
 export function checkSeat(raw: RawSeatAnswer, question: Question, run: ParsedCiRun): CheckedSeat {
+  return { ...checkSeatAnswer(raw, question, run), ...(raw.runId ? { runId: raw.runId } : {}) };
+}
+
+function checkSeatAnswer(raw: RawSeatAnswer, question: Question, run: ParsedCiRun): Omit<CheckedSeat, "runId"> {
   const parsed = raw.error ? null : seatAnswerSchema.safeParse(raw.answer);
   if (!parsed?.success) {
     const problem = raw.error ? `call failed: ${raw.error}` : `answer has the wrong shape: ${parsed?.error.issues[0]?.message ?? "unknown"}`;
@@ -73,4 +81,25 @@ export function checkSeat(raw: RawSeatAnswer, question: Question, run: ParsedCiR
     return { seat: raw.seat, verdict: "needs-person", strength: answer.strength, reason: answer.reason, validQuotes, problems };
   }
   return { seat: raw.seat, verdict: answer.verdict, strength: answer.strength, reason: answer.reason, validQuotes, problems };
+}
+
+/** What a seat's answer turned out to be, once a person decided the question. */
+export interface SeatOutcome {
+  runId: string;
+  outcome: "correct" | "incorrect" | "partial";
+  note: string;
+}
+
+/**
+ * Score each seat against the person's answer: the same verdict is correct,
+ * the opposite is incorrect, and "needs-person" is partial (it was right to
+ * defer, but it did not decide). Seats without a WithAI run are skipped. Pure,
+ * so the rule is tested on its own; the server sends the result to WithAI.
+ */
+export function seatOutcomes(seats: CheckedSeat[], person: "pass" | "fail"): SeatOutcome[] {
+  return seats.flatMap((seat) => {
+    if (!seat.runId) return [];
+    const outcome = seat.verdict === person ? "correct" : seat.verdict === "needs-person" ? "partial" : "incorrect";
+    return [{ runId: seat.runId, outcome, note: `Seat said ${seat.verdict}; the person answered ${person}.` }];
+  });
 }

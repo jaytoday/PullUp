@@ -1,8 +1,8 @@
 {
   "name": "@withai/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Typed client for WithAI's public API (/api/v1). A copy of withai-eve's packages/client (branch feat/ask-person-labels, commit 6595e7f), kept here so PullUp builds on its own.",
+  "description": "Typed client for WithAI's public API (/api/v1): requests, the run event stream, and webhook signature checks.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

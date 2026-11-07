@@ -41,6 +41,7 @@ See [Extensions](extensions/README.md).
 | --- | --- |
 | A run from start to finish, step by step | [How a run works](how-a-run-works.md) |
 | Who is asked, how they answer, what happens with no answer | [Asking a person](asking-a-person.md) |
+| What PullUp asks WithAI, what it reports back, the shared client | [The WithAI connection](withai-connection.md) |
 | How PullUp sends to GitHub safely, and the record it keeps | [Safety and the record](safety-and-records.md) |
 | What PullUp itself protects against, and where in the code | [PullUp's threat model](threat-model.md) |
 | The `.pullup/config.json` file | [Configuration](configuration.md) |

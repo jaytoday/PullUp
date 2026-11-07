@@ -1,6 +1,6 @@
-import { type AskAction, type AskState, answer, appendEvidence, type Config, type PersonAnswer, personForGithubLogin, type ResolvedQuestion, startAsk, storedConfig, storedDecision, tick } from "@pullup/engine";
+import { type AskAction, type AskState, answer, appendEvidence, type Config, type PersonAnswer, personForGithubLogin, type ResolvedQuestion, seatOutcomes, startAsk, storedConfig, storedDecision, tick } from "@pullup/engine";
 import { sendComment, type SenderDeps } from "@pullup/github";
-import type { CreateQuestionInput, PersonQuestion } from "@withai/client";
+import type { CreateQuestionInput, PersonQuestion, RecordOutcomeInput } from "@withai/client";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, runs } from "@/lib/db/schema";
@@ -20,6 +20,8 @@ export interface AskClient {
   askPerson(input: CreateQuestionInput): Promise<PersonQuestion>;
   getQuestion(id: string): Promise<PersonQuestion>;
   cancelQuestion(id: string): Promise<PersonQuestion>;
+  /** Tell WithAI how a seat's answer turned out (needs the token's `outcomes:write`). */
+  recordOutcome(runId: string, input: RecordOutcomeInput): Promise<unknown>;
 }
 
 export interface AskDeps {
@@ -161,8 +163,28 @@ export async function recordAnswer(run: Run, input: { value: PersonAnswer; by: s
     const q = questionsOf(run).find((x) => x.question.id === row.questionId)!;
     await record(run, "answered", { question: row.questionId, value: input.value, by: input.by, via: input.via, admin: input.isAdmin && !(row.state as AskState).asked.includes(input.by), reason: input.reason }, now);
     await saveWithai(row, await act(run, row, q, config, result.actions, deps));
+    await reportSeatOutcomes(run, q, input.value, deps);
   }
   return accepted ? { accepted } : { accepted, why };
+}
+
+/**
+ * Once a person decides a question, tell WithAI how each seat's answer turned
+ * out, so WithAI can measure the council. Best effort: a failed report is
+ * recorded on the run's evidence and never changes the check or the answer.
+ * The key makes a repeat (the same answer seen twice) replace, not add.
+ */
+async function reportSeatOutcomes(run: Run, q: ResolvedQuestion, value: PersonAnswer, deps: AskDeps): Promise<void> {
+  if (!deps.withai) return;
+  const failed: string[] = [];
+  for (const outcome of seatOutcomes(q.seats, value)) {
+    try {
+      await deps.withai.recordOutcome(outcome.runId, { outcome: outcome.outcome, note: outcome.note, key: `person:${run.id}:${q.question.id}` });
+    } catch (error) {
+      failed.push(`${outcome.runId}: ${(error as Error).message}`);
+    }
+  }
+  if (failed.length) await record(run, "answered", { question: q.question.id, outcomeReportsFailed: failed }, deps.now());
 }
 
 /** A GitHub user pressed Pass / Fail or commented `/pullup`: map them to the person asked, or check they are a repo admin. */

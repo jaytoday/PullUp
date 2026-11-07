@@ -3,8 +3,9 @@ import type { ApplyInput, ApplyResult } from "@withai/client";
 import { WithAIError } from "@withai/client";
 import { describe, expect, it } from "vitest";
 import { loadFixtures } from "./fixtures";
+import { type CheckedSeat, seatOutcomes } from "./council";
 import { decideRun } from "./resolution";
-import { type ApplyClient, MAX_DIFF_CHARS, type Recording, recordingCouncil, replayCouncil, withaiCouncil } from "./withai-council";
+import { type ApplyClient, COUNCIL_PROFILE, MAX_DIFF_CHARS, type Recording, recordingCouncil, replayCouncil, withaiCouncil } from "./withai-council";
 
 const fixtures = loadFixtures(fileURLToPath(new URL("../../../fixtures", import.meta.url)));
 const fixture = (name: string) => fixtures.find((f) => f.name === name)!;
@@ -31,13 +32,15 @@ describe("the WithAI council", () => {
     const seats = f.config.council.seats;
     expect(client.inputs.map((i) => i.viewpoint)).toEqual(seats);
     for (const input of client.inputs) {
-      expect(input).toMatchObject({ tier: "cheap", maxTokens: 1536, skill: { id: "00000000-0000-4000-8000-000000000000" } });
+      expect(input).toMatchObject({ tier: "cheap", maxTokens: 1536, skill: { id: "00000000-0000-4000-8000-000000000000" }, profile: COUNCIL_PROFILE });
       expect(input.answer.type).toBe("schema");
       expect((input.answer as unknown as { schema: unknown }).schema).toMatchObject({ type: "object", required: ["verdict", "strength", "reason", "quotes"] });
       expect((input.state as { diff: string }).diff).toBe(f.run.diff);
     }
     expect(decision.result).toBe("pass");
     expect(decision.costUsd).toBeCloseTo(0.002 * seats.length);
+    // Each seat keeps WithAI's run id, so its outcome can be reported later.
+    expect(decision.questions.flatMap((q) => q.seats.map((seat) => seat.runId))).toEqual(expect.arrayContaining(["r"]));
   });
 
   it("an invalid answer, a failed call and the daily limit each count as needs-person, so a person is asked", async () => {
@@ -92,5 +95,29 @@ describe("the WithAI council", () => {
 
     const empty = await decideRun(f.run, f.config, replayCouncil({}));
     expect(empty.result).toBe("waiting");
+  });
+});
+
+describe("seat outcomes", () => {
+  const seat = (verdict: CheckedSeat["verdict"], runId?: string): CheckedSeat => ({
+    seat: "s",
+    verdict,
+    strength: 3,
+    reason: "",
+    validQuotes: [],
+    problems: [],
+    ...(runId ? { runId } : {}),
+  });
+
+  it("scores each seat against the person: same is correct, opposite is incorrect, deferring is partial", () => {
+    expect(seatOutcomes([seat("pass", "a"), seat("fail", "b"), seat("needs-person", "c")], "pass").map((o) => [o.runId, o.outcome])).toEqual([
+      ["a", "correct"],
+      ["b", "incorrect"],
+      ["c", "partial"],
+    ]);
+  });
+
+  it("skips seats that never reached WithAI", () => {
+    expect(seatOutcomes([seat("pass")], "pass")).toEqual([]);
   });
 });

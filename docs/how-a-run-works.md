@@ -24,7 +24,8 @@ One commit, from a finished workflow to the PullUp check. ([Back to the overview
    check (a **screen**). No question → **pass**, with no AI call.
    ([Extensions](extensions/README.md))
 7. **The council.** For each question, several AI reviewers ("seats", four by default: test reliability,
-   security, the maintainer of the touched code, release safety) each answer through WithAI:
+   security, the maintainer of the touched code, release safety) each answer through WithAI
+   ([The WithAI connection](withai-connection.md)):
    pass, fail or "needs a person", how sure they are (1–5), why, and quotes. A call that fails, takes
    over 60 seconds or returns the wrong shape counts as "needs a person".
 8. **The quote check.** A quote counts only if it really is in what it names (a changed line, a log).

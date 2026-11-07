@@ -25,6 +25,13 @@ export interface WithAICouncilOptions {
   timeoutMs?: number;
 }
 
+/**
+ * The profile every seat call carries, so WithAI can group these calls and
+ * their outcomes. Bump the version when the seat answer shape
+ * (`seatAnswerSchema`) or the meaning of the request changes.
+ */
+export const COUNCIL_PROFILE = { name: "pullup-review", version: 1 } as const;
+
 /** The diff is cut to this many characters before it goes to the council. */
 export const MAX_DIFF_CHARS = 40_000;
 
@@ -62,12 +69,13 @@ export function withaiCouncil(options: WithAICouncilOptions): Council {
       answer: { type: "schema", question: question.prompt.slice(0, 500), schema: answerJsonSchema },
       tier: "cheap",
       maxTokens: options.maxTokens ?? 1536,
+      profile: COUNCIL_PROFILE,
     };
     return Promise.all(
       seats.map(async (seat): Promise<RawSeatAnswer> => {
         try {
           const result = await options.client.apply({ ...base, viewpoint: seat }, { signal: AbortSignal.timeout(options.timeoutMs ?? 60_000) });
-          const spent = { costUsd: result.costUsd, durationMs: result.durationMs };
+          const spent = { costUsd: result.costUsd, durationMs: result.durationMs, runId: result.runId };
           // A `schema` answer comes back wrapped as { type: "schema", value }.
           const answer = result.answer?.type === "schema" ? result.answer.value : result.answer;
           if (result.status !== "ok") return { seat, answer, error: result.error ?? "WithAI marked the answer invalid", ...spent };

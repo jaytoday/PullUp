@@ -153,3 +153,19 @@ export interface SkillLabelGroup {
     answeredAt: string | null;
   }[];
 }
+
+/** What happened after a run's answer, as the app that asked reported it. */
+export interface RunOutcome {
+  id: string;
+  runId: string;
+  key: string;
+  outcome: "correct" | "incorrect" | "partial";
+  value: number | null;
+  note: string;
+  /** The reporting token's name. */
+  source: string;
+  /** The apply profile of the run, when listing across runs. */
+  profile?: { name: string; version: number } | null;
+  createdAt: string;
+  updatedAt: string;
+}

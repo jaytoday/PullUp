@@ -103,7 +103,7 @@ describe("the WithAI screener", () => {
     };
     const answer = await withaiScreener({ client, skill: { text: "guidance" } })({ ...screen, guidance: "No debugging code." }, run);
     expect(answer).toMatchObject({ seat: "repo-rules:k", answer: { result: "no", confidence: 0.7 }, costUsd: 0.001 });
-    expect(inputs[0]).toMatchObject({ tier: "cheap", maxTokens: 1024, state: { guidance: "No debugging code." } });
+    expect(inputs[0]).toMatchObject({ tier: "cheap", maxTokens: 1024, profile: { name: "pullup-screen", version: 1 }, state: { guidance: "No debugging code." } });
     expect(inputs[0]!.request).toContain('Answer with exactly one of: "yes", "no"');
     const code = (inputs[0]!.state as { changedCode: string }).changedCode;
     expect(code).toContain("+2: console.log(total);");

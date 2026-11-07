@@ -116,6 +116,13 @@ export const listRunsQuerySchema = z.object({
 
 // ── Apply ────────────────────────────────────────────────────────────────────
 
+/** Names one kind of app call: lower-case words with dashes, and a whole-number version. */
+export const profileSchema = z.object({
+  name: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Use lower-case letters, digits and dashes."),
+  version: z.number().int().min(1),
+});
+export type ApplyProfile = z.infer<typeof profileSchema>;
+
 export const applySchema = z.object({
   /** The guidance to apply: a workspace skill (by id, optionally a version number) or inline text. */
   skill: z
@@ -135,8 +142,27 @@ export const applySchema = z.object({
   viewpoint: z.string().trim().max(2000).optional(),
   /** Output token limit for the call (the model's reasoning counts against it). Default 2,048. */
   maxTokens: z.number().int().min(256).max(16000).optional(),
+  /**
+   * Which of the app's calls this is, and the version of its answer shape
+   * (for example `theory-seat` version 1). Recorded on the run so outcomes and
+   * usage can be grouped by it. Bump the version when the shape changes.
+   */
+  profile: profileSchema.optional(),
 });
 export type ApplyInput = z.input<typeof applySchema>;
+
+// ── Outcomes ─────────────────────────────────────────────────────────────────
+
+/** What happened after a run's answer, reported by the app that asked. */
+export const recordOutcomeSchema = z.object({
+  outcome: z.enum(["correct", "incorrect", "partial"]),
+  /** A measured value in the app's own unit, such as profit after fees. */
+  value: z.number().finite().optional(),
+  note: z.string().trim().max(2000).optional(),
+  /** Reports with the same key replace each other, so a retry never doubles up. */
+  key: z.string().trim().max(200).optional(),
+});
+export type RecordOutcomeInput = z.input<typeof recordOutcomeSchema>;
 
 // ── Skills ───────────────────────────────────────────────────────────────────
 

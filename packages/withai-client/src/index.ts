@@ -5,13 +5,31 @@ import type {
   CreateSkillInput,
   CreateRunInput,
   CreateScenarioInput,
+  RecordOutcomeInput,
   listRunsQuerySchema,
 } from "./schemas";
-import type { ApiErrorBody, ApplyResult, PersonQuestion, Run, RunEvent, Scenario, SkillDocument, SkillLabelGroup } from "./types";
+import type { ApiErrorBody, ApplyResult, PersonQuestion, Run, RunEvent, RunOutcome, Scenario, SkillDocument, SkillLabelGroup } from "./types";
 
 export * from "./types";
 export * from "./webhooks";
-export type { AnswerShapeInput, ApplyInput, CreateQuestionInput, CreateRunInput, CreateScenarioInput, CreateSkillInput, SeatInput } from "./schemas";
+export type {
+  AnswerShapeInput,
+  ApplyInput,
+  ApplyProfile,
+  CreateQuestionInput,
+  CreateRunInput,
+  CreateScenarioInput,
+  CreateSkillInput,
+  RecordOutcomeInput,
+  SeatInput,
+} from "./schemas";
+
+/**
+ * This client's version. Apps keep a copy of this package (they cannot point
+ * at WithAI's folder on disk); `scripts/sync-withai-client.mjs` in each app
+ * copies it and records this version, so a stale copy is easy to spot.
+ */
+export const WITHAI_CLIENT_VERSION = "0.2.0";
 
 /** A non-2xx response from WithAI, with the server's error body. */
 export class WithAIError extends Error {
@@ -189,6 +207,30 @@ export class WithAIClient {
   /** Human-voice answers from the skill's scenarios. Panel answers are never included. */
   async listSkillLabels(idOrSlug: string): Promise<SkillLabelGroup[]> {
     return (await this.request<{ labels: SkillLabelGroup[] }>("GET", `/api/v1/skills/${encodeURIComponent(idOrSlug)}/labels`)).labels;
+  }
+
+  // ── Outcomes ───────────────────────────────────────────────────────────────
+
+  /**
+   * Report what happened after a run's answer (a trade's result, a level's
+   * score). Needs `outcomes:write`. Send a `key` to make retries replace
+   * rather than add.
+   */
+  async recordOutcome(runId: string, input: RecordOutcomeInput): Promise<RunOutcome> {
+    return (await this.request<{ outcome: RunOutcome }>("POST", `/api/v1/runs/${encodeURIComponent(runId)}/outcomes`, input)).outcome;
+  }
+
+  async listRunOutcomes(runId: string): Promise<RunOutcome[]> {
+    return (await this.request<{ outcomes: RunOutcome[] }>("GET", `/api/v1/runs/${encodeURIComponent(runId)}/outcomes`)).outcomes;
+  }
+
+  /** Recent outcomes in the workspace, optionally for one apply profile. Needs `outcomes:read`. */
+  async listOutcomes(query: { profile?: string; limit?: number } = {}): Promise<RunOutcome[]> {
+    const params = new URLSearchParams();
+    if (query.profile) params.set("profile", query.profile);
+    if (query.limit) params.set("limit", String(query.limit));
+    const qs = params.toString() ? `?${params}` : "";
+    return (await this.request<{ outcomes: RunOutcome[] }>("GET", `/api/v1/outcomes${qs}`)).outcomes;
   }
 
   // ── Apply ──────────────────────────────────────────────────────────────────

@@ -75,6 +75,9 @@ export async function askScreens(planned: PlannedScreen[], run: ParsedCiRun, scr
 
 const answerJsonSchema = z.toJSONSchema(screenModelAnswerSchema) as Record<string, unknown>;
 
+/** The profile every screen call carries. Bump the version when the screen answer shape or request changes. */
+export const SCREEN_PROFILE = { name: "pullup-screen", version: 1 } as const;
+
 /** The real screen service: one WithAI `apply` call on the cheap tier. */
 export function withaiScreener(options: { client: ApplyClient; skill: { id: string } | { text: string }; timeoutMs?: number }): Screener {
   return async (screen, run) => {
@@ -91,6 +94,7 @@ export function withaiScreener(options: { client: ApplyClient; skill: { id: stri
       answer: { type: "schema", question: screen.question.slice(0, 500), schema: answerJsonSchema },
       tier: "cheap",
       maxTokens: 1024,
+      profile: SCREEN_PROFILE,
     };
     try {
       const result = await options.client.apply(input, { signal: AbortSignal.timeout(options.timeoutMs ?? 60_000) });
