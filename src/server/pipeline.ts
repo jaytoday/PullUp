@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { appendEvidence, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type ReadFile, type RunDecision, type Screener, settle, storedDecision, withaiCouncil, withaiScreener } from "@pullup/engine";
+import { appendEvidence, askWithAICouncil, askWithAIScreener, checkRunView, ciRunSchema, combine, type Council, decideRun, parseConfig, type ReadFile, type RunDecision, type Screener, settle, storedDecision } from "@pullup/engine";
 import { collectRun, type GitHubApi, octokitApi, repoOctokit, sendCheckRun, sendRerun, type SenderDeps } from "@pullup/github";
 import { WithAIClient } from "@withai/client";
+import { AskWithAI } from "@askwithai/client";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, repos, runs } from "@/lib/db/schema";
@@ -31,6 +32,7 @@ export interface PipelineDeps {
   screener?: Screener | null;
   /** WithAI's ask-a-person calls; null when WithAI is not configured. */
   withai: AskClient | null;
+  askWithAI?: AskWithAI | null;
   now: () => Date;
 }
 
@@ -38,6 +40,11 @@ function withaiClient(): WithAIClient | null {
   const baseUrl = process.env.WITHAI_URL?.trim();
   const token = process.env.WITHAI_TOKEN?.trim();
   return baseUrl && token ? new WithAIClient({ baseUrl, token }) : null;
+}
+
+function askWithAIClient(): AskWithAI | null {
+  const apiKey = process.env.ASKWITHAI_API_KEY?.trim();
+  return apiKey ? new AskWithAI({ apiKey, baseUrl: process.env.ASKWITHAI_URL?.trim() || undefined }) : null;
 }
 
 let skillId: Promise<string> | undefined;
@@ -51,13 +58,24 @@ function ciPolicySkill(client: WithAIClient): Promise<string> {
 }
 
 export function liveDeps(): PipelineDeps {
-  const client = withaiClient();
+  const client = askWithAIClient();
+  const legacyClient = withaiClient();
+  const runtime = process.env.PULLUP_REVIEW_RUNTIME?.trim();
+  const version = runtimeVersion(process.env.PULLUP_REVIEW_VERSION);
   const council: Council = async (question, run, seats) => {
-    if (!client) throw new Error("WithAI is not configured (WITHAI_URL, WITHAI_TOKEN)");
-    return withaiCouncil({ client, skill: { id: await ciPolicySkill(client) } })(question, run, seats);
+    if (!client || !runtime || !version) throw new Error("AskWithAI review runtime is not configured (ASKWITHAI_API_KEY, PULLUP_REVIEW_RUNTIME, PULLUP_REVIEW_VERSION)");
+    return askWithAICouncil({ client, runtime, version, answerKey: process.env.PULLUP_REVIEW_ANSWER_KEY?.trim() })(question, run, seats);
   };
-  const screener: Screener | null = client ? async (screen, run) => withaiScreener({ client, skill: { id: await ciPolicySkill(client) } })(screen, run) : null;
-  return { github: octokitApi((repo) => repoOctokit(repo)), council, screener, withai: client, now: () => new Date() };
+  const screenRuntime = process.env.PULLUP_SCREEN_RUNTIME?.trim();
+  const screenVersion = runtimeVersion(process.env.PULLUP_SCREEN_VERSION);
+  const screener: Screener | null = client && screenRuntime && screenVersion ? askWithAIScreener({ client, runtime: screenRuntime, version: screenVersion, answerKey: process.env.PULLUP_SCREEN_ANSWER_KEY?.trim() }) : null;
+  return { github: octokitApi((repo) => repoOctokit(repo)), council, screener, withai: legacyClient, askWithAI: client, now: () => new Date() };
+}
+
+function runtimeVersion(value: string | undefined): number | undefined {
+  if (!value?.trim()) return undefined;
+  const version = Number(value);
+  return Number.isInteger(version) && version > 0 ? version : undefined;
 }
 
 export function senderDeps(deps: PipelineDeps): SenderDeps {
@@ -68,6 +86,7 @@ export function askDeps(deps: PipelineDeps): AskDeps {
   const client = deps.withai;
   return {
     withai: client,
+    askWithAI: deps.askWithAI ?? null,
     sender: senderDeps(deps),
     skillId: async () => (client instanceof WithAIClient ? ciPolicySkill(client).catch(() => null) : (process.env.PULLUP_SKILL_ID?.trim() ?? null)),
     now: deps.now,
@@ -137,8 +156,12 @@ export async function processRun(runId: string, deps: PipelineDeps): Promise<str
       await setSetting(filesKey, { at: now.toISOString(), files: collected.run.files.filter((f) => f.from === "default") });
     }
     await record(run.repo, runId, "collected", { jobs: collected.run.jobs.map((j) => ({ workflow: j.workflow, job: j.name, attempts: j.attempts.map((a) => a.conclusion) })), notes: collected.notes }, now);
-    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, deps.council, { now: now.getTime(), screener: deps.screener ?? null });
-    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ id: q.question.id, shadow: q.question.shadow, outcome: q.outcome, decidedBy: q.decidedBy })), councilCalls: decision.councilCalls, costUsd: decision.costUsd, extensions: decision.extensions && { compositionHash: decision.extensions.compositionHash, outputs: decision.extensions.outputs, relaxations: decision.extensions.relaxations, screens: decision.extensions.screens.map((s) => ({ id: `${s.extension}:${s.key}`, status: s.status, result: s.result, why: s.why })) } }, deps.now());
+    const askWithAIShadowOnly = mode === "active" && !!deps.askWithAI && process.env.PULLUP_ASKWITHAI_MODE !== "active";
+    const council = askWithAIShadowOnly
+      ? async (_question: Parameters<Council>[0], _run: Parameters<Council>[1], seats: string[]) => seats.map((seat) => ({ seat, answer: null, error: "AskWithAI is in shadow mode; Active enforcement is disabled" }))
+      : deps.council;
+    const decision: RunDecision = await decideRun(ciRunSchema.parse(collected.run), config, council, { now: now.getTime(), screener: askWithAIShadowOnly ? null : deps.screener ?? null });
+    await record(run.repo, runId, "decided", { result: decision.result, reason: decision.reason, questions: decision.questions.map((q) => ({ id: q.question.id, shadow: q.question.shadow, outcome: q.outcome, decidedBy: q.decidedBy, seats: q.seats.map((seat) => ({ seat: seat.seat, verdict: seat.verdict, strength: seat.strength, reason: seat.reason, validQuotes: seat.validQuotes, problems: seat.problems, platformDecision: seat.platformDecision })) })), councilCalls: decision.councilCalls, costUsd: decision.costUsd, extensions: decision.extensions && { compositionHash: decision.extensions.compositionHash, outputs: decision.extensions.outputs, relaxations: decision.extensions.relaxations, screens: decision.extensions.screens.map((s) => ({ id: `${s.extension}:${s.key}`, status: s.status, result: s.result, why: s.why, platformDecision: s.platformDecision })) } }, deps.now());
     await db
       .update(runs)
       .set({ mode, decision, config, notes: collected.notes, pending: [], councilCalls: decision.councilCalls, costUsd: decision.costUsd, error: null })

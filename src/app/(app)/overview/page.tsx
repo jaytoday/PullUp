@@ -37,13 +37,13 @@ export default async function OverviewPage() {
           <Tile label="Runs in the last 24 hours" className="lg:col-span-2" hint={`${o.repoCount} repositor${o.repoCount === 1 ? "y" : "ies"}`}>
             <NumberTicker value={o.runsToday} />
           </Tile>
-          <Tile label="Reached the council" hint="Target: under 15% of runs">
+          <Tile label="Used a decision runtime" hint="Target: under 15% of runs">
             <NumberTicker value={Math.round(o.councilShare * 100)} />%
           </Tile>
           <Tile label="Waiting for a person" hint={o.waiting ? "See Questions" : "Nothing waiting"}>
             <NumberTicker value={o.waiting} />
           </Tile>
-          <Tile label="Council cost, last 24 hours" className="sm:col-span-2 lg:col-span-4" hint="As reported by WithAI">
+          <Tile label="Decision cost, last 24 hours" className="sm:col-span-2 lg:col-span-4" hint="As reported by AskWithAI">
             {dollars(o.costToday)}
           </Tile>
         </BentoGrid>

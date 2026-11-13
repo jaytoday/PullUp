@@ -20,7 +20,7 @@ ask, or add notes for the reviewer. ([Back to the overview](../README.md))
 Each extension is switched in the repository's config, or in Settings → Extensions:
 
 - **Off**: skipped.
-- **Shadow**: try it out. Its questions are shown as "would ask" and sent to the council (so the
+- **Shadow**: try it out. Its questions are shown as "would ask" and sent to AskWithAI (so the
   Accuracy page can show what it would have done), but they never change the result and no one is
   asked.
 - **Active**: its questions count.
@@ -47,7 +47,7 @@ extension (default 3) and `council.maxQuestionsPerRun` per run (default 6).
 
 ### The one way a question gets easier
 
-The host keeps a short, fixed list of **relaxations**. Today there is one: the council may pass a
+The host keeps a short, fixed list of **relaxations**. Today there is one: the runtime may pass a
 question alone. An extension can propose it (for example `inert`, for a change verified to be
 switched off). The host applies it only when the proposing extension is Active, a setting marked as a
 loosening is on, it declares that it depends on the target's extension, and the target is not on the

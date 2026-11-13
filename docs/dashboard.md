@@ -5,10 +5,10 @@ created owns the instance. ([Back to the overview](README.md))
 
 | Page | What it shows |
 | --- | --- |
-| **Overview** | Runs in the last day, the share that reached the council, cost, runs waiting for a person, recent runs. |
-| **Runs** → a run | The steps of the run, hard failures with their logs, each question grouped by extension with every reviewer's answer and the quotes that checked out, Shadow questions as "would ask", notes and file findings for the reviewer, and the record with whether its chain is intact. |
+| **Overview** | Runs in the last day, the share that reached an AskWithAI runtime, cost, runs waiting for a person, recent runs. |
+| **Runs** → a run | The steps of the run, hard failures with their logs, each question grouped by extension with the runtime answer, receipt, and verified quotes, Shadow questions as "would ask", notes and file findings for the reviewer, and the record with whether its chain is intact. |
 | **Questions** | Questions waiting for a person right now. |
-| **Accuracy** | How often the council's lean matched the person's answer, per kind of question (filter by extension); what the council would do with Shadow extensions' questions; cost per day. |
+| **Accuracy** | How often a model decision matched a person's answer, per kind of question (filter by extension); what the runtime would do with Shadow extensions' questions; cost per day. |
 | **Settings** | Per repository: Shadow or Active, and **Extensions** (below); the result of the daily threat model check; the stop switch. |
 | **Set up a repo** | A guided form that builds `.pullup/config.json`: workflows, who to ask, a starting set of extensions (Essentials or Security), the core checks' settings. |
 

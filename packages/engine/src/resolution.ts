@@ -1,5 +1,6 @@
 import type { ParsedCiRun, Question } from "@pullup/sdk";
 import { checkSeat, type CheckedSeat, type Council, type RawSeatAnswer } from "./council";
+import { ASK_WITH_AI_SEAT } from "./askwithai-council";
 import type { Config } from "./config";
 import { findHardFailures, type HardFailure } from "./hard-failure";
 import { type HostResult, planScreens, runExtensions } from "./host";
@@ -106,10 +107,11 @@ export async function decideRun(
     found.map(async (question) => {
       if (question.skipCouncil) return resolveQuestion(question, [], config);
       const seats = config.council.seats;
-      councilCalls += seats.length;
       const raw = await council(question, run, seats).catch((error: Error): RawSeatAnswer[] => seats.map((seat) => ({ seat, answer: null, error: error.message })));
+      const platformAnswer = raw.find((answer) => answer.seat === ASK_WITH_AI_SEAT);
+      councilCalls += platformAnswer ? 1 : seats.length;
       // Exactly one answer per configured seat: a seat with no answer counts as a failed call, extra answers are ignored.
-      const answers = seats.map((seat) => raw.find((r) => r.seat === seat) ?? { seat, answer: null, error: "no answer from this seat" });
+      const answers = platformAnswer ? [platformAnswer] : seats.map((seat) => raw.find((r) => r.seat === seat) ?? { seat, answer: null, error: "no answer from this seat" });
       costUsd += raw.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
       return resolveQuestion(question, answers.map((r) => checkSeat(r, question, run)), config);
     }),

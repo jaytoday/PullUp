@@ -18,7 +18,7 @@ import { authClient } from "@/lib/auth-client";
 const OUTCOMES = [
   { icon: "i-lucide-x", label: "Hard failure → fail, no AI" },
   { icon: "i-lucide-check", label: "Nothing tricky → pass, no AI" },
-  { icon: "i-lucide-users", label: "Something tricky → the council" },
+  { icon: "i-lucide-brain", label: "Something tricky → AskWithAI" },
   { icon: "i-lucide-message-circle-question", label: "Still unclear → a person" },
 ];
 
@@ -107,7 +107,7 @@ export function LoginView({ headline }: { headline: string }) {
                 {/* React Bits: the headline decodes once on load (shown plainly with reduced motion). */}
                 <DecryptedText text={headline} animateOn="view" sequential revealDirection="start" speed={40} />
               </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">Code decides what is tricky. A council of AI reviewers answers through WithAI. A person settles the rest, and everything is on the record.</p>
+              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">PullUp decides what needs attention and verifies the evidence. AskWithAI runs the decision runtime. A person settles unclear cases, and everything is on the record.</p>
             </div>
             <ul className="grid gap-2 sm:grid-cols-2">
               {OUTCOMES.map((item) => (

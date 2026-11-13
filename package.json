@@ -28,6 +28,7 @@
     "@pullup/extensions": "workspace:^",
     "@pullup/github": "workspace:*",
     "@pullup/sdk": "workspace:^",
+    "@askwithai/client": "workspace:*",
     "@withai/client": "workspace:*",
     "better-auth": "^1.6.18",
     "canvas-confetti": "^1.9.4",

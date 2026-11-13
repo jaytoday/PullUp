@@ -47,4 +47,6 @@ export interface ScreenAnswer {
   quotes: { text: string; line: number | null; file: string }[];
   /** Why it was not checked: the call failed, the run's screen limit was reached, the answer had no valid quote… */
   why: string | null;
+  /** AskWithAI decision metadata, when this answer came from a Decision Runtime. */
+  platformDecision?: { id: string; runtime: string; version: number; status: string; synthetic: boolean; questionKey: string; requestId: string; costUsd: number; latencyMs: number; receipt: unknown };
 }

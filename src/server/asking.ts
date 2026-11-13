@@ -1,6 +1,7 @@
 import { type AskAction, type AskState, answer, appendEvidence, type Config, type PersonAnswer, personForGithubLogin, type ResolvedQuestion, seatOutcomes, startAsk, storedConfig, storedDecision, tick } from "@pullup/engine";
 import { sendComment, type SenderDeps } from "@pullup/github";
 import type { CreateQuestionInput, PersonQuestion, RecordOutcomeInput } from "@withai/client";
+import type { AskWithAI } from "@askwithai/client";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, runs } from "@/lib/db/schema";
@@ -26,6 +27,7 @@ export interface AskClient {
 
 export interface AskDeps {
   withai: AskClient | null;
+  askWithAI?: AskWithAI | null;
   sender: SenderDeps;
   /** The CI policy skill, so answers come back as its labels. */
   skillId: () => Promise<string | null>;
@@ -175,13 +177,21 @@ export async function recordAnswer(run: Run, input: { value: PersonAnswer; by: s
  * The key makes a repeat (the same answer seen twice) replace, not add.
  */
 async function reportSeatOutcomes(run: Run, q: ResolvedQuestion, value: PersonAnswer, deps: AskDeps): Promise<void> {
-  if (!deps.withai) return;
   const failed: string[] = [];
-  for (const outcome of seatOutcomes(q.seats, value)) {
+  for (const outcome of seatOutcomes(q.seats.filter((seat) => !seat.platformDecision), value)) {
+    if (!deps.withai) break;
     try {
       await deps.withai.recordOutcome(outcome.runId, { outcome: outcome.outcome, note: outcome.note, key: `person:${run.id}:${q.question.id}` });
     } catch (error) {
       failed.push(`${outcome.runId}: ${(error as Error).message}`);
+    }
+  }
+  for (const decision of new Map(q.seats.flatMap((seat) => seat.platformDecision ? [[seat.platformDecision.id, seat.platformDecision] as const] : [] )).values()) {
+    if (!deps.askWithAI || decision.synthetic || decision.status !== "decided" || !decision.questionKey) continue;
+    try {
+      await deps.askWithAI.reportOutcome(decision.id, { [decision.questionKey]: value }, `pullup-human:${run.id}:${q.question.id}`);
+    } catch (error) {
+      failed.push(`${decision.id}: ${(error as Error).message}`);
     }
   }
   if (failed.length) await record(run, "answered", { question: q.question.id, outcomeReportsFailed: failed }, deps.now());

@@ -16,7 +16,7 @@ export default async function QuestionsPage() {
       <AutoRefresh />
       <PageBody>
         <p className="text-sm text-muted-foreground">
-          The person asked answers by email or phone through WithAI, with the Pass / Fail buttons on the PullUp check, or by commenting <code className="font-mono">/pullup pass &lt;reason&gt;</code> or <code className="font-mono">/pullup fail &lt;reason&gt;</code> on the pull request. Repo admins can answer too.
+          The person asked answers by email or phone through the temporary legacy notification service, with the Pass / Fail buttons on the PullUp check, or by commenting <code className="font-mono">/pullup pass &lt;reason&gt;</code> or <code className="font-mono">/pullup fail &lt;reason&gt;</code> on the pull request. Repo admins can answer too.
         </p>
         {open.length ? (
           open.map(({ run, question, state }) => (
@@ -39,7 +39,7 @@ export default async function QuestionsPage() {
             </div>
           ))
         ) : (
-          <EmptyState icon="i-lucide-message-circle-question" title="Nothing is waiting for a person" description="When the council cannot settle a question on a repo in active mode, it shows up here until someone answers or the deadline passes." action={{ href: "/runs", label: "See runs" }} />
+          <EmptyState icon="i-lucide-message-circle-question" title="Nothing is waiting for a person" description="When PullUp cannot settle a question on an active repository, it shows up here until someone answers or the deadline passes." action={{ href: "/runs", label: "See runs" }} />
         )}
       </PageBody>
     </DashboardPanel>

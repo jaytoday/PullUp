@@ -1,6 +1,6 @@
 # Asking a person
 
-Only in Active mode, and only for questions the council could not settle.
+Only in Active mode, and only for questions the AskWithAI runtime could not settle.
 ([Back to the overview](README.md))
 
 ## Who is asked
@@ -14,7 +14,7 @@ Only in Active mode, and only for questions the council could not settle.
 
 Any one of these:
 
-- the message WithAI sends them;
+- the email, phone, or member message sent through the temporary legacy WithAI notification service;
 - the **Pass** / **Fail** buttons on the PullUp check on GitHub;
 - a pull request comment starting `/pullup pass <reason>` or `/pullup fail <reason>`.
 
@@ -30,7 +30,7 @@ the **no-answer option** applies. It is looked up in this order: `ask.perExtensi
 | Option | At the deadline |
 | --- | --- |
 | `fail` (default) | The question fails: "No answer from …". |
-| `follow-council` | Pass if most reviewers said pass and no "fail" held up, otherwise fail. A question only a person may pass always fails. |
+| `follow-council` | Follow the prior model answers if they were mostly pass and no verified fail held up; otherwise fail. A question only a person may pass always fails. |
 | `pass` | The question passes, marked "passed without an answer". |
 | `escalate` | Ask `ask.backup` with a fresh deadline; if they do not answer either, `ask.onNoAnswerAfterBackup` applies. |
 
@@ -38,6 +38,4 @@ An answer that arrives late still counts and replaces the no-answer outcome.
 
 ## Learning from answers
 
-Each question is linked to the workspace's "CI policy" skill in WithAI, with the run attached. People's
-answers become that skill's examples, so the AI reviewers' guidance improves over time. The Accuracy
-page in the dashboard shows how often the council agreed with people ([The dashboard](dashboard.md)), and PullUp reports each seat's outcome back to WithAI ([The WithAI connection](withai-connection.md)).
+Email, phone, and WithAI-member notifications still use the legacy WithAI question service during the migration. GitHub buttons and `/pullup` comments remain available independently. When a person answers a question backed by an AskWithAI decision, PullUp reports that person's pass or fail label to the matching AskWithAI decision and runtime question. It does not turn model agreement into an outcome. See [The AskWithAI connection](askwithai-connection.md) for ownership and migration status.

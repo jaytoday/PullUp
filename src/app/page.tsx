@@ -30,21 +30,21 @@ const OUTCOMES = [
   {
     icon: "i-lucide-users",
     tone: "text-primary bg-primary/10",
-    title: "Something tricky → the council",
-    description: "A flaky test, weakened tests or a change to sign-in code. A few AI reviewers answer; a fixed rule in code turns their answers into pass, fail or ask a person.",
+    title: "Something tricky → AskWithAI",
+    description: "A flaky test, weakened tests or a change to sign-in code goes to a configured Decision Runtime. PullUp verifies its citations and applies the repository's fixed rules.",
     className: "md:col-span-1",
   },
 ];
 
 const FEATURES = [
   { title: "Code decides what is tricky", description: "A fixed list of triggers, not the AI, decides which runs need judgment. Target: under 15% of runs.", icon: "i-lucide-scan-search" },
-  { title: "Quotes are checked", description: "A reviewer's fail counts only if its quote really appears in the diff or the log.", icon: "i-lucide-badge-check" },
+  { title: "Quotes are checked", description: "A runtime's fail counts only if its citation really appears in the changed code, log or report.", icon: "i-lucide-badge-check" },
   { title: "A person for the hard cases", description: "Sign-in code, migrations, payments and secrets go to the person you name, by email, phone, a button or a comment.", icon: "i-lucide-user-check" },
-  { title: "Bounded waiting", description: "A deadline and a reminder, then your rule: fail, follow the council, pass, or ask a backup.", icon: "i-lucide-hourglass" },
+  { title: "Bounded waiting", description: "A deadline and a reminder, then your rule: fail, follow the runtime answer, pass, or ask a backup.", icon: "i-lucide-hourglass" },
   { title: "Shadow mode first", description: "A neutral check shows what PullUp would decide, so you can trust it before it blocks anything.", icon: "i-lucide-eye" },
   { title: "Config from the default branch", description: "A pull request can never loosen its own checks.", icon: "i-lucide-lock" },
   { title: "Every call on the record", description: "Each GitHub call needs a single-use permit, and every step goes on a hash-chained record.", icon: "i-lucide-scroll-text" },
-  { title: "Answers that teach", description: "People's answers go back to your team's CI policy in WithAI, so the council learns your rules.", icon: "i-lucide-brain" },
+  { title: "Outcomes improve decisions", description: "Real human rulings are sent back to the matching AskWithAI runtime question for evaluation.", icon: "i-lucide-brain" },
 ];
 
 const STEP = "rounded-lg bg-muted p-4 text-sm text-body ring ring-border";
@@ -52,9 +52,9 @@ const STEP = "rounded-lg bg-muted p-4 text-sm text-body ring ring-border";
 const FLOW = [
   { title: "Collect", content: <p key="step-1" className={STEP}>When every required workflow has finished for a commit, PullUp reads the job results (with reruns), the end of each failed log and the pull request&apos;s diff. Its rules come from <code className="font-mono">.pullup/config.json</code> on the default branch.</p> },
   { title: "Decide what is tricky", content: <p key="step-2" className={STEP}>A hard failure fails at once. Otherwise each trigger looks for something that needs judgment: a test that passed only on rerun, tests skipped or deleted, a change under sign-in, migrations, payments, secrets or CI configuration. No trigger, no AI: the run passes.</p> },
-  { title: "Ask the council", content: <p key="step-3" className={STEP}>For each question, three or four AI reviewers answer in parallel through WithAI, each from its own viewpoint, with your CI policy as guidance. Each answer is pass, fail or needs a person, with a strength and quotes.</p> },
-  { title: "Apply the rule", content: <p key="step-4" className={STEP}>A fail with a quote that checks out fails the question. Every reviewer passing strongly passes it, if the trigger allows the council to. Anything else goes to a person, and the check shows who it is waiting for.</p> },
-  { title: "Record", content: <p key="step-5" className={STEP}>The result, every answer and every GitHub call are kept on a hash-chained record. The dashboard shows how often the council agreed with people, per trigger.</p> },
+  { title: "Send to AskWithAI", content: <p key="step-3" className={STEP}>For each question, PullUp sends bounded repository and CI context to a pinned AskWithAI Decision Runtime. It returns pass, fail or needs a person, with a probability and supporting citations.</p> },
+  { title: "Apply PullUp's rules", content: <p key="step-4" className={STEP}>PullUp checks citations against the original evidence. A fail without a verified quote needs a person. Strong passes count only when the trigger allows the runtime to pass it.</p> },
+  { title: "Record outcomes", content: <p key="step-5" className={STEP}>The result, runtime receipt and every GitHub call are kept on a hash-chained record. Real human rulings are reported to AskWithAI for evaluation.</p> },
 ];
 
 export default function LandingPage() {
@@ -78,10 +78,10 @@ export default function LandingPage() {
       <section className="relative isolate overflow-hidden">
         <HeroBackdrop />
         <div className="mx-auto max-w-4xl px-4 pt-20 pb-10 text-center sm:px-6 sm:pt-28">
-          <Badge color="primary" variant="soft" className="mb-5">A CI check, built on WithAI</Badge>
+          <Badge color="primary" variant="soft" className="mb-5">A CI decision system, built on AskWithAI</Badge>
           <h1 className="text-4xl font-semibold tracking-tight text-balance text-foreground sm:text-6xl">CI that knows when to ask</h1>
           <p className="mx-auto mt-5 max-w-2xl text-base text-balance text-muted-foreground sm:text-lg">
-            PullUp fails what is broken and passes what is plain, with no AI at all. For the few runs that need judgment, a council of AI reviewers answers, and a person settles what they cannot.
+            PullUp owns the software-engineering context and merge rules. AskWithAI runs the versioned decisions for changes that need judgment. PullUp checks the evidence and brings in a person when needed.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button href="/login" color="primary" size="lg" trailingIcon="i-lucide-arrow-right">
@@ -97,7 +97,7 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="outcomes">
         <h2 id="outcomes" className="mb-2 text-center text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Every run ends one of three ways</h2>
-        <p className="mx-auto mb-10 max-w-xl text-center text-sm text-muted-foreground">Code decides which way. The council only ever sees the third.</p>
+        <p className="mx-auto mb-10 max-w-xl text-center text-sm text-muted-foreground">PullUp's code handles routine cases. AskWithAI only sees questions that need judgment.</p>
         <BentoGrid className="md:auto-rows-auto">
           {OUTCOMES.map((o) => (
             <BentoGridItem

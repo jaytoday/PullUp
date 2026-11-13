@@ -45,7 +45,7 @@ export function RepoMode({ repo, mode }: { repo: string; mode: "shadow" | "activ
           <DialogHeader>
             <DialogTitle>Make {repo} active?</DialogTitle>
             <DialogDescription>
-              In active mode the PullUp check passes or fails runs, and questions the council cannot settle are sent to the person in the repo&apos;s config. If branch protection requires the PullUp check, a fail blocks merging.
+              In active mode the PullUp check passes or fails runs, and questions the AskWithAI runtime cannot settle are sent to the person in the repo&apos;s config. If branch protection requires the PullUp check, a fail blocks merging.
             </DialogDescription>
           </DialogHeader>
           <FormField label={`Type ${repo} to confirm`}>

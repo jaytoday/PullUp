@@ -1,4 +1,6 @@
 import type { ApplyInput } from "@withai/client";
+import { createHash } from "node:crypto";
+import type { AskWithAI } from "@askwithai/client";
 import { type ParsedCiRun, type ParsedScreenRequest, parseDiff, type ScreenAnswer, screenModelAnswerSchema } from "@pullup/sdk";
 import { z } from "zod";
 import type { RawSeatAnswer } from "./council";
@@ -34,7 +36,7 @@ export function screenCode(screen: Pick<PlannedScreen, "file">, run: ParsedCiRun
 
 /** Turn a raw answer into a checked one. */
 export function checkScreen(raw: RawSeatAnswer, screen: PlannedScreen, run: ParsedCiRun): ScreenAnswer {
-  const notChecked = (why: string): ScreenAnswer => ({ key: screen.key, status: "not-checked", result: null, confidence: 0, reason: "", quotes: [], why });
+  const notChecked = (why: string): ScreenAnswer => ({ key: screen.key, status: "not-checked", result: null, confidence: 0, reason: "", quotes: [], why, ...(raw.platformDecision ? { platformDecision: raw.platformDecision } : {}) });
   if (raw.error) return notChecked(`the call failed: ${raw.error}`);
   const parsed = screenModelAnswerSchema.safeParse(raw.answer);
   if (!parsed.success) return notChecked(`the answer had the wrong shape: ${parsed.error.issues[0]?.message ?? "unknown"}`);
@@ -51,7 +53,7 @@ export function checkScreen(raw: RawSeatAnswer, screen: PlannedScreen, run: Pars
     return [];
   });
   if ((screen.needsQuote ?? [screen.options[0]!]).includes(a.result) && !quotes.length) return notChecked(`the answer was "${a.result}" with no quote found in the change`);
-  return { key: screen.key, status: "answered", result: a.result, confidence: a.confidence, reason: a.reason, quotes, why: null };
+  return { key: screen.key, status: "answered", result: a.result, confidence: a.confidence, reason: a.reason, quotes, why: null, ...(raw.platformDecision ? { platformDecision: raw.platformDecision } : {}) };
 }
 
 /** Ask every planned screen, at most `max` of them; the rest are not checked. Answers keep the plan's order. */
@@ -105,6 +107,46 @@ export function withaiScreener(options: { client: ApplyClient; skill: { id: stri
     } catch (error) {
       const { status, name } = error as { status?: number; name?: string };
       return { seat: screen.id, answer: null, error: status === 429 ? "WithAI daily limit reached" : name === "TimeoutError" ? "WithAI did not answer in time" : (error as Error).message };
+    }
+  };
+}
+
+/** Calls the versioned Decision API. The runtime uses generic labels option_1..option_8, mapped back here to repository-defined screen results. */
+export function askWithAIScreener(options: { client: AskWithAI; runtime: string; version?: number; answerKey?: string; timeoutMs?: number }): Screener {
+  return async (screen, run) => {
+    if (screen.options.length > 8) return { seat: screen.id, answer: null, error: "AskWithAI screen runtimes support at most eight allowed results" };
+    const requestId = `${run.repo}:${run.headSha}:screen:${screen.id}`;
+    const input = {
+      repository: run.repo,
+      pullRequest: run.pull,
+      headSha: run.headSha,
+      screenId: screen.id,
+      question: screen.question,
+      guidance: screen.guidance,
+      allowedResults: screen.options.map((result, i) => ({ label: `option_${i + 1}`, result })),
+      changedCode: screenCode(screen, run),
+    };
+    const idempotencyKey = createHash("sha256").update(`${requestId}\0${JSON.stringify(input)}`).digest("hex");
+    try {
+      const decision = await options.client.decide(options.runtime, input, {
+        version: options.version,
+        requestId,
+        traceId: `${run.repo}:${run.headSha}`,
+        stepName: `screen:${screen.id}`,
+        idempotencyKey,
+        signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
+      });
+      const entry = options.answerKey ? decision.decisions[options.answerKey] : Object.values(decision.decisions)[0];
+      const receipt = options.answerKey ? decision.receipt.questions[options.answerKey] : Object.values(decision.receipt.questions)[0];
+      const index = /^option_([1-8])$/.exec(entry?.answer ?? "");
+      const result = index ? screen.options[Number(index[1]) - 1] : undefined;
+      const quotes = (receipt?.citations ?? []).map((citation) => ({ text: citation.quote }));
+      const answer = decision.status === "decided" && !decision.synthetic && entry?.final && result
+        ? { result, confidence: entry.probability ?? 0, reason: receipt?.reason ?? "", quotes }
+        : null;
+      return { seat: screen.id, answer, ...(answer ? {} : { error: `AskWithAI returned ${decision.status}${decision.synthetic ? " (synthetic)" : ""} or an unsupported result` }), costUsd: decision.costUsd, durationMs: decision.latencyMs, platformDecision: { id: decision.id, runtime: decision.runtime, version: decision.version, status: decision.status, synthetic: decision.synthetic, questionKey: options.answerKey ?? Object.keys(decision.decisions)[0] ?? "", requestId, costUsd: decision.costUsd, latencyMs: decision.latencyMs, receipt: decision.receipt } };
+    } catch (error) {
+      return { seat: screen.id, answer: null, error: (error as Error).message };
     }
   };
 }

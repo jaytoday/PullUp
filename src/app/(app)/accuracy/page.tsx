@@ -18,8 +18,8 @@ export default async function AccuracyPage({ searchParams }: { searchParams: Pro
     <DashboardPanel title="Accuracy and cost">
       <PageBody>
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-foreground">How often the council agreed with the person</h2>
-          <p className="text-sm text-muted-foreground">Per kind of question, for questions a person answered: the council&apos;s lean (most seats said pass and no fail held up → pass, otherwise fail) against the person&apos;s answer.</p>
+          <h2 className="text-sm font-medium text-foreground">How often model decisions matched the person</h2>
+          <p className="text-sm text-muted-foreground">Per kind of question, compares the recorded runtime answer (or the older council result) with real pass or fail rulings from people.</p>
           {extensions.length > 1 ? (
             <nav className="flex flex-wrap gap-1" aria-label="Filter by extension">
               <Button href="/accuracy" size="xs" color="neutral" variant={extension ? "ghost" : "soft"}>
@@ -45,7 +45,7 @@ export default async function AccuracyPage({ searchParams }: { searchParams: Pro
         {shadow.length ? (
           <section className="space-y-2" data-testid="shadow-outcomes">
             <h2 className="text-sm font-medium text-foreground">Extensions in Shadow mode</h2>
-            <p className="text-sm text-muted-foreground">What the council would have done with their questions. No one is asked about them; look here before switching one to Active.</p>
+            <p className="text-sm text-muted-foreground">What PullUp and its configured AskWithAI runtime decided for Shadow questions. No one is asked about them; use these comparisons before allowing runtime answers to affect Active checks.</p>
             <table className="w-full rounded-lg bg-background text-sm ring ring-border">
               <thead className="text-xs text-muted-foreground">
                 <tr>
@@ -69,9 +69,9 @@ export default async function AccuracyPage({ searchParams }: { searchParams: Pro
           </section>
         ) : null}
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-foreground">Council cost per day (last 14 days)</h2>
+          <h2 className="text-sm font-medium text-foreground">Decision cost per day (last 14 days)</h2>
           <div className="rounded-lg bg-background p-4 ring ring-border">
-            <div className="flex h-32 items-end gap-1" role="img" aria-label="Council cost per day">
+            <div className="flex h-32 items-end gap-1" role="img" aria-label="Decision cost per day">
               {cost.map((d) => (
                 <div key={d.day} className="flex-1 rounded-t bg-primary/70" style={{ height: `${Math.max(2, (d.cost / maxCost) * 100)}%` }} title={`${d.day}: ${dollars(d.cost)}, ${d.calls} calls, ${d.runs} runs`} />
               ))}
@@ -81,7 +81,7 @@ export default async function AccuracyPage({ searchParams }: { searchParams: Pro
                 <tr>
                   <th className="text-start font-normal">Day</th>
                   <th className="text-end font-normal">Runs</th>
-                  <th className="text-end font-normal">Council calls</th>
+                  <th className="text-end font-normal">Decision calls</th>
                   <th className="text-end font-normal">Cost</th>
                 </tr>
               </thead>

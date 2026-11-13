@@ -31,11 +31,11 @@ Only `requiredWorkflows` and `ask.to` are required. Everything else has a safe d
 | `requiredWorkflows` | GitHub Actions workflows that must finish before PullUp decides. One that never runs fails the run. | (required) |
 | `flaky.knownTests` | Tests known to fail now and then: a failure of only these is a question, not a hard failure. | `[]` |
 | `flaky.rerun` | Rerun a failed required workflow once, so a flaky failure shows itself (costs CI minutes). | `false` |
-| `council.seats` | The AI reviewers' viewpoints, one sentence each (1–6). | four viewpoints |
-| `council.passStrength` | How sure (1–5) every reviewer must be for the council to pass a question. | `4` |
-| `council.needsPersonBlocksPass` | One reviewer asking for a person stops a council pass. When `false`, a strict majority of strong passes is enough. | `true` |
-| `council.maxQuestionsPerRun` | At most this many questions go to the council per run; the rest go straight to a person. | `6` |
-| `screens.maxPerRun` | At most this many cheap model checks per run; the rest are "not checked". | `20` |
+| `council.seats` | PullUp's review viewpoints, sent as context to the AskWithAI runtime. The platform owns model selection and any model council. | four viewpoints |
+| `council.passStrength` | How strong (1–5) an answer must be for PullUp to allow a pass. AskWithAI probability maps to this scale. | `4` |
+| `council.needsPersonBlocksPass` | A person-needed answer cannot pass when this is on. When `false`, a strong runtime answer may pass if the question allows it. | `true` |
+| `council.maxQuestionsPerRun` | At most this many review questions go to the runtime per run; the rest go straight to a person. | `6` |
+| `screens.maxPerRun` | At most this many extension screens go to the configured AskWithAI screen runtime per run; the rest are "not checked". | `20` |
 | `ask.*` | Who is asked and what happens with no answer. | see [Asking a person](asking-a-person.md) |
 | `extensions` | One section per extension: its mode and its own settings. | `core` on, others off |
 
@@ -43,13 +43,13 @@ Only `requiredWorkflows` and `ask.to` are required. Everything else has a safe d
 
 Every section takes `mode` (`off`, `shadow` or `active`; a listed extension with no mode starts in
 `shadow`), `maxQuestions` (default 3: more questions from it in one run are folded into one) and
-`shadowCouncil` (default `true`: Shadow questions still go to the council so its answers can be
+`shadowCouncil` (default `true`: Shadow questions still go to AskWithAI so its answers can be
 measured). The rest is the extension's own settings: see each extension's page under
 [Extensions](extensions/README.md). `pnpm pullup extensions` lists them all with their defaults.
 
 ## Loosening
 
-A setting that makes PullUp pass more easily (switching a check off, letting the council pass
+A setting that makes PullUp pass more easily (switching a check off, letting the runtime pass
 something a person decides by default, passing on no answer…) is a **loosening**. The setup page and
 Settings list every loosening and need "loosen" typed before they keep it.
 

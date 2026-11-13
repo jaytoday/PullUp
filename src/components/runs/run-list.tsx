@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { ago, dollars, shortSha } from "@/lib/format";
 import type { RunRow } from "@/server/dashboard";
+import { decisionOf } from "@/lib/run-decision";
 import { ResultBadge } from "./result-badge";
 
 export function RunLine({ run }: { run: RunRow }) {
+  const decision = decisionOf(run);
+  const calls = (decision?.councilCalls ?? 0) + (decision?.extensions?.screenCalls ?? 0);
   return (
     <Link href={`/runs/${run.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-elevated/60 focus-visible:bg-elevated/60 focus-visible:outline-none">
       <ResultBadge result={run.result} state={run.state} mode={run.mode} />
@@ -13,7 +16,7 @@ export function RunLine({ run }: { run: RunRow }) {
         <span className="ms-2 font-mono text-xs text-muted-foreground">{shortSha(run.headSha)}</span>
       </span>
       <span className="w-full text-xs text-muted-foreground sm:w-auto">
-        {run.councilCalls ? `${run.councilCalls} council calls · ${dollars(run.costUsd)} · ` : ""}
+        {calls ? `${calls} decision calls · ${dollars(run.costUsd)} · ` : ""}
         {ago(run.firstSeenAt)}
       </span>
     </Link>

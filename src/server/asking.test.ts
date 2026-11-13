@@ -1,5 +1,6 @@
 import { fixedCouncil } from "@pullup/engine/testing";
 import { FakeGitHub } from "@pullup/github";
+import { AskWithAI } from "@askwithai/client";
 import type { CreateQuestionInput, PersonQuestion, RecordOutcomeInput } from "@withai/client";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -272,5 +273,26 @@ describe("extension files on the default branch", () => {
     const run = await runRow(id);
     expect(run.notes.join(" ")).toMatch(/Used the copy of the default branch's extension files read at/);
     expect((run.decision as { questions: { question: { id: string } }[] }).questions.map((q) => q.question.id)).toContain("threat-model:T1");
+  });
+});
+
+describe("AskWithAI outcomes", () => {
+  it("reports only a real PullUp human ruling against the linked runtime question", async () => {
+    const s = setup();
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    s.deps.askWithAI = new AskWithAI({ apiKey: "test", baseUrl: "https://ask.test", fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return Response.json({ id: "outcome-1", replayed: false });
+    } });
+    const started = await start(s);
+    const stored = await runRow(started.id);
+    const decision = stored.decision as { questions: Array<{ seats: Array<Record<string, unknown>> }> };
+    decision.questions[0]!.seats[0]!.platformDecision = { id: "decision-1", runtime: "owner/review", version: 3, status: "decided", synthetic: false, questionKey: "review", requestId: "pull-1", costUsd: 0.01, latencyMs: 500, receipt: {} };
+    await db.update(runs).set({ decision }).where(eq(runs.id, started.id));
+    const current = await runRow(started.id);
+    expect(await answerFromGithub(current, "admin-user", "fail", "confirmed issue", "check-run-button", s.deps)).toMatchObject({ accepted: 1 });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.url).toBe("https://ask.test/v1/decisions/decision-1/outcome");
+    expect(JSON.parse(String(requests[0]!.init?.body))).toMatchObject({ labels: { review: "fail" }, key: `pullup-human:${started.id}:core:sensitive-path` });
   });
 });

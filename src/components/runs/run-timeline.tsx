@@ -7,7 +7,7 @@ export interface TimelineStep {
   state: "done" | "current" | "skipped" | "todo";
 }
 
-/** Collect → triggers → council → person → result, as a vertical timeline. */
+/** Collect → triggers → AskWithAI runtime → person → result, as a vertical timeline. */
 export function RunTimeline({ steps }: { steps: TimelineStep[] }) {
   return (
     <ol className="relative space-y-4 ps-7" data-testid="run-timeline">

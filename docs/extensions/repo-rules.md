@@ -24,7 +24,7 @@ Does this file leave debugging code (console.log, debugger) behind?
 ## How it checks
 
 For each changed file a rule applies to, the host asks one [screen](screens.md). A rule that fails, with
-a quoted line from the change, raises one question `repo-rules:<rule>` for the council, with the rule
+a quoted line from the change, raises one question `repo-rules:<rule>` for the AskWithAI runtime, with the rule
 text as context. A broken rule file is a note on every run until fixed.
 
 A file that could not be checked becomes a question when `failClosed` is on (the default; switching it

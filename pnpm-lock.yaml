@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@askwithai/client':
+        specifier: workspace:*
+        version: link:packages/askwithai-client
       '@libsql/client':
         specifier: ^0.17.3
         version: 0.17.4
@@ -109,8 +112,23 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@25.9.1)(lightningcss@1.33.0)
 
+  packages/askwithai-client:
+    devDependencies:
+      '@types/node':
+        specifier: 25.9.1
+        version: 25.9.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@25.9.1)(lightningcss@1.33.0)
+
   packages/engine:
     dependencies:
+      '@askwithai/client':
+        specifier: workspace:*
+        version: link:../askwithai-client
       '@pullup/extensions':
         specifier: workspace:*
         version: link:../extensions

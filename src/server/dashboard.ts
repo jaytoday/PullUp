@@ -1,19 +1,19 @@
 import type { AskState, Config, ResolvedQuestion, RunDecision } from "@pullup/engine";
-import { storedConfig, storedDecision, verifyChain } from "@pullup/engine";
+import { storedConfig, verifyChain } from "@pullup/engine";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { asks, repos, runs } from "@/lib/db/schema";
 import { evidenceChain, evidenceFor, isStopped } from "./stores";
+import { decisionOf } from "@/lib/run-decision";
 
 /** Read-only views of PullUp's records for the dashboard pages. */
 
 export type RunRow = typeof runs.$inferSelect;
 const DAY = 86_400_000;
 
-export const decisionOf = (run: RunRow): RunDecision | null => (run.decision ? storedDecision(run.decision) : null);
 export const configOf = (run: RunRow): Config | null => (run.config ? storedConfig(run.config) : null);
 
-/** Who settled the run: a hard failure, nothing tricky, the council, a person, or a no-answer option. */
+/** Who settled the run: a hard failure, nothing tricky, AskWithAI, a historical council, a person, or a no-answer option. */
 export function decidedBy(run: RunRow, runAsks: Record<string, AskState>): string {
   const d = decisionOf(run);
   if (!d) return run.state === "error" ? "error" : "collecting";
@@ -23,24 +23,27 @@ export function decidedBy(run: RunRow, runAsks: Record<string, AskState>): strin
   if (states.some((s) => s.answer)) return "a person";
   if (states.some((s) => s.noAnswer)) return `no answer (${states.find((s) => s.noAnswer)!.noAnswer!.option})`;
   if (run.result === "waiting") return run.mode === "active" ? "waiting for a person" : "would ask a person";
-  return "the council";
+  return d.questions.some((q) => q.seats.some((seat) => seat.platformDecision)) ? "AskWithAI Decision Runtime" : "the council";
 }
 
 export async function overview(now = new Date()) {
   const since = new Date(now.getTime() - DAY);
   const today = await db.select().from(runs).where(gte(runs.firstSeenAt, since));
   const decided = today.filter((r) => r.decision);
-  const council = decided.filter((r) => r.councilCalls > 0);
+  const runtimeCalls = decided.filter((r) => {
+    const decision = decisionOf(r);
+    return !!decision && decision.councilCalls + (decision.extensions?.screenCalls ?? 0) > 0;
+  });
   const recent = await db.select().from(runs).orderBy(desc(runs.firstSeenAt)).limit(12);
   const waiting = await db.select().from(runs).where(eq(runs.state, "waiting"));
-  // Repositories where the council (not a person or a rule) has passed a run.
-  const councilPasses = (await db.select().from(runs).where(eq(runs.result, "pass")))
+  // Repositories where AskWithAI (not a person or a rule) has passed a run.
+  const runtimePasses = (await db.select().from(runs).where(eq(runs.result, "pass")))
     .filter((r) => r.mode === "active" && decisionOf(r)?.questions.some((q) => !q.question.shadow && q.decidedBy === "council" && q.outcome === "pass"))
     .map((r) => r.repo);
   return {
-    councilPassRepos: [...new Set(councilPasses)],
+    councilPassRepos: [...new Set(runtimePasses)],
     runsToday: today.length,
-    councilShare: decided.length ? council.length / decided.length : 0,
+    councilShare: decided.length ? runtimeCalls.length / decided.length : 0,
     costToday: today.reduce((s, r) => s + r.costUsd, 0),
     waiting: waiting.length,
     recent,
@@ -75,17 +78,18 @@ export async function openQuestions() {
   return result;
 }
 
-/** Council cost per day for the last `days` days, oldest first. */
+/** Decision runtime cost and call count per day for the last `days` days, oldest first. */
 export async function costPerDay(days = 14, now = new Date()) {
   const start = new Date(now.getTime() - days * DAY);
-  const rows = await db.select({ at: runs.firstSeenAt, cost: runs.costUsd, calls: runs.councilCalls }).from(runs).where(gte(runs.firstSeenAt, start));
+  const rows = await db.select({ at: runs.firstSeenAt, cost: runs.costUsd, decision: runs.decision }).from(runs).where(gte(runs.firstSeenAt, start));
   const byDay = new Map<string, { cost: number; calls: number; runs: number }>();
   for (let i = days - 1; i >= 0; i--) byDay.set(new Date(now.getTime() - i * DAY).toISOString().slice(0, 10), { cost: 0, calls: 0, runs: 0 });
   for (const r of rows) {
     const d = byDay.get(r.at.toISOString().slice(0, 10));
     if (d) {
       d.cost += r.cost;
-      d.calls += r.calls;
+      const decision = r.decision as RunDecision | null;
+      d.calls += (decision?.councilCalls ?? 0) + (decision?.extensions?.screenCalls ?? 0);
       d.runs += 1;
     }
   }
@@ -94,8 +98,9 @@ export async function costPerDay(days = 14, now = new Date()) {
 
 /**
  * Per question kind (`core:flaky-test`, `threat-model:T3`): of the questions a
- * person answered, how often the council's lean (most seats "pass" and no
- * valid "fail" → pass, else fail) matched them. `extension` narrows it to one extension.
+ * person answered, how often the recorded model decision matched them. This
+ * works for AskWithAI's single runtime answer and historical multi-seat runs.
+ * `extension` narrows it to one extension.
  */
 export async function questionAccuracy(extension?: string) {
   const answered = (await db.select().from(asks)).filter((a) => (a.state as AskState).answer && (!extension || a.questionId.startsWith(`${extension}:`)));
@@ -103,9 +108,11 @@ export async function questionAccuracy(extension?: string) {
   for (const a of answered) {
     const [run] = await db.select().from(runs).where(eq(runs.id, a.runId));
     const q = run && decisionOf(run)?.questions.find((x) => x.question.id === a.questionId);
-    if (!q) continue;
+    if (!q?.seats.length) continue;
+    const runtimeSeat = q.seats.find((seat) => seat.platformDecision);
+    if (runtimeSeat?.verdict === "needs-person") continue;
     const passes = q.seats.filter((s) => s.verdict === "pass").length;
-    const lean = passes * 2 > q.seats.length && !q.seats.some((s) => s.verdict === "fail" && s.validQuotes.length) ? "pass" : "fail";
+    const lean = runtimeSeat ? runtimeSeat.verdict : passes * 2 > q.seats.length && !q.seats.some((s) => s.verdict === "fail" && s.validQuotes.length) ? "pass" : "fail";
     const t = byTrigger.get(q.question.id) ?? { agreed: 0, total: 0 };
     t.total += 1;
     if (lean === (a.state as AskState).answer!.value) t.agreed += 1;

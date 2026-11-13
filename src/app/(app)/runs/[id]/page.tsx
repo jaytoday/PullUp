@@ -10,7 +10,8 @@ import { ModeBadge, ResultBadge } from "@/components/runs/result-badge";
 import { RunTimeline, type TimelineStep } from "@/components/runs/run-timeline";
 import { Badge } from "@/components/ui/badge";
 import { dollars, shortSha } from "@/lib/format";
-import { decidedBy, decisionOf, runDetail } from "@/server/dashboard";
+import { decisionOf } from "@/lib/run-decision";
+import { decidedBy, runDetail } from "@/server/dashboard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Run" };
@@ -26,6 +27,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const working = run.lockedUntil !== null && run.lockedUntil.getTime() > Date.now();
   const hard = decision?.hardFailures.length ?? 0;
   const questions = decision?.questions ?? [];
+  const runtimeCalls = (decision?.councilCalls ?? 0) + (decision?.extensions?.screenCalls ?? 0);
   const counted = questions.filter((q) => !q.question.shadow);
   const shadow = questions.filter((q) => q.question.shadow);
   // One small heading per extension that raised something.
@@ -40,7 +42,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
     { label: "Collect", detail: run.state === "collecting" ? `Waiting for ${run.pending.join(", ") || "the required workflows"}` : "Job results, reruns, logs and the diff collected", state: run.state === "collecting" ? "current" : "done" },
     { label: "Hard failures", detail: hard ? `${hard} hard failure${hard > 1 ? "s" : ""}: fail with no AI call` : "None", state: decision ? "done" : "todo" },
     { label: "Checks", detail: hard ? "Not needed" : counted.length ? `${counted.map((q) => q.question.id).join(", ")}${shadow.length ? ` (and ${shadow.length} in Shadow)` : ""}` : shadow.length ? `Only Shadow questions (${shadow.length}): pass` : "Nothing tricky: pass with no AI call", state: !decision ? "todo" : hard ? "skipped" : "done" },
-    { label: "Council", detail: run.councilCalls ? `${run.councilCalls} seat calls, ${dollars(run.costUsd)}` : "Not called", state: !decision ? "todo" : run.councilCalls ? "done" : "skipped" },
+    { label: "Decision runtime", detail: runtimeCalls ? `${runtimeCalls} decision call(s), ${dollars(run.costUsd)}` : "Not called", state: !decision ? "todo" : runtimeCalls ? "done" : "skipped" },
     { label: "Person", detail: asked ? settledBy : run.mode === "shadow" && run.result === "waiting" ? "Shadow mode: no one is asked" : "Not needed", state: !asked ? (run.mode === "shadow" && run.result === "waiting" ? "skipped" : decision ? "skipped" : "todo") : run.state === "waiting" ? "current" : "done" },
     { label: "Result", detail: decision ? `${run.reason ?? decision.reason} Settled by: ${settledBy}.` : "Not decided yet", state: run.state === "decided" ? "done" : run.state === "waiting" ? "current" : "todo" },
   ];
@@ -50,7 +52,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       <AutoRefresh everyMs={5000} />
       <PageBody>
         <div className="relative grid gap-4 overflow-hidden rounded-lg bg-background p-4 ring ring-border lg:grid-cols-[1fr_18rem]">
-          {/* The beam reports real work: a worker is collecting or the council is answering right now. */}
+          {/* The beam reports real work: a worker is collecting or the decision runtime is answering. */}
           {working ? <BorderBeam size={120} duration={6} /> : null}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -63,9 +65,9 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <dl className="space-y-2 text-sm">
             {seats.length ? (
               <div className="flex items-center gap-3 pb-1">
-                <Gauge value={answered} max={seats.length} label={`${answered} of ${seats.length} seat answers received`} className="size-14 text-xs" />
+                  <Gauge value={answered} max={seats.length} label={`${answered} of ${seats.length} decision answers received`} className="size-14 text-xs" />
                 <dd className="text-xs text-muted-foreground">
-                  {answered} of {seats.length} seat answers received
+                  {answered} of {seats.length} decision answers received
                 </dd>
               </div>
             ) : null}
@@ -74,7 +76,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
               <dd className="text-body">{run.checkRun ? ((run.checkRun as { sent: boolean; reason?: string }).sent ? "Posted" : `Not posted: ${(run.checkRun as { reason: string }).reason}`) : "Not posted yet"}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Council cost</dt>
+              <dt className="text-xs text-muted-foreground">Decision cost</dt>
               <dd className="text-body">{dollars(run.costUsd)}</dd>
             </div>
             <div>
@@ -102,13 +104,13 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         {shadow.length ? (
           <section className="space-y-2 rounded-lg bg-background p-4 ring ring-border" data-testid="would-ask">
             <h2 className="text-sm font-medium text-foreground">Would ask (Shadow extensions, not counted)</h2>
-            <p className="text-xs text-muted-foreground">These extensions are trying out in Shadow mode: their questions went to the council so its answers can be measured, but they never change the result and no one is asked.</p>
+            <p className="text-xs text-muted-foreground">These extensions are trying out in Shadow mode: their questions went to AskWithAI so its answers can be measured, but they never change the result and no one is asked.</p>
             <ul className="space-y-1 text-sm">
               {shadow.map((q) => (
                 <li key={q.question.id} className="flex flex-wrap gap-x-2">
                   <span className="font-mono text-xs text-muted-foreground">{q.question.id}</span>
                   <span className="text-body">{q.question.summary}</span>
-                  <span className="text-xs text-muted-foreground">(council: {q.outcome === "ask" ? "would ask a person" : q.outcome})</span>
+                  <span className="text-xs text-muted-foreground">(runtime: {q.outcome === "ask" ? "would ask a person" : q.outcome})</span>
                 </li>
               ))}
             </ul>

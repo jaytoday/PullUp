@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 
 const NO_ANSWER_LABEL: Record<NoAnswerOption, string> = {
   fail: "Fail the run (safest)",
-  "follow-council": "Follow the council's lean",
+  "follow-council": "Follow the runtime answer",
   pass: "Pass the run",
   escalate: "Ask a backup person",
 };
@@ -192,13 +192,13 @@ export function SetupWizard({ appInstallUrl }: { appInstallUrl: string | null })
                   <Switch checked={triggers[id].enabled} onCheckedChange={(v) => setTriggers({ ...triggers, [id]: { ...triggers[id], enabled: v } })} aria-label={`${id} on`} />
                 </label>
                 <label className="flex items-center justify-between gap-3 text-sm text-body">
-                  The council may pass it without a person
-                  <Switch checked={triggers[id].councilMayPass} onCheckedChange={(v) => setTriggers({ ...triggers, [id]: { ...triggers[id], councilMayPass: v } })} aria-label={`${id} council may pass`} />
+                  The runtime may pass it without a person
+                  <Switch checked={triggers[id].councilMayPass} onCheckedChange={(v) => setTriggers({ ...triggers, [id]: { ...triggers[id], councilMayPass: v } })} aria-label={`${id} runtime may pass`} />
                 </label>
               </li>
             ))}
           </ul>
-          <FormField label="How sure every reviewer must be for a council pass (1 to 5)">
+                  <FormField label="Minimum runtime-answer strength for a pass (1 to 5)">
             <Input type="number" min={1} max={5} value={passStrength} onChange={(e) => setPassStrength(Math.min(5, Math.max(1, Number(e.target.value) || 4)))} />
           </FormField>
           {loose.length ? (

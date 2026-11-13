@@ -23,17 +23,15 @@ One commit, from a finished workflow to the PullUp check. ([Back to the overview
    each with exact evidence (lines of the diff, log text). Some first ask the host for a cheap model
    check (a **screen**). No question → **pass**, with no AI call.
    ([Extensions](extensions/README.md))
-7. **The council.** For each question, several AI reviewers ("seats", four by default: test reliability,
-   security, the maintainer of the touched code, release safety) each answer through WithAI
-   ([The WithAI connection](withai-connection.md)):
-   pass, fail or "needs a person", how sure they are (1–5), why, and quotes. A call that fails, takes
-   over 60 seconds or returns the wrong shape counts as "needs a person".
+7. **AskWithAI.** For each question, PullUp sends a bounded, idempotent request to its configured
+   Decision Runtime ([The AskWithAI connection](askwithai-connection.md)). The runtime returns a fixed
+   label, probability, reason, and citations. A failed, synthetic, late, or malformed response counts
+   as "needs a person".
 8. **The quote check.** A quote counts only if it really is in what it names (a changed line, a log).
    A "fail" with no quote that checks out counts as "needs a person".
 9. **The resolution rule**, per question:
-   - any reviewer's "fail" with a valid quote → the question **fails**;
-   - every reviewer says "pass" at least `council.passStrength` sure (default 4), and the question
-     allows the council to pass it → it **passes**;
+   - a "fail" with a valid quote → the question **fails**;
+   - a sufficiently strong "pass", and the question allows the runtime to pass it → it **passes**;
    - otherwise → **ask a person** ([Asking a person](asking-a-person.md)).
 10. **The run's result:** any failed question → fail; any question waiting for a person → waiting;
     otherwise pass. Questions from extensions in Shadow mode are shown but never count.

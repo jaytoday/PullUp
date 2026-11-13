@@ -7,6 +7,7 @@ export * from "./council";
 export * from "./no-answer";
 export * from "./resolution";
 export * from "./withai-council";
+export * from "./askwithai-council";
 export * from "./canonical";
 export * from "./permit";
 export * from "./evidence";

@@ -15,22 +15,22 @@ const Node = forwardRef<HTMLDivElement, { icon: string; label: string; className
 ));
 Node.displayName = "Node";
 
-/** The path of a run: CI → triggers (code) → council (AI) → a person, drawn with Magic UI's animated beams. */
+/** The path of a run: CI → PullUp rules → AskWithAI runtime → a person, drawn with Magic UI's animated beams. */
 export function FlowBeams() {
   const box = useRef<HTMLDivElement>(null);
   const ci = useRef<HTMLDivElement>(null);
   const triggers = useRef<HTMLDivElement>(null);
-  const council = useRef<HTMLDivElement>(null);
+  const runtime = useRef<HTMLDivElement>(null);
   const person = useRef<HTMLDivElement>(null);
   return (
     <div ref={box} className="relative mx-auto flex w-full max-w-2xl items-start justify-between px-2 py-6" data-testid="flow-beams">
       <Node ref={ci} icon="i-lucide-workflow" label="CI finishes" />
       <Node ref={triggers} icon="i-lucide-scan-search" label="Code finds what is tricky" />
-      <Node ref={council} icon="i-lucide-users" label="A council of AI reviewers" className="ring-primary" />
+      <Node ref={runtime} icon="i-lucide-brain" label="AskWithAI runtime" className="ring-primary" />
       <Node ref={person} icon="i-lucide-user-round" label="A person, if still unclear" />
       <AnimatedBeam containerRef={box} fromRef={ci} toRef={triggers} startYOffset={-12} endYOffset={-12} />
-      <AnimatedBeam containerRef={box} fromRef={triggers} toRef={council} startYOffset={-12} endYOffset={-12} delay={0.6} />
-      <AnimatedBeam containerRef={box} fromRef={council} toRef={person} startYOffset={-12} endYOffset={-12} delay={1.2} />
+      <AnimatedBeam containerRef={box} fromRef={triggers} toRef={runtime} startYOffset={-12} endYOffset={-12} delay={0.6} />
+      <AnimatedBeam containerRef={box} fromRef={runtime} toRef={person} startYOffset={-12} endYOffset={-12} delay={1.2} />
     </div>
   );
 }

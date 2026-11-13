@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type ParsedCiRun, parseDiff, type Question } from "@pullup/sdk";
+import { type ParsedCiRun, parseDiff, type Question, type ScreenAnswer } from "@pullup/sdk";
 
 /**
  * The council's answers are never trusted as given. Each seat's answer must
@@ -29,6 +29,8 @@ export interface RawSeatAnswer {
   durationMs?: number;
   /** WithAI's run for this call, so its outcome can be reported once a person decides. */
   runId?: string;
+  /** Decision Runtime receipt metadata, when this answer came from AskWithAI. */
+  platformDecision?: ScreenAnswer["platformDecision"];
 }
 
 /** A seat's answer after the checks; `verdict` is what the resolution rule uses. */
@@ -42,6 +44,7 @@ export interface CheckedSeat {
   problems: string[];
   /** WithAI's run for this seat's call (absent for recorded or failed calls). */
   runId?: string;
+  platformDecision?: RawSeatAnswer["platformDecision"];
 }
 
 /** One seat call per seat viewpoint for one question. Real (WithAI) or recorded. */
@@ -64,7 +67,7 @@ function quoteChecksOut(quote: SeatAnswer["quotes"][number], question: Question,
 }
 
 export function checkSeat(raw: RawSeatAnswer, question: Question, run: ParsedCiRun): CheckedSeat {
-  return { ...checkSeatAnswer(raw, question, run), ...(raw.runId ? { runId: raw.runId } : {}) };
+  return { ...checkSeatAnswer(raw, question, run), ...(raw.runId ? { runId: raw.runId } : {}), ...(raw.platformDecision ? { platformDecision: raw.platformDecision } : {}) };
 }
 
 function checkSeatAnswer(raw: RawSeatAnswer, question: Question, run: ParsedCiRun): Omit<CheckedSeat, "runId"> {

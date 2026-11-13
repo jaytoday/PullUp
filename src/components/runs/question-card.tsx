@@ -6,7 +6,7 @@ const VERDICT = { pass: "success", fail: "error", "needs-person": "warning" } as
 const OUTCOME: Record<string, string> = { pass: "Passed", fail: "Failed", ask: "Needs a person" };
 
 /**
- * One question: what fired, the evidence, each seat's answer with the quotes
+ * One question: what fired, the evidence, the decision answer with the quotes
  * that checked out (and the ones that did not), and who settled it. Never
  * animated: a person reads this before answering.
  */
@@ -50,12 +50,18 @@ export function QuestionCard({ q, ask }: { q: ResolvedQuestion; ask?: AskState }
           {q.seats.map((s) => (
             <div key={s.seat} className="space-y-2 rounded-md bg-muted/60 p-3 text-sm">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-foreground">{s.seat.split(":")[0]}</span>
+                <span className="font-medium text-foreground">{s.platformDecision ? "AskWithAI Decision Runtime" : s.seat.split(":")[0]}</span>
                 <Badge color={VERDICT[s.verdict]} variant="soft" size="sm">
                   {s.verdict} · {s.strength}
                 </Badge>
               </div>
               {s.reason ? <p className="text-body">{s.reason}</p> : null}
+              {s.platformDecision ? (
+                <p className="text-xs text-muted-foreground">
+                  {s.platformDecision.runtime} v{s.platformDecision.version} · decision {s.platformDecision.id} · {s.platformDecision.status}
+                  {s.platformDecision.synthetic ? " · synthetic" : ""} · {s.platformDecision.latencyMs} ms · ${s.platformDecision.costUsd.toFixed(4)}
+                </p>
+              ) : null}
               {s.validQuotes.map((quote, i) => (
                 <blockquote key={i} className="border-s-2 border-success ps-2 font-mono text-xs text-body">
                   {quote.text} <span className="text-muted-foreground">({quote.source}, checks out)</span>

@@ -5,7 +5,8 @@
 ## Running it locally
 
 Needs Node 24 and pnpm. Copy `.env.example` to `.env` and fill it in; the comments there explain each
-value (sign-in secret, permit key, GitHub App, WithAI).
+value (sign-in secret, permit key, GitHub App, AskWithAI runtimes, and temporary legacy human
+notification settings).
 
 ```bash
 pnpm install
@@ -15,9 +16,11 @@ pnpm dev           # http://localhost:3500
 
 After `pnpm seed`, sign in as `owner@example.com` / `pullup-dev-password`.
 
-Without `WITHAI_URL` and `WITHAI_TOKEN`, the council and screens are not available: questions go to a
-person, and screens come back "not checked" (never a pass). The token's scopes and the client copy are
-described in [The WithAI connection](withai-connection.md).
+Without `ASKWITHAI_API_KEY`, `PULLUP_REVIEW_RUNTIME`, and a positive `PULLUP_REVIEW_VERSION`, review calls fail closed to the existing
+person-needed path. Without a separately configured `PULLUP_SCREEN_RUNTIME` and positive `PULLUP_SCREEN_VERSION`, screens come back
+"not checked" and never imply a pass. AskWithAI key scopes and runtime labels are described in [The
+AskWithAI connection](askwithai-connection.md). `WITHAI_URL` and `WITHAI_TOKEN` are only needed for the
+temporary email, phone, or member notification path.
 
 Two operator scripts: `pnpm tsx scripts/finish-run.ts <runId>` settles a run again and re-posts its check
 (after fixing a refused check run); `pnpm tsx scripts/verify-chain.ts <owner/repo>` checks a repository's
@@ -38,7 +41,7 @@ the screens, the extensions' notes, and the result:
 - `--fixture fixtures/<name>.json`: a recorded CI run;
 - `--base main [--jobs jobs.json]`: your current branch's diff against `main`, with the config (and
   extension files) from `main`;
-- `--record answers.json` calls WithAI and saves every answer; `--replay answers.json` reuses them
+- `--record answers.json` saves every answer; `--replay answers.json` reuses them
   with no call;
 - `--only <extension>` runs one extension (repeat for more).
 

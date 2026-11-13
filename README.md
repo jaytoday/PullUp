@@ -1,13 +1,14 @@
 # PullUp
 
-A check on pull requests, built as an app on WithAI's public API.
+A pull-request decision system built on the AskWithAI Decision Runtime platform.
 
 After your CI finishes, PullUp posts one GitHub check called **PullUp**:
 
 1. **Something really broke → fail.** No AI is called.
 2. **Nothing tricky → pass.** No AI is called.
-3. **Something needs judgment → ask.** A few AI reviewers answer a typed question, a fixed rule in code
-   turns their answers into pass, fail or "ask a person", and a person settles the rest.
+3. **Something needs judgment → ask.** A configured AskWithAI runtime answers a typed question with
+   supporting citations. PullUp verifies the evidence, applies its fixed rules, and asks a person when
+   the result is unclear.
 
 Every repository starts in **Shadow mode** (the check never blocks a merge and says what PullUp would
 decide) until the owner makes it Active. What PullUp looks for comes from **extensions** you switch

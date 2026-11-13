@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: { default: "PullUp", template: "%s · PullUp" },
-  description: "A CI check that fails hard failures, passes when nothing is tricky, and asks a council of AI reviewers, then a person, about the rest.",
+  description: "A pull-request decision system built on AskWithAI. PullUp collects software-engineering context, verifies evidence and controls GitHub checks.",
 };
 
 export const viewport: Viewport = {

@@ -6,7 +6,7 @@ Reads `CODEOWNERS` (`.github/CODEOWNERS`, `CODEOWNERS` or `docs/CODEOWNERS`, as 
 default branch. For each question, it asks the owners of the files the question's evidence points at,
 instead of the one person in `ask.to`. The last matching line wins, as on GitHub.
 
-GitHub logins and teams are mapped to people PullUp can reach through WithAI:
+GitHub logins and teams are mapped to people PullUp can reach through its temporary legacy WithAI notification service:
 
 ```json
 "codeowners": { "mode": "active", "people": { "@alice": "alice@example.com", "@acme/payments": "payments@example.com" }, "maxPeople": 2 }

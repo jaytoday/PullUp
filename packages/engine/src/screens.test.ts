@@ -1,10 +1,11 @@
 import { ciRunSchema } from "@pullup/sdk";
+import { AskWithAI } from "@askwithai/client";
 import type { ApplyInput, ApplyResult } from "@withai/client";
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "./config";
 import type { RawSeatAnswer } from "./council";
 import { decideRun } from "./resolution";
-import { askScreens, checkScreen, type PlannedScreen, recordingScreener, replayScreener, type Screener, withaiScreener } from "./screens";
+import { askScreens, askWithAIScreener, checkScreen, type PlannedScreen, recordingScreener, replayScreener, type Screener, withaiScreener } from "./screens";
 import { fixedCouncil } from "./testing";
 import type { Recording } from "./withai-council";
 
@@ -117,5 +118,25 @@ describe("the WithAI screener", () => {
       },
     };
     expect((await withaiScreener({ client, skill: { text: "g" } })(screen, run)).error).toBe("WithAI did not answer in time");
+  });
+});
+
+describe("the AskWithAI screener", () => {
+  it("maps the runtime's fixed option label to a screen result and keeps citations for PullUp verification", async () => {
+    let body: Record<string, unknown> = {};
+    const client = new AskWithAI({ apiKey: "test", fetch: async (_url, init) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({
+        id: "screen-decision", object: "decision", runtime: "owner/screens", version: 2, status: "decided",
+        decisions: { screen: { answer: "option_1", final: true, answeredBy: "fast", probability: 0.91 } },
+        costUsd: 0.002, latencyMs: 30, synthetic: false,
+        receipt: { questions: { screen: { reason: "Found debugging output.", citations: [{ quote: "console.log(total);", source: "diff" }], warnings: [] } } },
+      });
+    } });
+    const answer = await askWithAIScreener({ client, runtime: "owner/screens", version: 2, answerKey: "screen" })(screen, run);
+    expect(answer.answer).toMatchObject({ result: "yes", confidence: 0.91, quotes: [{ text: "console.log(total);" }] });
+    expect(answer.platformDecision).toMatchObject({ id: "screen-decision", version: 2, questionKey: "screen" });
+    expect(body).toMatchObject({ input: { allowedResults: [{ label: "option_1", result: "yes" }, { label: "option_2", result: "no" }] }, version: 2 });
+    expect(checkScreen(answer, screen, run).status).toBe("answered");
   });
 });

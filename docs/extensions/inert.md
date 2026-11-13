@@ -25,7 +25,7 @@ PullUp tries to **disprove** the claim:
    and shared with other extensions as a fact.
 
 By default the result changes nothing else. With `relaxSensitiveWhenInert` on (a loosening), a verified
-change lets the council pass the core sensitive-path question alone. With `askWhenDisproved` on, a
+change lets the AskWithAI runtime pass the core sensitive-path question alone. With `askWhenDisproved` on, a
 disproved claim asks a person.
 
 **Turning a flag on** (an "on" line added in a flag file, or any change to a rollout file) is always a
