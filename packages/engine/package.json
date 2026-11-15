@@ -2,26 +2,21 @@
   "name": "@pullup/engine",
   "version": "0.1.0",
   "private": true,
-  "description": "PullUp's pure engine: config, the hard-failure rule, triggers, questions, the resolution rule and the no-answer rule. No network, no database.",
+  "description": "PullUp's pure engine: CI types, the config, the hard-failure rule, the three concern detectors, the quote check, the fixed policy, the check run text, permits and the tamper-evident record. No network, no database.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./testing": "./src/testing.ts",
-    "./config": "./src/config.ts",
-    "./stored": "./src/stored.ts"
+    "./config": "./src/config.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "4.4.3",
-    "@pullup/sdk": "workspace:*",
-    "@pullup/extensions": "workspace:*",
-    "@withai/client": "workspace:*",
-    "@askwithai/client": "workspace:*"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "25.9.1",

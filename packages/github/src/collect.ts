@@ -1,12 +1,13 @@
-import { type Attempt, type CiRun, type Conclusion, type Config, fileRequests, type Job, type ReadFile } from "@pullup/engine";
+import type { Attempt, CiRun, Conclusion, Config, Job } from "@pullup/engine";
 import { type GitHubApi, type JobInfo, REPORTS_ARTIFACT, type WorkflowRunInfo } from "./api";
 import { junitFailures } from "./junit";
 
 /**
  * Collect one commit's CI results once every required workflow has finished:
  * each job's attempts (a rerun is a later attempt), the end of each failed
- * attempt's log, the pull request's diff, title, body and labels, and the
- * files the enabled extensions asked to read. `force` collects what is there
+ * attempt's log, and the pull request's diff, title, body and labels. Files
+ * are not collected up front: the agent reads the ones it needs (`read_file`).
+ * `force` collects what is there
  * after the wait ran out; a required workflow that never ran is then simply
  * absent, which the hard-failure rule fails ("nothing checked is not a pass").
  */
@@ -16,8 +17,6 @@ export type Collected =
       state: "ready";
       run: CiRun;
       notes: string[];
-      /** Which file reads failed (the files from that side are missing from the run). */
-      readFailed: ("default" | "head")[];
       /** Required workflow runs on their first attempt with a failed job: what a rerun would cover. */
       rerunnable: number[];
     }
@@ -76,26 +75,6 @@ export async function collectRun(api: GitHubApi, input: { repo: string; headSha:
   if (!readReports) notes.push(`No ${REPORTS_ARTIFACT} artifact with JUnit reports: failing test names are unknown, so a failure that was not rerun counts as hard and the known-flaky list cannot match.`);
   const diff = pull === null ? "" : await api.pullDiff(repo, pull);
   const pullInfo = pull === null ? null : await api.pullInfo(repo, pull).catch(() => null);
-  if (pull !== null && !pullInfo) notes.push("Could not read the pull request's title, body and labels; extensions that use them saw none.");
-  const readFailed: ("default" | "head")[] = [];
-  const files = await readExtensionFiles(api, repo, headSha, config, notes, readFailed);
-  return { state: "ready", run: { repo, headSha, jobs, diff, pull: pullInfo, files }, notes, readFailed, rerunnable };
-}
-
-/** Every file the enabled extensions asked for, one read per side (default branch, head commit). A failed read is a note: the files are "no data". */
-async function readExtensionFiles(api: GitHubApi, repo: string, headSha: string, config: Config, notes: string[], failed: ("default" | "head")[]): Promise<ReadFile[]> {
-  const requests = fileRequests(config);
-  const files: ReadFile[] = [];
-  for (const from of ["default", "head"] as const) {
-    const globs = [...new Set(requests.filter((r) => r.from === from).flatMap((r) => r.globs))];
-    if (!globs.length) continue;
-    try {
-      const read = await api.readFiles(repo, from === "default" ? { defaultBranch: true } : { sha: headSha }, globs);
-      files.push(...read.map((f) => ({ ...f, from })));
-    } catch (err) {
-      failed.push(from);
-      notes.push(`Could not read the files extensions asked for on the ${from === "default" ? "default branch" : "head commit"} (${(err as Error).message}); those checks had no data.`);
-    }
-  }
-  return files;
+  if (pull !== null && !pullInfo) notes.push("Could not read the pull request's title, body and labels.");
+  return { state: "ready", run: { repo, headSha, jobs, diff, pull: pullInfo }, notes, rerunnable };
 }

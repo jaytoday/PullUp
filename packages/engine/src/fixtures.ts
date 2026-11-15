@@ -1,19 +1,18 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { ciRunSchema, type ParsedCiRun } from "@pullup/sdk";
-import { configSchema, type Config } from "./config";
+import { ciRunSchema, type ParsedCiRun } from "./ci";
+import { CONCERNS, configSchema, type Config } from "./config";
 
 /**
- * Recorded CI results and diffs for offline tests and `pullup check --fixture`.
- * Each file holds the repo's config, the collected run and what should happen.
+ * Recorded CI results and diffs for offline tests. Each file holds the
+ * repository's config, the collected run and what should happen.
  */
 const fixtureSchema = z.object({
   description: z.string(),
   config: configSchema,
   run: ciRunSchema,
-  /** `questions`: the ids of the questions raised, in order (`core:flaky-test`). */
-  expect: z.object({ hardFailure: z.boolean(), questions: z.array(z.string()) }),
+  expect: z.object({ hardFailure: z.boolean(), concerns: z.array(z.enum(CONCERNS)) }),
 });
 
 export interface Fixture {

@@ -1,12 +1,12 @@
 // Evidence: an append-only record of every run, from collection to what was
 // sent to GitHub. Each row stores the hash of the row before it in the same
 // scope (one scope per repository), so editing or deleting a row shows when
-// the chain is walked. Copied from code/pullup packages/control/src/evidence.ts
-// (commit a399ffc), with PullUp's own kinds.
+// the chain is walked. Copied from jaytoday/PullUp@a399ffc:packages/control/src/evidence.ts
+// with PullUp's own kinds.
 
 import { canonicalJson, sha256 } from "./canonical";
 
-export type EvidenceKind = "collected" | "decided" | "permit-issued" | "sent" | "blocked" | "asked" | "answered";
+export type EvidenceKind = "collected" | "decided" | "assessed" | "permit-issued" | "sent" | "blocked" | "answered" | "outcome";
 
 export interface EvidenceRow {
   readonly scope: string;

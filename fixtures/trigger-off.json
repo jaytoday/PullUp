@@ -9,14 +9,12 @@
         "checkout.spec.ts > shows confirmation"
       ]
     },
-    "triggers": {
-      "flaky-test": {
-        "enabled": false
-      }
+    "concerns": {
+      "flaky_retry": false
     },
-    "ask": {
-      "to": "jaytoday-test"
-    }
+    "reviewers": [
+      "jaytoday-test"
+    ]
   },
   "run": {
     "repo": "acme/shop",
@@ -43,6 +41,6 @@
   },
   "expect": {
     "hardFailure": false,
-    "questions": []
+    "concerns": []
   }
 }

@@ -1,5 +1,5 @@
 // Deterministic JSON (sorted keys) and hashing: the basis of permit signatures
-// and the evidence chain. Copied from code/pullup packages/control/src/canonical.ts (commit a399ffc).
+// and the evidence chain. Copied from jaytoday/PullUp@a399ffc:packages/control/src/canonical.ts.
 
 import { createHash } from "node:crypto";
 

@@ -1,5 +1,5 @@
 import type { Config } from "./config";
-import { attemptPassed as passed, type Job, type ParsedCiRun } from "@pullup/sdk";
+import { attemptPassed as passed, type Job, type ParsedCiRun } from "./ci";
 
 /**
  * Rule 1 of the flow: a hard failure always fails the run, with no AI call.

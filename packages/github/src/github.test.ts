@@ -7,9 +7,9 @@ import { FakeGitHub } from "./fake";
 import { sendCheckRun, type SenderDeps } from "./send";
 import { verifyWebhookSignature } from "./webhook";
 import { junitFailures } from "./junit";
-import { findHardFailures, findQuestions } from "@pullup/engine";
+import { ciRunSchema, detectConcerns, findHardFailures } from "@pullup/engine";
 
-const config = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a@example.com" } });
+const config = parseConfig({ requiredWorkflows: ["ci"] });
 const repo = "acme/shop";
 
 function github() {
@@ -41,43 +41,20 @@ describe("collecting a commit's CI", () => {
 
   it("when forced, decides without a workflow that never ran and says so", async () => {
     const gh = github();
-    const got = await collectRun(gh, { repo, headSha: "s1", pull: null, config: parseConfig({ requiredWorkflows: ["ci", "e2e"], ask: { to: "a" } }), force: true });
+    const got = await collectRun(gh, { repo, headSha: "s1", pull: null, config: parseConfig({ requiredWorkflows: ["ci", "e2e"] }), force: true });
     if (got.state !== "ready") throw new Error("not ready");
     expect(got.run.jobs.every((j) => j.workflow === "ci")).toBe(true);
     expect(got.notes.join(" ")).toContain("Not finished when PullUp decided: e2e");
     expect(gh.calls).not.toContain("pullDiff");
   });
 
-  it("reads the pull request's details and the files enabled extensions ask for, from the default branch and the head commit", async () => {
+  it("reads the pull request's details and never reads files up front (the agent reads what it needs)", async () => {
     const gh = github();
-    gh.pulls.set(`${repo}#7`, { number: 7, title: "Faster checkout", body: "PullUp-Inert: flag=newCheckout", labels: ["pullup:inert"], author: "alice" });
-    gh.files.set(repo, { "THREATS.md": "default model", ".github/CODEOWNERS": "* @alice", "src/a.ts": "x" });
-    gh.files.set(`${repo}@s1`, { "THREATS.md": "head model" });
-    const withExtensions = parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a" }, extensions: { "threat-model": {}, codeowners: {} } });
-    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: withExtensions });
+    gh.pulls.set(`${repo}#7`, { number: 7, title: "Faster checkout", body: "Moves the cart to a worker.", labels: ["perf"], author: "alice" });
+    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config });
     if (got.state !== "ready") throw new Error("not ready");
-    expect(got.run.pull).toEqual({ number: 7, title: "Faster checkout", body: "PullUp-Inert: flag=newCheckout", labels: ["pullup:inert"], author: "alice" });
-    expect(got.run.files).toEqual([
-      { path: "THREATS.md", text: "default model", from: "default" },
-      { path: ".github/CODEOWNERS", text: "* @alice", from: "default" },
-      { path: "THREATS.md", text: "head model", from: "head" },
-    ]);
-    // With only core on, nothing extra is read.
-    const plain = new FakeGitHub();
-    Object.assign(plain, { runs: gh.runs, jobsByAttempt: gh.jobsByAttempt });
-    await collectRun(plain, { repo, headSha: "s1", pull: null, config });
-    expect(plain.calls).not.toContain("readFiles");
-  });
-
-  it("a failed file read is a note, and the files are left out (no data, never a pass)", async () => {
-    const gh = github();
-    gh.readFiles = async () => {
-      throw new Error("rate limited");
-    };
-    const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: parseConfig({ requiredWorkflows: ["ci"], ask: { to: "a" }, extensions: { "threat-model": {} } }) });
-    if (got.state !== "ready") throw new Error("not ready");
-    expect(got.run.files).toEqual([]);
-    expect(got.notes.join(" ")).toContain("Could not read the files extensions asked for on the default branch (rate limited)");
+    expect(got.run.pull).toEqual({ number: 7, title: "Faster checkout", body: "Moves the cart to a worker.", labels: ["perf"], author: "alice" });
+    expect(gh.calls).not.toContain("readFiles");
   });
 
   it("trims GitHub's timestamps and keeps the end of a log", () => {
@@ -104,13 +81,13 @@ describe("test reports", () => {
     const gh = github();
     gh.runs[0]!.runAttempt = 1;
     gh.reportFiles.set(10, new Map([["junit.xml", XML.replace(/<testcase classname="cart.test.ts" name="adds[\s\S]*?<\/testcase>/, "")]]));
-    const known = parseConfig({ requiredWorkflows: ["ci"], flaky: { knownTests: ["checkout.spec.ts > shows confirmation"] }, ask: { to: "a" } });
+    const known = parseConfig({ requiredWorkflows: ["ci"], flaky: { knownTests: ["checkout.spec.ts > shows confirmation"] } });
     const got = await collectRun(gh, { repo, headSha: "s1", pull: 7, config: known });
     if (got.state !== "ready") throw new Error("not ready");
-    const run = { ...got.run, diff: got.run.diff ?? "" } as Parameters<typeof findHardFailures>[0];
+    const run = ciRunSchema.parse(got.run);
     expect(run.jobs.find((j) => j.name === "test")!.attempts[0]!.failedTests).toEqual(["checkout.spec.ts > shows confirmation"]);
     expect(findHardFailures(run, known)).toEqual([]);
-    expect(findQuestions(run, known).map((q) => q.id)).toEqual(["core:flaky-test"]);
+    expect(detectConcerns(run, known).map((c) => c.concern)).toEqual(["flaky_retry"]);
     expect(got.notes.join(" ")).not.toContain("pullup-reports");
     expect(got.rerunnable).toEqual([10]);
   });

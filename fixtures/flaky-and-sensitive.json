@@ -9,9 +9,9 @@
         "checkout.spec.ts > shows confirmation"
       ]
     },
-    "ask": {
-      "to": "jaytoday-test"
-    }
+    "reviewers": [
+      "jaytoday-test"
+    ]
   },
   "run": {
     "repo": "acme/shop",
@@ -38,9 +38,9 @@
   },
   "expect": {
     "hardFailure": false,
-    "questions": [
-      "core:flaky-test",
-      "core:sensitive-path"
+    "concerns": [
+      "flaky_retry",
+      "sensitive_change"
     ]
   }
 }

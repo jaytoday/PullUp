@@ -35,7 +35,7 @@ export interface CheckRunCall {
   detailsUrl?: string;
   /** Buttons on the check run (GitHub "requested actions"); pressing one sends a `check_run` webhook. */
   actions?: { label: string; identifier: string; description: string }[];
-  /** File and line findings from extensions, at most 50 (GitHub's limit per call). */
+  /** File and line findings, at most 50 (GitHub's limit per call). */
   annotations?: { path: string; line: number; level: "notice" | "warning" | "failure"; message: string }[];
 }
 
@@ -68,12 +68,12 @@ export interface GitHubApi {
   rerunFailedJobs(call: RerunCall): Promise<number>;
   /** "admin", "write", "read" or "none". */
   permission(repo: string, login: string): Promise<string>;
-  /** The pull request's title, body, labels and author, for extensions. */
+  /** The pull request's title, body, labels and author. */
   pullInfo(repo: string, pull: number): Promise<PullInfo>;
   /**
    * Text files matching any of `globs` at `ref` (the default branch, or a commit),
    * at most `READ_LIMITS.files` files of `READ_LIMITS.fileBytes` each. Larger or
-   * binary files are left out (to an extension, "no data").
+   * binary files are left out (the agent sees "no data").
    */
   readFiles(repo: string, ref: { defaultBranch: true } | { sha: string }, globs: string[]): Promise<{ path: string; text: string }[]>;
 }

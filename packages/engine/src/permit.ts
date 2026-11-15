@@ -1,7 +1,7 @@
 // Permits: every GitHub call PullUp makes needs one. A permit is an
 // HMAC-signed, single-use, short-lived record naming the exact call (by hash);
-// the sender re-checks it right before acting. Adapted from code/pullup
-// packages/control/src/permit.ts (commit a399ffc), trimmed to what PullUp sends.
+// the sender re-checks it right before acting. Adapted from
+// jaytoday/PullUp@a399ffc:packages/control/src/permit.ts, trimmed to what PullUp sends.
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { canonicalJson, sha256 } from "./canonical";
