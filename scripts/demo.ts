@@ -74,6 +74,11 @@ async function main() {
     `Replay (simulated): accuracy ${replay.baseline.accuracy ?? "n/a"} -> ${replay.candidate.accuracy ?? "n/a"}, escalation ${replay.baseline.escalationShare ?? "n/a"} -> ${replay.candidate.escalationShare ?? "n/a"}, cost/1k $${replay.baseline.costPer1000Usd ?? 0} -> $${replay.candidate.costPer1000Usd ?? 0}.`,
   );
   for (const n of replay.notes) console.log(`  note: ${n}`);
+  for (let i = 0; i < 30; i++) {
+    const chk = await client.check(runtime, files);
+    if (chk.passed || !chk.gates.some((g) => /Run a benchmark|no usable benchmark/i.test(g.detail))) break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
   try {
     await client.request("POST", `/v1/runtimes/${runtime}/versions/${pushed.version.number}/promote`, {});
     console.log(`Promoted version ${pushed.version.number}.`);
