@@ -43,6 +43,10 @@ describe("decideRun", () => {
     expect(decideRun([], [risky(true)], "enforce").result).toBe("fail");
     expect(decideRun([], [risky(false)], "enforce")).toMatchObject({ result: "waiting", concerns: [{ outcome: "waiting", reason: /no quote checked out/ }] });
   });
+  it("a person's risky fails without a quote", () => {
+    expect(decideRun([], [assessment("sensitive_change", { answer: "risky", answeredBy: "person" })], "enforce").result).toBe("fail");
+    expect(decideRun([], [assessment("sensitive_change", { answer: "risky", answeredBy: "person:sam" })], "enforce").result).toBe("fail");
+  });
   it("pending reviews, missing facts and failed calls wait; fail beats waiting", () => {
     expect(decideRun([], [assessment("flaky_retry", { status: "pending_review", final: false })], "enforce").result).toBe("waiting");
     expect(decideRun([], [assessment("flaky_retry", { status: "input_required", final: false, answer: null })], "enforce").result).toBe("waiting");

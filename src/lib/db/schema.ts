@@ -1,10 +1,16 @@
 export * from "./auth-schema";
+import type { Assessment, CheckMode, ConcernCase, HardFailure } from "@pullup/engine";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-/** Repositories PullUp has seen (created on the first webhook). `mode` is shadow until the owner turns it active. */
+/**
+ * Repositories PullUp has seen. `checkMode` starts as Report only (the check
+ * never blocks a merge) until the owner switches it to Enforce.
+ */
 export const repos = sqliteTable("repos", {
   fullName: text("full_name").primaryKey(),
-  mode: text("mode", { enum: ["shadow", "active"] }).notNull().default("shadow"),
+  checkMode: text("check_mode", { enum: ["report_only", "enforce"] }).$type<CheckMode>().notNull().default("report_only"),
+  /** Set for the demo repository fed by the synthetic generator. */
+  synthetic: integer("synthetic", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
@@ -16,31 +22,64 @@ export const runs = sqliteTable(
     repo: text("repo").notNull(),
     headSha: text("head_sha").notNull(),
     pull: integer("pull"),
-    /** collecting → decided (pass / fail) or waiting (for a person); error when it could not be decided. */
+    title: text("title").notNull().default(""),
+    /** collecting → decided, or waiting (for a person or a fact); error when it could not be decided. */
     state: text("state", { enum: ["collecting", "decided", "waiting", "error"] }).notNull(),
     result: text("result", { enum: ["pass", "fail", "waiting"] }),
-    /** Why the run ended as it did, after any person's answer or no-answer option. */
     reason: text("reason"),
-    mode: text("mode", { enum: ["shadow", "active"] }).notNull(),
-    /** The engine's full decision (questions, seats, quotes), as JSON. */
-    decision: text("decision", { mode: "json" }),
-    /** The config used for the decision (read from the default branch then), so later answers and deadlines use the same rules. */
+    checkMode: text("check_mode", { enum: ["report_only", "enforce"] }).$type<CheckMode>().notNull().default("report_only"),
+    /** Which provider answered (`PULLUP_DECIDER`) and which agent harness ran. */
+    decider: text("decider"),
+    harness: text("harness"),
+    hardFailures: text("hard_failures", { mode: "json" }).$type<HardFailure[]>().notNull().default([]),
+    concerns: text("concerns", { mode: "json" }).$type<ConcernCase[]>().notNull().default([]),
+    /** The agent's tool calls, for the run page. */
+    agentSteps: text("agent_steps", { mode: "json" }).$type<Array<{ tool: string; summary: string; at: string }>>().notNull().default([]),
+    /** Jobs and attempts as collected (no logs), for the run page. */
+    ci: text("ci", { mode: "json" }).$type<Array<{ workflow: string; job: string; attempts: string[] }>>().notNull().default([]),
+    /** The config used for the decision, so later answers use the same rules. */
     config: text("config", { mode: "json" }),
     notes: text("notes", { mode: "json" }).$type<string[]>().notNull().default([]),
-    pending: text("pending", { mode: "json" }).$type<string[]>().notNull().default([]),
-    councilCalls: integer("council_calls").notNull().default(0),
-    costUsd: real("cost_usd").notNull().default(0),
+    costUsd: real("cost_usd"),
+    synthetic: integer("synthetic", { mode: "boolean" }).notNull().default(false),
     error: text("error"),
-    /** What happened to the check run: sent, or why not. */
     checkRun: text("check_run", { mode: "json" }),
     firstSeenAt: integer("first_seen_at", { mode: "timestamp_ms" }).notNull(),
     decidedAt: integer("decided_at", { mode: "timestamp_ms" }),
-    /** PullUp asked GitHub to rerun failed jobs for this commit (at most once). */
     rerunRequested: integer("rerun_requested", { mode: "boolean" }).notNull().default(false),
-    /** While set and in the future, one worker owns this run. */
+    /** Outcome facts: when the pull request merged, and whether it was reverted. */
+    mergedAt: integer("merged_at", { mode: "timestamp_ms" }),
+    revertedAt: integer("reverted_at", { mode: "timestamp_ms" }),
     lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),
   },
-  (t) => [uniqueIndex("runs_repo_sha").on(t.repo, t.headSha), index("runs_state").on(t.state)],
+  (t) => [uniqueIndex("runs_repo_sha").on(t.repo, t.headSha), index("runs_state").on(t.state), index("runs_pull").on(t.repo, t.pull)],
+);
+
+/** One assessment per flagged concern of a run: the typed answer and what became of it. */
+export const assessments = sqliteTable(
+  "assessments",
+  {
+    runId: text("run_id").notNull(),
+    concern: text("concern").$type<Assessment["concern"]>().notNull(),
+    provider: text("provider").notNull(),
+    status: text("status").$type<Assessment["status"]>().notNull(),
+    answer: text("answer").$type<Assessment["answer"]>(),
+    final: integer("final", { mode: "boolean" }).notNull(),
+    probability: real("probability"),
+    citations: text("citations", { mode: "json" }).$type<Assessment["citations"]>().notNull().default([]),
+    verified: text("verified", { mode: "json" }).$type<Assessment["verified"]>().notNull().default([]),
+    synthetic: integer("synthetic", { mode: "boolean" }).notNull().default(false),
+    decisionId: text("decision_id"),
+    costUsd: real("cost_usd"),
+    answeredBy: text("answered_by"),
+    error: text("error"),
+    inputRequest: text("input_request", { mode: "json" }).$type<{ field: string; question: string; expectedVersion: number } | null>(),
+    /** The real outcome reported for this decision, and where it came from. */
+    outcome: text("outcome", { enum: ["risky", "safe"] }),
+    outcomeSource: text("outcome_source"),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.runId, t.concern] }), index("assessments_decision").on(t.decisionId)],
 );
 
 /** GitHub delivery ids already handled, so a redelivered webhook does nothing twice. */
@@ -50,7 +89,7 @@ export const deliveries = sqliteTable("deliveries", {
   receivedAt: integer("received_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-/** The hash-chained evidence record, one chain per repository. */
+/** The hash-chained record, one chain per repository. */
 export const evidence = sqliteTable(
   "evidence",
   {
@@ -77,21 +116,3 @@ export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).notNull(),
 });
-
-/** One person-ask per open question of a run: the engine's ask state and the WithAI questions sent for it. */
-export const asks = sqliteTable(
-  "asks",
-  {
-    runId: text("run_id").notNull(),
-    questionId: text("question_id").notNull(),
-    /** The engine's `AskState`. */
-    state: text("state", { mode: "json" }).notNull(),
-    /** WithAI questions sent, newest last: `{ id, to, open }`. */
-    withai: text("withai", { mode: "json" }).$type<{ id: string; to: string; open: boolean }[]>().notNull().default([]),
-    open: integer("open", { mode: "boolean" }).notNull().default(true),
-    /** Bumped on every change of `state`, so two writers (an answer and the worker's clock) cannot overwrite each other. */
-    version: integer("version").notNull().default(0),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-  },
-  (t) => [primaryKey({ columns: [t.runId, t.questionId] }), index("asks_open").on(t.open)],
-);

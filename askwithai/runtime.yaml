@@ -1,0 +1,109 @@
+# PullUp's decision runtime: "is this concern safe to merge?"
+# The domain knowledge lives here and in rubrics/, reviewed like code.
+# Push with: npx askwithai push askwithai --runtime <owner>/ci-review
+apiVersion: withai/v1
+kind: DecisionRuntime
+metadata:
+  slug: ci-review
+  name: PullUp CI review
+  description: Judges one CI concern (a flaky retry, deleted or weakened tests, a sensitive change) as risky or safe to merge.
+spec:
+  inputSchema:
+    type: object
+    required: [concern, repository, headSha, evidence, blastRadius]
+    properties:
+      concern:
+        type: string
+        enum: [flaky_retry, deleted_tests, sensitive_change]
+        retainForRouting: true
+      repository: { type: string }
+      headSha: { type: string }
+      title: { type: string }
+      body: { type: string }
+      evidence:
+        type: array
+        maxItems: 12
+        items:
+          type: object
+          required: [source, where, text]
+          properties:
+            source: { type: string, enum: [diff, log] }
+            where: { type: string }
+            text: { type: string }
+      blastRadius:
+        type: integer
+        minimum: 0
+        description: Changed lines in sensitive paths (sign-in, payments, migrations, CI config), capped at 500.
+        retainForRouting: true
+      diffTruncated: { type: boolean }
+      known_flaky:
+        type: boolean
+        description: Whether the failing test is on the repository's known-flaky list (PullUp answers this when asked).
+  examplePayload:
+    concern: sensitive_change
+    repository: acme/shop
+    headSha: c0ffee1
+    title: Keep people signed in longer
+    body: Users asked to stay signed in.
+    evidence:
+      - { source: diff, where: "src/auth/session.ts:1", text: "const SESSION_TTL_SECONDS = 86400 * 30;" }
+    blastRadius: 2
+    diffTruncated: false
+  redactPaths: []
+  questions:
+    - key: merge_risk
+      type: binary
+      prompt: Is this change risky to merge, given the concern and its evidence?
+      labels: [risky, safe]
+      labelDescriptions:
+        risky: The concern points at a real problem that a reviewer should block or look at before merging.
+        safe: The concern is explained by something harmless (the test environment, a removed feature, logging or an easily undone change).
+  rubrics:
+    fast: rubrics/fast.md
+    reasoning: rubrics/reasoning.md
+    references: []
+  # Answering "safe" when the truth is "risky" costs a bad merge, more for bigger
+  # sensitive changes; answering "risky" when it is safe costs a developer's time.
+  costMatrix:
+    merge_risk:
+      safe:
+        risky: { formula: "25 + 2 * blastRadius", fallback: 25 }
+      risky:
+        safe: 4
+  rules: []
+  tiers:
+    - { kind: fast, id: fast, provider: jev, model: jev-1.13.0, costUsd: 0.00006, expectedDelayMs: 150 }
+    - { kind: reasoning, id: reasoning, provider: google, model: gemini-3.1-pro-preview, costUsd: 0.018, expectedDelayMs: 2500, priorAccuracy: 0.92 }
+    - { kind: person, id: reviewers, costUsd: 3, expectedDelayMs: 3600000, assumedAccuracy: 0.99, reviewDeadlineSeconds: 14400, onTimeout: fallback_label, fallbackLabel: risky }
+  band:
+    merge_risk: { low: 0.15, high: 0.85 }
+  inputFields:
+    known_flaky:
+      question: Is the failing test on the repository's known-flaky list?
+      schema: { type: boolean }
+  privacy:
+    # Inputs are kept so decisions can be replayed and learned from (see docs/adopting-askwithai.md).
+    retainInputs: true
+    outcomeWindowDays: 7
+    unreportedAfterWindow: unlabeled
+  shadow:
+    enabled: true
+    rules: [{ lossNowGte: 10, rate: 0.1 }]
+    defaultRate: 0.01
+    dailyCapUsd: 2
+  limits:
+    maxLatencyMs: 8000
+    maxEscalationRate: 0.4
+    maxCostPerDecisionUsd: 0.5
+    spendCapUsdPerDay: 5
+  # Outcomes without code: labeling the original pull request "pullup:reverted"
+  # marks every decision for its head commit risky (PullUp uses the head commit
+  # as the trace id). PullUp also reports merges and reverts itself.
+  connectors:
+    - id: github-reverts
+      kind: github
+      events:
+        - type: pull_request.labeled
+          when: { path: "$.label.name", equals: "pullup:reverted" }
+          decision: { path: "$.pull_request.head.sha", by: traceId }
+          labels: { merge_risk: risky }

@@ -11,3 +11,4 @@ export * from "./check-run";
 export * from "./canonical";
 export * from "./permit";
 export * from "./evidence";
+export * from "./assess-input";

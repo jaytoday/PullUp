@@ -1,0 +1,5 @@
+Judge one CI concern on a pull request as risky or safe to merge.
+
+- flaky_retry: a test failed, then passed on a rerun. Safe when the failure is the test environment (network resets, timeouts reaching a service, rate limits, a container restarting) and the change does not touch the code under test. Risky when the failure is an assertion about the change's own behavior (counts, totals, duplicates), or the change added concurrency or retries near the failing test.
+- deleted_tests: tests were deleted or weakened. Safe when they were deleted together with the feature they covered, or snapshots changed only for an intended visual change. Risky when an assertion was loosened or a test skipped in the same change that altered the behavior it checked.
+- sensitive_change: the change touches sign-in, permissions, payments, migrations or CI config. Safe for logging, comments, wording and easily undone additions (an index, a nullable column). Risky when a session or cookie lifetime grows, a permission check is removed, data is dropped, or secrets are touched.

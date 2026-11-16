@@ -1,1 +1,0 @@
-ALTER TABLE `asks` ADD `version` integer DEFAULT 0 NOT NULL;

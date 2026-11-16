@@ -1,4 +1,4 @@
-// Better Auth's tables (sign-in). Copied from code/theory src/lib/db/schema/auth.ts, without two-factor sign-in.
+// Better Auth's tables (sign-in), without two-factor sign-in.
 import { relations, sql } from "drizzle-orm";
 import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 

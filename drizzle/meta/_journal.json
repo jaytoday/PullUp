@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1793817598575,
-      "tag": "0000_blue_james_howlett",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1793817954519,
-      "tag": "0001_blue_scream",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1793818239218,
-      "tag": "0002_outstanding_the_renegades",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1793818609733,
-      "tag": "0003_sloppy_wraith",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1793819337552,
-      "tag": "0004_tense_kang",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1793819378593,
-      "tag": "0005_white_whiplash",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1793842534293,
-      "tag": "0006_extension_question_ids",
+      "when": 1794787305477,
+      "tag": "0000_init",
       "breakpoints": true
     }
   ]

@@ -7,7 +7,8 @@ import type { Citation } from "./quotes";
  * the typed answers only, never from the agent's text:
  *
  * - a hard failure fails the run with no model call;
- * - `risky` with a quote that checks out fails the concern;
+ * - `risky` with a quote that checks out fails the concern, and so does a
+ *   person's `risky` (a person needs no quote);
  * - `safe` passes it;
  * - anything else waits for a person: a person review that is still open, a
  *   missing fact, `risky` with no checked quote, a failed call, or (in
@@ -43,6 +44,9 @@ export interface Assessment {
   error: string | null;
 }
 
+/** AskWithAI marks a settled review "person"; PullUp marks a GitHub answer "person:<login>". */
+export const isPerson = (answeredBy: string | null) => answeredBy === "person" || !!answeredBy?.startsWith("person:");
+
 export type ConcernOutcome = "pass" | "fail" | "waiting";
 export type RunResult = "pass" | "fail" | "waiting";
 
@@ -51,6 +55,7 @@ export function concernOutcome(a: Assessment, mode: CheckMode): { outcome: Conce
   if (!a.final) return { outcome: "waiting", reason: a.status === "input_required" ? "Waiting for a missing fact." : "Waiting for a person's review." };
   if (mode === "enforce" && a.synthetic) return { outcome: "waiting", reason: "The answer is simulated; Enforce mode waits for a person." };
   if (a.answer === "safe") return { outcome: "pass", reason: "Judged safe." };
+  if (isPerson(a.answeredBy)) return { outcome: "fail", reason: `A person judged it risky (${a.answeredBy}).` };
   if (a.verified.length) return { outcome: "fail", reason: `Judged risky: "${a.verified[0]!.quote.slice(0, 120)}"` };
   return { outcome: "waiting", reason: "Judged risky, but no quote checked out against the change or logs; a person decides." };
 }
