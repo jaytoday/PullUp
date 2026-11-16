@@ -32,9 +32,9 @@ export function loadGitHub(gh: FakeGitHub, run: CiRun & { pull?: CiRun["pull"] }
       });
       gh.jobsByAttempt.set(`${runId}/${k}`, list);
     }
+    // Every synthetic workflow uploads its test report, as a well-set-up repository does.
     const failed = jobs.flatMap((j) => j.attempts[j.attempts.length - 1]!.failedTests ?? []);
-    const allFailed = jobs.flatMap((j) => j.attempts.flatMap((a) => a.failedTests ?? []));
-    if (allFailed.length) gh.reportFiles.set(runId, new Map([["junit.xml", junit(failed.length ? failed : [])]]));
+    gh.reportFiles.set(runId, new Map([["junit.xml", junit(failed)]]));
   }
   if (pull) {
     gh.diffs.set(`${run.repo}#${pull.number}`, run.diff ?? "");

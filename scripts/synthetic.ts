@@ -54,6 +54,9 @@ const testJob = (attempts: Array<{ conclusion: "success" | "failure"; failedTest
 const AREAS = ["cart", "orders", "search", "profile", "inventory", "checkout", "billing-ui", "reports"];
 const AUTHORS = ["alice", "bao", "carmen", "dev", "eli", "fatima", "gus"];
 
+/** Extra changed lines in the same file, so sensitive changes have realistic sizes (the blast radius). */
+const pad = (r: Rand, lo: number, hi: number) => Array.from({ length: int(r, lo, hi) }, (_, i) => `  settings.step${i} = configure(${i});`);
+
 /** A plain code change outside every sensitive path, so it adds no concern of its own. */
 function routineCode(r: Rand, area: string): string {
   const n = int(r, 2, 40);
@@ -183,7 +186,7 @@ const snapshotRefresh: Template = (r) => {
 
 const authLogging: Template = (r) => {
   const what = pick(r, ['  logger.debug("session refreshed", { userId });', "  // Sessions refresh on every request; see docs/sessions.md.", '  metrics.increment("auth.login.success");']);
-  return { concern: "sensitive_change", label: "safe", hard: false, title: "Add a log line to session refresh", body: "Observability only.", diff: fileDiff("src/auth/session.ts", { added: [what] }), jobs: testJob([ok]), reason: "Logging or a comment in sign-in code; behavior is unchanged." };
+  return { concern: "sensitive_change", label: "safe", hard: false, title: "Add a log line to session refresh", body: "Observability only.", diff: fileDiff("src/auth/session.ts", { added: [what, ...pad(r, 0, 30)] }), jobs: testJob([ok]), reason: "Logging or a comment in sign-in code; behavior is unchanged." };
 };
 
 const sessionLifetime: Template = (r) => {
@@ -194,7 +197,7 @@ const sessionLifetime: Template = (r) => {
     hard: false,
     title: "Keep people signed in longer",
     body: "Users asked to stay signed in.",
-    diff: fileDiff("src/auth/session.ts", { removed: ["const SESSION_TTL_SECONDS = 3600;"], added: [`const SESSION_TTL_SECONDS = 86400 * ${days};`] }),
+    diff: fileDiff("src/auth/session.ts", { removed: ["const SESSION_TTL_SECONDS = 3600;"], added: [`const SESSION_TTL_SECONDS = 86400 * ${days};`, ...pad(r, 20, 160)] }),
     jobs: testJob([ok]),
     reason: "The session lifetime grew from one hour to days: a security change that needs an owner's sign-off.",
   };
@@ -208,7 +211,7 @@ const permissionRemoved: Template = (r) => {
     hard: false,
     title: `Simplify ${area} handler`,
     body: "Cleanup.",
-    diff: fileDiff(`src/permissions/${area}.ts`, { removed: ["  if (!user.isAdmin) throw new ForbiddenError();", "  return handle(req);"], added: ["  return handle(req);"] }),
+    diff: fileDiff(`src/permissions/${area}.ts`, { removed: ["  if (!user.isAdmin) throw new ForbiddenError();", "  return handle(req);"], added: ["  return handle(req);", ...pad(r, 10, 120)] }),
     jobs: testJob([ok]),
     reason: "A permission check was removed.",
   };
@@ -216,13 +219,13 @@ const permissionRemoved: Template = (r) => {
 
 const migrationIndex: Template = (r) => {
   const n = int(r, 10, 99);
-  return { concern: "sensitive_change", label: "safe", hard: false, title: "Index orders by user", body: "Speeds up the orders page.", diff: fileDiff(`db/migrations/00${n}_orders_user_index.sql`, { status: "added", added: ["CREATE INDEX CONCURRENTLY orders_user ON orders(user_id);"] }), jobs: testJob([ok]), reason: "An added index is easy to undo and changes no data." };
+  return { concern: "sensitive_change", label: "safe", hard: false, title: "Index orders by user", body: "Speeds up the orders page.", diff: fileDiff(`db/migrations/00${n}_orders_user_index.sql`, { status: "added", added: ["CREATE INDEX CONCURRENTLY orders_user ON orders(user_id);", ...pad(r, 0, 8).map((l, i) => `-- note ${i}: ${l.trim()}`)] }), jobs: testJob([ok]), reason: "An added index is easy to undo and changes no data." };
 };
 
 const migrationDrop: Template = (r) => {
   const n = int(r, 10, 99);
   const col = pick(r, ["email_verified", "legacy_id", "tax_region"]);
-  return { concern: "sensitive_change", label: "risky", hard: false, title: `Drop ${col}`, body: "Column is unused.", diff: fileDiff(`db/migrations/00${n}_drop_${col}.sql`, { status: "added", added: [`ALTER TABLE users DROP COLUMN ${col};`] }), jobs: testJob([ok]), reason: "Dropping a column destroys data and cannot be rolled back." };
+  return { concern: "sensitive_change", label: "risky", hard: false, title: `Drop ${col}`, body: "Column is unused.", diff: fileDiff(`db/migrations/00${n}_drop_${col}.sql`, { status: "added", added: [`ALTER TABLE users DROP COLUMN ${col};`, ...pad(r, 5, 60).map((l, i) => `-- step ${i}: ${l.trim()}`)] }), jobs: testJob([ok]), reason: "Dropping a column destroys data and cannot be rolled back." };
 };
 
 const quietTtlChange: Template = (r) => {
@@ -233,7 +236,7 @@ const quietTtlChange: Template = (r) => {
     hard: true,
     title: "Refactor session helper",
     body: "No behavior change, just moving constants around.",
-    diff: fileDiff("src/auth/cookies.ts", { removed: ["export const MAX_AGE = 60 * 60;"], added: [`export const MAX_AGE = 60 * 60 * ${hours};`] }),
+    diff: fileDiff("src/auth/cookies.ts", { removed: ["export const MAX_AGE = 60 * 60;"], added: [`export const MAX_AGE = 60 * 60 * ${hours};`, ...pad(r, 30, 250)] }),
     jobs: testJob([ok]),
     reason: "Described as a refactor, but the cookie lifetime grew from one hour.",
   };

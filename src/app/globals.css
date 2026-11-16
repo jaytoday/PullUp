@@ -1,0 +1,20 @@
+/* Astryx and the Cyanotype theme own every design token; this file only sets page-level basics. */
+html,
+body {
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  min-height: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 16px;
+}

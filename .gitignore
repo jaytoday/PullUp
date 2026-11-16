@@ -6,3 +6,6 @@ dist
 .env*.local
 .claude
 tsconfig.tsbuildinfo
+test-results
+playwright-report
+.next-e2e
