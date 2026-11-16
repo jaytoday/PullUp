@@ -62,15 +62,17 @@ async function main() {
   const pending = (await client.listReviews("pending")).data.length;
   console.log(`${pending} review(s) wait in PullUp's /reviews (or AskWithAI's Reviews page).`);
 
-  say("6. Improve: a rubric sentence, and a wider unsure band so more doubtful answers get a second opinion");
+  say("6. Improve: add a rubric note for two false-positive traps");
+  await reportDemoOutcomes({ ...appDeps(), env });
   const files = readPackage("askwithai");
-  files["rubrics/fast.md"] += "\n- A retry described as a \"known issue\" is risky when its log shows a duplicate or lost write.\n";
-  files["runtime.yaml"] = files["runtime.yaml"]!.replace("merge_risk: { low: 0.15, high: 0.85 }", "merge_risk: { low: 0.08, high: 0.92 }");
-  const pushed = await client.push(runtime, files, { note: "Rubric: known-issue retries with duplicate writes are risky; wider unsure band" });
-  console.log("(Demo engines do not read rubric text, so only the band change can move these simulated answers; with real models the rubric sentence matters too.)");
+  files["rubrics/fast.md"] +=
+    "\n- If the log says the test database container was restarting, or the diff only fixes a typo in permission error text, answer safe.\n";
+  const pushed = await client.push(runtime, files, { note: "Rubric: container-restart and permission-typo traps are safe" });
   console.log(`Pushed version ${pushed.version.number} (${pushed.version.status}).`);
   const replay = await client.replay(runtime, pushed.version.number, { against: "live", since: "24h", limit: 100 });
-  console.log(`Replay (simulated): candidate accuracy ${replay.candidate.accuracy ?? "n/a"} vs live ${replay.baseline.accuracy ?? "n/a"}; ${replay.changedCount} case(s) changed.`);
+  console.log(
+    `Replay (simulated): accuracy ${replay.baseline.accuracy ?? "n/a"} -> ${replay.candidate.accuracy ?? "n/a"}, escalation ${replay.baseline.escalationShare ?? "n/a"} -> ${replay.candidate.escalationShare ?? "n/a"}, cost/1k $${replay.baseline.costPer1000Usd ?? 0} -> $${replay.candidate.costPer1000Usd ?? 0}.`,
+  );
   for (const n of replay.notes) console.log(`  note: ${n}`);
   try {
     await client.request("POST", `/v1/runtimes/${runtime}/versions/${pushed.version.number}/promote`, {});
