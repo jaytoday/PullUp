@@ -1,34 +1,22 @@
 # PullUp
 
-A pull-request decision system built on the AskWithAI Decision Runtime platform.
+A CI decision agent built on AskWithAI. After a pull request's CI finishes, PullUp posts one GitHub check called **PullUp**:
 
-After your CI finishes, PullUp posts one GitHub check called **PullUp**:
+1. **Something really broke → fail.** Plain code, no model call.
+2. **Nothing tricky → pass.** Plain code, no model call.
+3. **Something needs judgment → ask.** A small agent gathers the evidence and asks a decision runtime whether each concern (a flaky retry, deleted tests, a sensitive change) is risky or safe. A fixed rule turns the typed answers into the check; a reviewer decides when it matters.
 
-1. **Something really broke → fail.** No AI is called.
-2. **Nothing tricky → pass.** No AI is called.
-3. **Something needs judgment → ask.** A configured AskWithAI runtime answers a typed question with
-   supporting citations. PullUp verifies the evidence, applies its fixed rules, and asks a person when
-   the result is unclear.
+PullUp is also the worked example of adopting AskWithAI in three steps: change the base address, watch in shadow, go active.
 
-Every repository starts in **Shadow mode** (the check never blocks a merge and says what PullUp would
-decide) until the owner makes it Active. What PullUp looks for comes from **extensions** you switch
-Off, to Shadow or Active.
+**Start here: [docs/README.md](docs/README.md).** The adoption runbook is [docs/adopting-askwithai.md](docs/adopting-askwithai.md).
 
-**Start here: [docs/README.md](docs/README.md)**, a one-page overview that links to everything else.
-
-## Quick start
+## Quick start (demo mode, no GitHub App, no model keys)
 
 ```bash
 pnpm install
-pnpm seed          # a development database with example runs and an owner account
-pnpm dev           # http://localhost:3500 — sign in as owner@example.com / pullup-dev-password
+cp .env.example .env.local          # set BETTER_AUTH_SECRET and PULLUP_PERMIT_KEY; PULLUP_DEMO=1
+pnpm dev                            # http://localhost:3500, create the first account
 pnpm test
 ```
 
-Setting up `.env`, GitHub and all the checks: [docs/running-and-testing.md](docs/running-and-testing.md).
-
-## Libraries with conditions
-
-The animated components in `src/components/effects` include copies from React Bits, whose license
-allows using them inside this app but not selling or redistributing the components themselves. See
-`src/components/effects/README.md`.
+With a local AskWithAI running, `pnpm demo` plays the whole adoption story on synthetic pull requests. See [docs/demo.md](docs/demo.md).
