@@ -20,6 +20,16 @@ import { readPackage } from "./package-files";
  */
 
 const MAX_PER_SPLIT = 200;
+
+/** AskWithAI allows 600 requests a minute per key: pace the calls, and wait out a 429. */
+async function politely(call: () => Promise<Response>): Promise<Response> {
+  for (let i = 0; ; i++) {
+    await new Promise((r) => setTimeout(r, 220));
+    const res = await call();
+    if (res.status !== 429 || i >= 3) return res;
+    await new Promise((r) => setTimeout(r, Number(res.headers.get("retry-after") ?? 60) * 1000));
+  }
+}
 const env = process.env;
 
 interface Case {
@@ -74,11 +84,11 @@ async function main() {
     for (const cfg of configs) {
       let correct = 0, lossSum = 0, cost = 0, costUnknown = false, escalated = 0, latency = 0;
       for (const c of list) {
-        const res = await fetch(`${base}/v1/runtimes/${cfg.runtime}/v1/systemone`, {
+        const res = await politely(() => fetch(`${base}/v1/runtimes/${cfg.runtime}/v1/systemone`, {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${env.ASKWITHAI_API_KEY}`, ...(cfg.serving ? { "AskWithAI-Serving": cfg.serving } : {}) },
           body: JSON.stringify({ model: "compare", state: c.input, questions: { q0: { type: "noul", instructions: MERGE_RISK.instructions, criteria: { true: MERGE_RISK.risky, false: MERGE_RISK.safe } } } }),
-        });
+        }));
         const body = (await res.json()) as { answers?: { q0?: { noul?: number } }; askwithai?: { decision_id: string; cost_usd: number | null; latency_ms: number; synthetic: boolean } };
         if (!res.ok || typeof body.answers?.q0?.noul !== "number") throw new Error(`${cfg.name}: ${res.status} ${JSON.stringify(body).slice(0, 200)}`);
         const answer = body.answers.q0.noul >= 0.5 ? "risky" : "safe";
@@ -88,6 +98,7 @@ async function main() {
         cost += body.askwithai?.cost_usd ?? 0;
         latency += body.askwithai?.latency_ms ?? 0;
         synthetic ||= !!body.askwithai?.synthetic;
+        await new Promise((r) => setTimeout(r, 220));
         const d = body.askwithai ? await client.getDecision(body.askwithai.decision_id) : null;
         if (d && d.path !== "fast_only" && d.path !== "rules" && d.path !== "precedent") escalated++;
       }

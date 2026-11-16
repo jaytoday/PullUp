@@ -1,34 +1,22 @@
 # Code layout
 
-How the code is organised, and how the parts call each other. ([Back to the overview](README.md))
+Back to the [overview](README.md).
 
-```
-GitHub ──webhook──▶ src/ (Next.js app: webhook routes, pipeline, worker, dashboard)
-                      │ collects with packages/github
-                      │ decides with packages/engine ──runs──▶ packages/extensions (each built on packages/sdk)
-                      │ asks decisions through packages/askwithai-client; temporarily notifies people through packages/withai-client
-                      └ sends to GitHub only through packages/github/src/send.ts
-```
-
-| Folder | What it is |
-| --- | --- |
-| `packages/sdk` | The extension interface, and the shared types extensions read: the CI run, the parsed diff, path patterns, questions, screens. No network, no clock. |
-| `packages/extensions` | The bundled extensions, one folder each, plus `registry.ts` (the list). Each may import only the SDK, `zod` and its own files (a test checks this). |
-| `packages/engine` | The rules, with no network or database: config, hard failures, the extension **host** (`host.ts`), screen checks, runtime-answer and citation checks, the resolution rule, asking a person and the no-answer options, permits, the record, the check's text. |
-| `packages/github` | GitHub: App sign-in, webhook signatures, collecting a commit's CI results and files, and the governed sender (the only code that writes to GitHub). |
-| `packages/askwithai-client` | PullUp's typed client for the AskWithAI Decision API. |
-| `packages/withai-client` | A legacy client retained only for the existing human notification path during migration. |
-| `src/` | The Next.js app: webhook routes, the run pipeline (`src/server/pipeline.ts`), asking people, the worker loop, the dashboard pages, the landing page. |
-| `worker/` | The worker as its own process (by default it runs inside the web server). |
-| `cli/` | `pullup check` (decide a fixture or your branch locally) and `pullup extensions`. |
-| `fixtures/` | Recorded CI runs for tests; `fixtures/recorded/` holds live AI answers to replay; `fixtures/golden/` holds decisions from before extensions, which must not change. |
-| `e2e/` | Browser checks with Playwright. |
-| `drizzle/` | Database migrations (SQLite, or Turso when configured). |
-
-## The engine's main functions
-
-- `decideRun` (`resolution.ts`): hard failures → screens → extensions → AskWithAI decision → PullUp resolution rule.
-- `runExtensions` and `planScreens` (`host.ts`): run every switched-on extension in order and enforce
-  the extension rules.
-- `startAsk`, `tick`, `answer` (`no-answer.ts`): asking a person, with time passed in.
-- `checkRunView` (`check-run.ts`): the text of the PullUp check.
+| Path | What is there |
+|---|---|
+| `packages/engine` | Pure code, no network or database: CI types (`ci.ts`), the diff parser, sensitive paths, the config, hard failures, the three concern detectors (`concerns.ts`), the assess input, the quote check (`quotes.ts`), the fixed rule (`policy.ts`), the check run text, permits and the tamper-evident record. `browser.ts` is the part screens may import. |
+| `packages/github` | GitHub: App authentication, webhook signatures, collecting a commit's CI (`collect.ts`), the governed sender (`send.ts`), and a fake GitHub for tests and demo mode (`fake.ts`). |
+| `src/server/pipeline.ts` | One run from collection to the check, waiting runs, GitHub answers |
+| `src/server/agent/` | The agent: tools and guardrails (`tools.ts`), the AI SDK loop, the Claude Agent SDK loop, the scripted planner, `prompt.md` |
+| `src/server/decide/` | The decision step: Jev, Gemini Decisions and AskWithAI providers |
+| `src/server/outcomes.ts` | Merges, reverts and person answers reported to AskWithAI |
+| `src/server/demo.ts`, `demo-github.ts` | Demo mode: synthetic pull requests through the real pipeline on the fake GitHub |
+| `src/app/`, `src/components/` | Screens (Astryx, Cyanotype, AskWithAI's web kit) and routes: the GitHub webhook, the kit's route, the demo controls |
+| `src/lib/db/` | The database (SQLite through libsql; Turso in production) and its schema; migrations in `drizzle/` |
+| `askwithai/` | The decision package ([details](decision-package.md)) |
+| `scripts/` | `generate-data.ts`, `demo.ts`, `demo-compare.ts`, `parity.ts`, `askwithai-sync.sh`, `lint.mjs` |
+| `data/synthetic/` | Synthetic pull requests for demo mode |
+| `fixtures/` | Recorded CI runs and diffs with the concerns each should raise |
+| `vendor/` | AskWithAI's SDK and web kit as packed tarballs |
+| `e2e/` | The browser test and the helpers that start a throwaway AskWithAI and PullUp |
+| `worker/` | The worker as its own process (`pnpm worker`) |

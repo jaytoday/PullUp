@@ -22,7 +22,8 @@
     "demo": "tsx --env-file-if-exists=.env.local scripts/demo.ts",
     "demo:compare": "tsx --env-file-if-exists=.env.local scripts/demo-compare.ts",
     "parity": "tsx --env-file-if-exists=.env.local scripts/parity.ts",
-    "askwithai:sync": "sh scripts/askwithai-sync.sh"
+    "askwithai:sync": "sh scripts/askwithai-sync.sh",
+    "demo:evidence": "tsx --env-file-if-exists=.env.local scripts/demo-evidence.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.102",

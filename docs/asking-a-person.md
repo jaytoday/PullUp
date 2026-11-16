@@ -1,41 +1,19 @@
 # Asking a person
 
-Only in Active mode, and only for questions the AskWithAI runtime could not settle.
-([Back to the overview](README.md))
+Back to the [overview](README.md). Code: `src/server/pipeline.ts` (`answerFromGithub`, `refreshWaiting`).
 
-## Who is asked
+AskWithAI owns reviews. When the runtime's person tier is worth its price (a wrong answer would cost more than asking), the decision is `pending_review` and the concern waits. PullUp's check then says "Waiting for a person" (in Enforce mode it stays in progress with **Pass** and **Fail** buttons).
 
-- By default, `ask.to` in the config: an email address, a phone number in international format, or a
-  WithAI member id. `ask.toGithub` is their GitHub login, so their clicks on GitHub count as theirs.
-- An extension can name better people for a question: the `codeowners` extension asks the owners of
-  the files the question is about. If several people are asked, any of them may answer.
+A reviewer can answer in three places:
 
-## How they answer
+- **PullUp's `/reviews`** (or AskWithAI's Reviews page): the web kit's keyboard queue. 1 or 2 picks `risky` or `safe`, `r` focuses the reason, Enter settles.
+- **The GitHub check's Pass or Fail button.**
+- **A pull request comment:** `/pullup pass <reason>` or `/pullup fail <reason>`.
 
-Any one of these:
+A GitHub answer counts only from a login in the config's `reviewers` list or a repository admin. It settles every open AskWithAI review on the run with the person's label (Fail means `risky`, Pass means `safe`). A concern with no AskWithAI review (a baseline provider, or a failed call) takes the answer directly, and the answer is reported as an outcome when the decision has an AskWithAI id. A person's `risky` fails the concern without a quote.
 
-- the email, phone, or member message sent through the temporary legacy WithAI notification service;
-- the **Pass** / **Fail** buttons on the PullUp check on GitHub;
-- a pull request comment starting `/pullup pass <reason>` or `/pullup fail <reason>`.
+The worker re-reads every waiting decision each minute, so an answer given in AskWithAI, or a deadline that passed, updates the check.
 
-Only the people asked, or a repository admin, can answer. The first answer wins; the other messages
-are withdrawn. A button or comment answers every waiting question of that run.
+## Input requests
 
-## When no one answers
-
-One reminder at half the deadline (`ask.remind`). At the deadline (`ask.deadlineMinutes`, default 240)
-the **no-answer option** applies. It is looked up in this order: `ask.perExtension` for the question
-(`core:flaky-test`), then for its extension (`threat-model`), then `ask.onNoAnswer`.
-
-| Option | At the deadline |
-| --- | --- |
-| `fail` (default) | The question fails: "No answer from …". |
-| `follow-council` | Follow the prior model answers if they were mostly pass and no verified fail held up; otherwise fail. A question only a person may pass always fails. |
-| `pass` | The question passes, marked "passed without an answer". |
-| `escalate` | Ask `ask.backup` with a fresh deadline; if they do not answer either, `ask.onNoAnswerAfterBackup` applies. |
-
-An answer that arrives late still counts and replaces the no-answer outcome.
-
-## Learning from answers
-
-Email, phone, and WithAI-member notifications still use the legacy WithAI question service during the migration. GitHub buttons and `/pullup` comments remain available independently. When a person answers a question backed by an AskWithAI decision, PullUp reports that person's pass or fail label to the matching AskWithAI decision and runtime question. It does not turn model agreement into an outcome. See [The AskWithAI connection](askwithai-connection.md) for ownership and migration status.
+A decision can also wait for a **fact** (an input request): for example, "Is the failing test on the repository's known-flaky list?" The agent calls `answer_input_request`; PullUp computes the answer from `.pullup/config.json` and sends it, and the decision resumes. Facts PullUp cannot compute stay in the review queue for a person. A fact is used for that decision only; it never becomes a label.
