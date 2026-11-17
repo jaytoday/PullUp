@@ -31,6 +31,7 @@ PullUp starts as an ordinary app calling Jev directly. It adopts AskWithAI in st
 
 | Topic | Document |
 |---|---|
+| **Start here**: running both apps and watching a decision happen | [Quick start](quick-start.md) |
 | Adopting AskWithAI, step by step (the runbook) | [Adopting AskWithAI](adopting-askwithai.md) |
 | A run from start to finish | [How a run works](how-a-run-works.md) |
 | The agent: tools, guardrails, harnesses | [The agent](the-agent.md) |

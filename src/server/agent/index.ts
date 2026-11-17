@@ -1,4 +1,5 @@
 import type { LanguageModel } from "ai";
+import { runAgentRunWorkflow } from "./agentrun";
 import { runAiSdk } from "./ai-sdk";
 import { runClaudeAgent } from "./claude-agent";
 import { runScripted } from "./scripted";
@@ -7,12 +8,15 @@ import { failed } from "../decide/types";
 
 export { AgentSession, type AgentContext, type AgentStep, repositoryFact } from "./tools";
 
-export type Harness = "ai-sdk" | "claude-agent" | "scripted";
+export type Harness = "ai-sdk" | "claude-agent" | "agentrun" | "scripted";
 
 /** The scripted planner unless a harness is chosen and a model key is set; demo mode is always scripted. */
 export function harnessOf(env: Record<string, string | undefined> = process.env): Harness {
   if (env.PULLUP_DEMO === "1" || !env.ANTHROPIC_API_KEY) return "scripted";
-  return env.AGENT_HARNESS === "claude-agent" ? "claude-agent" : env.AGENT_HARNESS === "scripted" ? "scripted" : "ai-sdk";
+  if (env.AGENT_HARNESS === "claude-agent") return "claude-agent";
+  if (env.AGENT_HARNESS === "agentrun") return "agentrun";
+  if (env.AGENT_HARNESS === "scripted") return "scripted";
+  return "ai-sdk";
 }
 
 /**
@@ -27,6 +31,7 @@ export async function runAgent(ctx: AgentContext, env: Record<string, string | u
   try {
     if (harness === "scripted") await runScripted(session);
     else if (harness === "claude-agent") await runClaudeAgent(session, env);
+    else if (harness === "agentrun") await runAgentRunWorkflow(session, env);
     else await runAiSdk(session, env, model);
   } catch (e) {
     error = (e as Error).message;

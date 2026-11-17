@@ -19,7 +19,7 @@ importers:
         version: file:vendor/askwithai-react-0.1.0.tgz(@astryxdesign/charts@0.7.15-canary.gf890983(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@astryxdesign/lab@0.7.15-canary.gf890983(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       '@askwithai/sdk':
         specifier: file:vendor/askwithai-sdk-0.1.0.tgz
-        version: file:vendor/askwithai-sdk-0.1.0.tgz
+        version: file:vendor/askwithai-sdk-0.1.0.tgz(@parcha/agentrun-dsl@0.1.0-beta.41)
       '@astryxdesign/charts':
         specifier: 0.7.15-canary.gf890983
         version: 0.7.15-canary.gf890983(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -32,6 +32,9 @@ importers:
       '@libsql/client':
         specifier: ^0.17.3
         version: 0.17.4
+      '@parcha/agentrun-dsl':
+        specifier: 0.1.0-beta.41
+        version: 0.1.0-beta.41
       '@pullup/engine':
         specifier: workspace:*
         version: link:packages/engine
@@ -217,7 +220,7 @@ packages:
         optional: true
 
   '@askwithai/react@file:vendor/askwithai-react-0.1.0.tgz':
-    resolution: {integrity: sha512-lkxcFKmv6uCbrPnyt79FBtk6xnyzRCLzuTofBxWejt68MgNt3Ba6/kPTirvwVbTGlks/fPM4O26zm5aUC+kdLg==, tarball: file:vendor/askwithai-react-0.1.0.tgz}
+    resolution: {integrity: sha512-W94ZyqKG/Gkync/A55x9qXaAoTtnp6w5O8fz3wj9Vjg3PPmQ5ZLzf5h7kmNbRwQOEBcXLZOSR/a+ccL+TEgemg==, tarball: file:vendor/askwithai-react-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       '@astryxdesign/charts': 0.7.15-canary.gf890983
@@ -226,7 +229,7 @@ packages:
       react: ^19.0.0
 
   '@askwithai/sdk@file:vendor/askwithai-sdk-0.1.0.tgz':
-    resolution: {integrity: sha512-7ikmvu8YorF2mmXcItFLEOkNLSzVHerS6t16k2cjIoXY2dge8IRPIZ6+D8OWFJcM4pR0yBngGO6O/hmsywi+6g==, tarball: file:vendor/askwithai-sdk-0.1.0.tgz}
+    resolution: {integrity: sha512-iU2NUmHqslnGsoEQXp3IT8MGPjCC++LRULDNDUxICoF8XRhm9O/+OzrC8UgBvQ45trcApY5Sb7XwJtg6deeB/Q==, tarball: file:vendor/askwithai-sdk-0.1.0.tgz}
     version: 0.1.0
     engines: {node: '>=22'}
     hasBin: true
@@ -1337,6 +1340,11 @@ packages:
   '@opentelemetry/api@1.10.0':
     resolution: {integrity: sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ==}
     engines: {node: '>=8.0.0'}
+
+  '@parcha/agentrun-dsl@0.1.0-beta.41':
+    resolution: {integrity: sha512-bIb1iw3gmiQmDn+enU5oKfa7PyqoGamCQn1mXCTVqABlPKoIByWCZmkeLIsy7zVskVuZlYoTZAeUL+wUKsdx1Q==}
+    engines: {node: '>=24.22.3'}
+    hasBin: true
 
   '@playwright/test@1.65.1':
     resolution: {integrity: sha512-y+NCIRm2LvY4slUVWvGh1nujJ8RF/hEisIsq2mtUPgdQC4L701bq5hZGMhrpeXjACvwvO9tj5dJqhvM6TP9lbw==}
@@ -2465,6 +2473,9 @@ packages:
     resolution: {integrity: sha512-faYHw0anBbc/kWF3zFTEnxSFOAGUX9GFbOBthvDdLsIlEoWOFOtS0zgCiQYwIskL9iGXZL3kAXD8OoZ4GmMATA==}
     engines: {node: '>= 18'}
 
+  typebox@1.3.27:
+    resolution: {integrity: sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==}
+
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -2673,7 +2684,9 @@ snapshots:
       '@astryxdesign/lab': 0.7.15-canary.gf890983(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
 
-  '@askwithai/sdk@file:vendor/askwithai-sdk-0.1.0.tgz': {}
+  '@askwithai/sdk@file:vendor/askwithai-sdk-0.1.0.tgz(@parcha/agentrun-dsl@0.1.0-beta.41)':
+    optionalDependencies:
+      '@parcha/agentrun-dsl': 0.1.0-beta.41
 
   '@astryxdesign/charts@0.7.15-canary.gf890983(@astryxdesign/core@0.7.14(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@stylexjs/stylex@0.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -3438,6 +3451,10 @@ snapshots:
       '@octokit/openapi-types': 29.0.1
 
   '@opentelemetry/api@1.10.0': {}
+
+  '@parcha/agentrun-dsl@0.1.0-beta.41':
+    dependencies:
+      typebox: 1.3.27
 
   '@playwright/test@1.65.1':
     dependencies:
@@ -4501,6 +4518,8 @@ snapshots:
       content-type: 2.1.0
       media-typer: 1.1.1
       mime-types: 3.0.2
+
+  typebox@1.3.27: {}
 
   typescript@5.9.3: {}
 
