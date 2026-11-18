@@ -86,7 +86,7 @@ export const { GET, POST, PATCH } = createAskWithAIHandler({
 <QualityPanel runtime={runtime} />            {/* /quality, with ShadowComparison and ServingModeControl */}
 ```
 
-The kit and the SDK are vendored tarballs in `vendor/`; `ASKWITHAI_REPO=<checkout> pnpm askwithai:sync` repacks them.
+The SDK comes from npm (`@askwithai/sdk`). The private kit is a vendored tarball in `vendor/`; `ASKWITHAI_REPO=<checkout> pnpm askwithai:sync` repacks it.
 
 ## Step 5. Go active
 

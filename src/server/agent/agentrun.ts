@@ -20,10 +20,10 @@ import type { AgentSession } from "./tools";
  * Splitting "investigate" and "assess" into separate graph nodes (an
  * investigation node followed by a `map` of `call` nodes, one per concern)
  * would let AgentRun's recovery journal resume mid-review and would be the
- * natural place to route `assess` through `askwithaiEffect`
- * (`@askwithai/sdk/agentrun-effect`) as a true graph-level effect — but it
- * would also change today's interleaved investigate-then-assess-per-concern
- * order, which this pass deliberately does not risk. `assess` therefore
+ * natural place to ask AskWithAI from the graph itself instead of from an
+ * agent tool — but it would also change today's interleaved
+ * investigate-then-assess-per-concern order, which this pass deliberately
+ * does not risk. `assess` therefore
  * stays one of this node's own tools, unchanged, exactly as in
  * `claude-agent.ts`. AskWithAI's own idempotency key
  * (`pullup:<run>:<concern>`, built in `pipeline.ts` and already independent

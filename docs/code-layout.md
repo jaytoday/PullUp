@@ -17,6 +17,6 @@ Back to the [overview](README.md).
 | `scripts/` | `generate-data.ts`, `demo.ts`, `demo-compare.ts`, `parity.ts`, `askwithai-sync.sh`, `lint.mjs` |
 | `data/synthetic/` | Synthetic pull requests for demo mode |
 | `fixtures/` | Recorded CI runs and diffs with the concerns each should raise |
-| `vendor/` | AskWithAI's SDK and web kit as packed tarballs |
+| `vendor/` | AskWithAI's private web kit as a packed tarball (the SDK comes from npm) |
 | `e2e/` | The browser test and the helpers that start a throwaway AskWithAI and PullUp |
 | `worker/` | The worker as its own process (`pnpm worker`) |
